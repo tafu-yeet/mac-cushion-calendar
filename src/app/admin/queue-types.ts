@@ -14,11 +14,13 @@ export type QueueEvent = {
   startTime: string; // campus-local "HH:MM", "" when unknown
   endTime: string;
   location: string | null;
+  hostedBy: string | null; // who runs it, when not the posting account
   openToAll: boolean;
   confidence: number | null;
   reason: string | null;
   reviewNotes: string[];
   model: string | null;
+  clubId: number;
   clubName: string;
   clubUsername: string;
   caption: string;

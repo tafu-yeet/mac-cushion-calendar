@@ -27,6 +27,10 @@ class ExtractedEvent(BaseModel):
     )
     end: datetime | None = Field(description="ISO 8601 with the campus timezone's UTC offset.")
     location: str | None
+    hosted_by: str | None = Field(
+        description="Clubs or groups other than the posting account that run or co-run the event, "
+        "with @handle if shown; null when the posting account runs it alone."
+    )
     open_to_all: bool
     confidence: float = Field(
         description="0 to 1: how sure you are that the details, especially date, time, "
@@ -117,6 +121,7 @@ Free food
 Other fields
 - open_to_all is true if any student can come, including events with free sign-up. It is false if the event needs a paid ticket or membership, or is limited to a specific group.
 - location is the place as stated, with campus abbreviations expanded from the list below, e.g. "MUSC 230 (McMaster University Student Centre)". Use null if no place is given, including "link in bio".
+- hosted_by lists the clubs or groups other than the posting account that run or co-run the event: the club whose event a hub or events page is sharing, or the partner in a collaboration ("x", "teaming up with", "partnering with"). Name them as the post does, with the @handle if shown, e.g. "McMaster Geeks (@mcmastergeeks)". Sponsors, venues, and shops are not hosts. Use null when the posting account runs the event alone.
 
 Known campus locations
 {locations}"""

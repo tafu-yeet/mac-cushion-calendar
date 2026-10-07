@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { requireAdmin } from "@/lib/auth";
+import { groupDuplicates } from "@/lib/duplicates";
 import { formatWhen, startOfTodayIso, toLocalInputs } from "@/lib/time";
 
 import { EventCard } from "./event-card";
@@ -37,7 +38,7 @@ async function Queue({ searchParams }: { searchParams: PageProps<"/admin">["sear
     .from("events")
     .select(
       `id, status, name, event_type, tags, has_free_food, food_description, starts_at, start_time_known,
-       ends_at, location, open_to_all, confidence, reason, review_notes, model, club_id,
+       ends_at, location, hosted_by, open_to_all, confidence, reason, review_notes, model, club_id,
        clubs (name, instagram_username), posts (caption, permalink, posted_at, image_path)`,
     )
     .eq("status", filters.status);
@@ -73,11 +74,13 @@ async function Queue({ searchParams }: { searchParams: PageProps<"/admin">["sear
       startTime: r.start_time_known ? start.time : "",
       endTime: toLocalInputs(r.ends_at).time,
       location: r.location,
+      hostedBy: r.hosted_by,
       openToAll: r.open_to_all ?? true,
       confidence: r.confidence,
       reason: r.reason,
       reviewNotes: r.review_notes,
       model: r.model,
+      clubId: r.club_id,
       clubName: r.clubs?.name ?? "Unknown club",
       clubUsername: r.clubs?.instagram_username ?? "",
       caption: r.posts?.caption ?? "",
@@ -87,7 +90,13 @@ async function Queue({ searchParams }: { searchParams: PageProps<"/admin">["sear
     };
   });
 
-  const groups = filters.status === "pending" ? groupDuplicates(events, rows) : events.map((e) => ({ key: `${e.id}`, events: [e] }));
+  const groups: QueueGroup[] =
+    filters.status === "pending"
+      ? groupDuplicates(events).map((members) => ({
+          key: members.map((e) => e.id).join("-"),
+          events: members.sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0)),
+        }))
+      : events.map((e) => ({ key: `${e.id}`, events: [e] }));
   const withNotes = events.filter((e) => e.reviewNotes.length > 0).length;
 
   return (
@@ -109,7 +118,8 @@ async function Queue({ searchParams }: { searchParams: PageProps<"/admin">["sear
         ) : (
           <section key={group.key} className="flex flex-col gap-3 rounded-2xl border-2 border-dashed border-stone-300 p-3">
             <h2 className="px-1 text-sm font-medium text-stone-700">
-              {group.events.length} possible duplicates · {group.events[0].clubName} · {formatWhen(group.events[0].startsAt, false).replace(", time TBD", "")}
+              {group.events.length} possible duplicates · {formatWhen(group.events[0].startsAt, false).replace(", time TBD", "")} ·{" "}
+              {[...new Set(group.events.map((e) => e.clubName))].join(", ")}
               <span className="font-normal text-stone-500"> — approve the best one and reject the rest in one click.</span>
             </h2>
             {group.events.map((e) => (
@@ -120,19 +130,6 @@ async function Queue({ searchParams }: { searchParams: PageProps<"/admin">["sear
       )}
     </div>
   );
-}
-
-/** Events from the same club on the same campus-local day are likely the same event. */
-function groupDuplicates(events: QueueEvent[], rows: { club_id: number }[]): QueueGroup[] {
-  const groups = new Map<string, QueueEvent[]>();
-  events.forEach((e, i) => {
-    const key = e.startDate ? `${rows[i].club_id}:${e.startDate}` : `undated:${e.id}`;
-    groups.set(key, [...(groups.get(key) ?? []), e]);
-  });
-  return [...groups].map(([key, members]) => ({
-    key,
-    events: members.sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0)),
-  }));
 }
 
 function FilterBar({ filters }: { filters: Filters }) {

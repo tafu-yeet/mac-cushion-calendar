@@ -195,6 +195,7 @@ def _event_row(post: dict, fe: FinalEvent) -> dict:
         "start_time_known": e.start_time_known,
         "ends_at": _localized(e.end),
         "location": e.location,
+        "hosted_by": e.hosted_by,
         "open_to_all": e.open_to_all,
         "confidence": min(max(e.confidence, 0.0), 1.0),
         "reason": e.reason,

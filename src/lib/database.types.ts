@@ -72,6 +72,7 @@ export type Database = {
           extracted: Json | null
           food_description: string | null
           has_free_food: boolean
+          hosted_by: string | null
           id: number
           location: string | null
           model: string | null
@@ -97,6 +98,7 @@ export type Database = {
           extracted?: Json | null
           food_description?: string | null
           has_free_food?: boolean
+          hosted_by?: string | null
           id?: never
           location?: string | null
           model?: string | null
@@ -122,6 +124,7 @@ export type Database = {
           extracted?: Json | null
           food_description?: string | null
           has_free_food?: boolean
+          hosted_by?: string | null
           id?: never
           location?: string | null
           model?: string | null

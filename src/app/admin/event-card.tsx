@@ -89,10 +89,16 @@ export function EventCard({ event, siblingIds }: { event: QueueEvent; siblingIds
             Time unknown (shows as &ldquo;time TBD&rdquo;)
           </label>
 
-          <label className={label}>
-            Location
-            <input name="location" defaultValue={event.location ?? ""} className={input} />
-          </label>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className={label}>
+              Location
+              <input name="location" defaultValue={event.location ?? ""} className={input} />
+            </label>
+            <label className={label}>
+              Hosted by (if not {event.clubName})
+              <input name="hosted_by" defaultValue={event.hostedBy ?? ""} placeholder="e.g. Hillel McMaster (@hillelmcmaster)" className={input} />
+            </label>
+          </div>
 
           <div className="grid gap-3 sm:grid-cols-[auto_1fr_1fr] sm:items-end">
             <label className="flex items-center gap-2 pb-1.5 text-sm font-medium">
@@ -132,6 +138,11 @@ function PostColumn({ event }: { event: QueueEvent }) {
         >
           @{event.clubUsername}
         </a>
+        {event.hostedBy && (
+          <p className="mt-1 rounded bg-sky-50 px-2 py-1 text-xs text-sky-900">
+            Hosted by <span className="font-medium">{event.hostedBy}</span>
+          </p>
+        )}
       </div>
       {event.imageUrl ? (
         // Signed storage URLs change on every load, so skip next/image optimization.

@@ -89,6 +89,7 @@ function parseEventFields(formData: FormData): EventUpdate | { error: string } {
     start_time_known: !timeUnknown,
     ends_at: endsAt,
     location: text("location") || null,
+    hosted_by: text("hosted_by") || null,
     has_free_food: checked("has_free_food"),
     food_description: text("food_description") || null,
     open_to_all: checked("open_to_all"),
