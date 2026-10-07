@@ -1,0 +1,24 @@
+{
+  "siteName": "Mac Cushion Calendar",
+  "school": "McMaster University",
+  "schoolShortName": "McMaster",
+  "city": "Hamilton, Ontario, Canada",
+  "timezone": "America/Toronto",
+  "campusLocations": {
+    "MUSC": "McMaster University Student Centre",
+    "JHE": "John Hodgins Engineering Building",
+    "ETB": "Engineering Technology Building",
+    "ITB": "Information Technology Building",
+    "ABB": "Arthur Bourns Building",
+    "BSB": "Burke Science Building",
+    "LRW": "L.R. Wilson Hall",
+    "KTH": "Kenneth Taylor Hall",
+    "TSH": "Togo Salmon Hall",
+    "MDCL": "Michael DeGroote Centre for Learning and Discovery",
+    "PGCLL": "Peter George Centre for Living and Learning",
+    "DBAC": "David Braley Athletic Centre",
+    "HSC": "Health Sciences Centre",
+    "Mills": "Mills Memorial Library",
+    "Thode": "H.G. Thode Library of Science and Engineering"
+  }
+}
