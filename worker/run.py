@@ -11,6 +11,7 @@ Usage (from worker/):
     python run.py --no-extract     # fetch and store only
     python run.py --extract-only   # only process posts waiting for extraction
     python run.py --retry-failed   # also re-queue posts whose extraction failed
+    python run.py --log-dir logs   # scheduled runs: append output to logs/YYYY-MM-DD.log
 """
 
 from __future__ import annotations
@@ -21,6 +22,7 @@ import sys
 import time
 from collections import defaultdict
 from datetime import datetime
+from pathlib import Path
 
 from curl_cffi.requests.exceptions import RequestException
 from storage3.exceptions import StorageException
@@ -29,9 +31,21 @@ from supabase import Client
 import store
 from extractors import ExtractionError, ExtractorUnavailable, TwoStageExtractor, Usage, new_pipeline
 from fetchers import Attempt, FetchError, fetch_posts, print_attempt
-from settings import MAX_EXTRACTIONS_PER_RUN
+from settings import MAX_EXTRACTIONS_PER_RUN, WORKER_DIR
 
 CLUB_DELAY_S = (5.0, 15.0)
+LOG_KEEP_DAYS = 14
+
+
+def log_to_daily_file(folder: Path) -> None:
+    """Send all output (including tracebacks) to folder/YYYY-MM-DD.log and drop old logs."""
+    folder.mkdir(parents=True, exist_ok=True)
+    cutoff = time.time() - LOG_KEEP_DAYS * 24 * 60 * 60
+    for old in folder.glob("*.log"):
+        if old.stat().st_mtime < cutoff:
+            old.unlink()
+    log = open(folder / f"{datetime.now():%Y-%m-%d}.log", "a", encoding="utf-8", buffering=1)
+    sys.stdout = sys.stderr = log
 
 
 def fetch_club(sb: Client, club: dict) -> None:
@@ -156,8 +170,19 @@ def main() -> int:
     group.add_argument("--no-extract", action="store_true", help="fetch and store only")
     group.add_argument("--extract-only", action="store_true", help="only extract waiting posts")
     parser.add_argument("--retry-failed", action="store_true", help="queue failed extractions again")
+    parser.add_argument("--log-dir", help="append output to a daily log in this folder (relative to worker/)")
     args = parser.parse_args()
 
+    if args.log_dir:
+        log_to_daily_file(WORKER_DIR / args.log_dir)
+    print(f"=== run started {datetime.now():%Y-%m-%d %H:%M:%S}")
+    try:
+        return run(args)
+    finally:
+        print(f"=== run finished {datetime.now():%Y-%m-%d %H:%M:%S}\n")
+
+
+def run(args: argparse.Namespace) -> int:
     sb = store.connect()
     if args.retry_failed:
         print(f"{store.reset_failed_extractions(sb)} failed post(s) queued for extraction again")
