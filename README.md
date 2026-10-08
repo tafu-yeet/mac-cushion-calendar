@@ -4,6 +4,15 @@ Shows McMaster students which public campus events are giving out free food.
 A worker reads club Instagram posts, an LLM pulls out the events, and an admin
 approves them; only confident, double-checked events skip the wait.
 
+## Philosophy
+
+Cushion puts every campus event in one place, so you don't have to scroll
+through a thousand Instagram pages to find something you'd enjoy. Everything
+is organized and sortable, like a search engine for things to do. If you know
+you've got downtime tomorrow, you should be able to find something fun in a
+few seconds, whether that's food, a social, or anything else. Free food is
+where it starts.
+
 | Folder | What it is |
 | --- | --- |
 | `worker/` | Python worker: fetches posts, stores them and their images, extracts events |
