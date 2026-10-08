@@ -1,22 +1,47 @@
 # Mac Cushion Calendar
 
-Shows McMaster students which public campus events are giving out free food.
-A worker reads club Instagram posts, an LLM pulls out the events, and an admin
-approves them; only confident, double-checked events skip the wait.
+Every public McMaster event in one place, starting with the ones that have free
+food. A worker reads club Instagram posts, an LLM pulls out the events, and an
+admin approves them; only confident, double-checked events skip the wait.
 
 ## Philosophy
 
-Cushion puts every campus event in one place, so you don't have to scroll
-through a thousand Instagram pages to find something you'd enjoy. Everything
-is organized and sortable, like a search engine for things to do. If you know
-you've got downtime tomorrow, you should be able to find something fun in a
-few seconds, whether that's food, a social, or anything else. Free food is
-where it starts.
+Campus life is scattered across hundreds of club Instagram accounts. Unless you
+follow the right pages and catch the right story, you miss things. Cushion puts
+every public campus event in one place, organized and searchable: a search
+engine for things to do.
+
+It's built for one moment. You've got downtime tomorrow and want something to
+do. You open Cushion, say when you're free, and see everything happening in
+that window: free food, socials, games, talks, sports, shows. Finding something
+fun should take seconds, not an evening of scrolling.
+
+What that means for how it's built:
+
+- **Everything in one place.** Every club and every kind of event, big or
+  small, is listed the same way. You shouldn't need to know a club exists to
+  find its events.
+- **Find, don't scroll.** Events are organized by when, what, and where. You
+  filter by the time you're free, what you're in the mood for, and whether it
+  costs anything.
+- **Right, or it doesn't show.** A wrong time or room is worse than no listing.
+  Details come from the club's own post and are double-checked before they're
+  published. Anything the post leaves unclear is shown as unclear ("time TBD"),
+  never guessed.
+- **Credit the clubs.** Cushion sends people to clubs; it doesn't replace them.
+  Every listing links back to the original post.
+- **Quick on a phone.** No account and no app: open the site and see what's on
+  now and next.
+- **Free food is the hook.** It's the most universal reason to show up, so it
+  came first and stays one tap away. The goal is everything worth showing up
+  for.
+
+## Project layout
 
 | Folder | What it is |
 | --- | --- |
 | `worker/` | Python worker: fetches posts, stores them and their images, extracts events |
-| `src/` | Next.js site: admin review queue and club list (public pages to come) |
+| `src/` | Next.js site: public pages, admin review queue, and club list |
 | `supabase/migrations/` | Database schema and row level security |
 | `campus.config.json` | School-specific values (name, timezone, campus buildings), shared by both |
 
