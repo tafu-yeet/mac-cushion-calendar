@@ -21,6 +21,7 @@ export type QueueEvent = {
   reason: string | null;
   reviewNotes: string[];
   model: string | null;
+  autoApproved: boolean; // published by the worker without review
   clubId: number;
   clubName: string;
   clubUsername: string;

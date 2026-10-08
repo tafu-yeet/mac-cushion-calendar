@@ -33,7 +33,8 @@ export async function reviewEvent(_prev: ReviewState, formData: FormData): Promi
   } else if (intent === "approve" || intent === "save" || intent === "approve_group") {
     const parsed = parseEventFields(formData);
     if ("error" in parsed) return parsed;
-    const update: EventUpdate = intent === "save" ? parsed : { ...parsed, status: "approved", ...reviewed };
+    const update: EventUpdate =
+      intent === "save" ? parsed : { ...parsed, status: "approved", auto_approved: false, ...reviewed };
     const { error } = await supabase.from("events").update(update).eq("id", id);
     if (error) return { error: error.message };
 

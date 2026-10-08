@@ -2,7 +2,7 @@
 
 Shows McMaster students which public campus events are giving out free food.
 A worker reads club Instagram posts, an LLM pulls out the events, and an admin
-approves them before anything is published.
+approves them; only confident, double-checked events skip the wait.
 
 | Folder | What it is |
 | --- | --- |
@@ -21,8 +21,11 @@ approves them before anything is published.
 3. **Extract:** Claude Haiku reads each new post (caption + image). When it
    finds free food, Claude Sonnet rechecks the post and its dates win;
    disagreements become review notes (`worker/extractors/two_stage.py`).
-4. **Review:** every event lands in the queue as `pending`. Nothing is
-   published until it's approved at `/admin`.
+4. **Review:** free-food events at 0.9+ confidence that Sonnet agreed with,
+   with a start time, open to all, run by the posting club, and unlike any
+   event already known, are published right away and marked "auto-approved"
+   (`worker/auto_approve.py`; `AUTO_APPROVE_MIN_CONFIDENCE=none` turns this
+   off). Everything else waits as `pending` until it's approved at `/admin`.
 
 Every request is logged: `fetch_logs` (club, backend, status, bytes) and
 `llm_usage` (tokens and estimated cost; `python usage.py` for totals).

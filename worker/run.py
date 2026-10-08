@@ -133,7 +133,8 @@ def extract_post(sb: Client, pipeline: TwoStageExtractor, row: dict, used: list[
     )
     for e in events:
         when = (e["starts_at"] or "no date") + ("" if e["start_time_known"] else " (time unknown)")
-        print(f"    - {e['name']} | {when} | {e['location']} | free food: {e['food_description'] or 'no'}")
+        published = " | auto-approved" if e["auto_approved"] else ""
+        print(f"    - {e['name']} | {when} | {e['location']} | free food: {e['food_description'] or 'no'}{published}")
         for note in e["review_notes"]:
             print(f"      note: {note}")
     return True

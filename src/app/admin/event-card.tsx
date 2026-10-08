@@ -27,6 +27,9 @@ export function EventCard({ event, siblingIds }: { event: QueueEvent; siblingIds
           <input type="hidden" name="sibling_ids" value={siblingIds.join(",")} />
 
           <div className="flex flex-wrap items-center gap-2 text-xs">
+            {event.autoApproved && (
+              <span className="rounded-full bg-sky-100 px-2 py-0.5 font-medium text-sky-900">auto-approved</span>
+            )}
             <ConfidenceBadge value={event.confidence} />
             {event.model && <span className="text-stone-500">read by {event.model}</span>}
           </div>

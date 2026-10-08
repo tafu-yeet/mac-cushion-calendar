@@ -64,6 +64,7 @@ export type Database = {
       }
       events: {
         Row: {
+          auto_approved: boolean
           club_id: number
           confidence: number | null
           created_at: string
@@ -90,6 +91,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          auto_approved?: boolean
           club_id: number
           confidence?: number | null
           created_at?: string
@@ -116,6 +118,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          auto_approved?: boolean
           club_id?: number
           confidence?: number | null
           created_at?: string

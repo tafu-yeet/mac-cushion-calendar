@@ -22,8 +22,8 @@ export default function PublicLayout({ children }: LayoutProps<"/">) {
 
       <footer className="border-t border-stone-200">
         <p className="mx-auto max-w-6xl px-4 py-6 text-xs leading-relaxed text-stone-500">
-          A student project, not affiliated with {campus.school}. Events are found in clubs&apos; public Instagram
-          posts and checked by a person before they appear here. Plans change, so check the club&apos;s post before
+          A student project, not affiliated with {campus.school}. Events are read from clubs&apos; public Instagram
+          posts by AI and double-checked before they appear here. Plans change, so check the club&apos;s post before
           you go.
         </p>
       </footer>

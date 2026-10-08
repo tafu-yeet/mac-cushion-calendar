@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 from curl_cffi import requests
 from supabase import Client, create_client
 
+import auto_approve
 from extractors import FinalEvent, PostResult, Usage
 from fetchers import Attempt, Post
 from settings import LOCAL_TZ, MAX_POST_AGE_DAYS, POST_IMAGE_BUCKET, require
@@ -130,10 +131,17 @@ def pending_posts(sb: Client, limit: int) -> list[dict]:
 
 
 def save_extraction(sb: Client, post: dict, result: PostResult) -> list[dict]:
-    """Queue the post's events as pending and mark the post done; returns the event rows."""
+    """Save the post's events, confident ones approved and the rest pending, and mark the post done.
+
+    Returns the event rows.
+    """
     # Re-running a post replaces its unreviewed events instead of duplicating them.
     sb.table("events").delete().eq("post_id", post["id"]).eq("status", "pending").execute()
     rows = [_event_row(post, fe) for fe in result.events]
+    # Each is compared with events already saved, not with this post's others (the model split those).
+    club_name = (post.get("clubs") or {}).get("name", "")
+    for row in rows:
+        auto_approve.review(sb, row, result.verified_by, club_name)
     if rows:
         sb.table("events").insert(rows).execute()
     extraction = {"is_event": result.is_event, "reason": result.reason, "model": result.first_model,
@@ -186,6 +194,9 @@ def _event_row(post: dict, fe: FinalEvent) -> dict:
         "post_id": post["id"],
         "club_id": post["club_id"],
         "status": "pending",
+        # Every row in one insert needs the same keys, so these are always present.
+        "auto_approved": False,
+        "reviewed_at": None,
         "name": e.event_name,
         "event_type": e.event_type.strip().lower() or "other",
         "tags": [t.strip().lower() for t in e.tags if t.strip()],
