@@ -92,7 +92,7 @@ def merge(first: list[ExtractedEvent], first_model: str, second: list[ExtractedE
         b = fe.event
         if when(a) != when(b):
             fe.notes.append(f"{a_name} said {when(a)}, {b_name} said {when(b)}; using {b_name}'s.")
-        if room_key(a.location) and room_key(b.location) and room_key(a.location) != room_key(b.location):
+        if not same_place(a.location, b.location):
             fe.notes.append(f"{a_name} said it's at {a.location}, {b_name} said {b.location}; using {b_name}'s.")
         if a.has_free_food and not b.has_free_food:
             b.has_free_food, b.food_description = True, a.food_description
@@ -104,6 +104,30 @@ def merge(first: list[ExtractedEvent], first_model: str, second: list[ExtractedE
         if j not in pairs.values():
             fe.notes.append(f"Only {b_name} found this event.")
     return final
+
+
+# Words that say nothing about which place it is.
+GENERIC_PLACE_WORDS = {
+    "the", "a", "at", "in", "of", "on", "and", "via", "front", "room", "rm", "hall", "building",
+    "centre", "center", "library", "lounge", "mcmaster", "university", "campus",
+}
+
+
+def same_place(a: str | None, b: str | None) -> bool:
+    """Whether two readings of a location can be the same place, however they're worded.
+
+    Room numbers decide when both have them: "KTH Bio3" and "KTH B103" differ,
+    "HH 305" and "Hamilton Hall 305" agree, and one reading may add numbers the
+    other left out. Otherwise one shared distinctive word is enough ("Blue
+    Lounge" and "The Blue Lounge (The Hub)"). A missing location never disagrees.
+    """
+    if not a or not b:
+        return True
+    words_a, words_b = (set(re.findall(r"[a-z0-9]+", s.lower())) for s in (a, b))
+    numbers_a, numbers_b = ({w for w in words if any(c.isdigit() for c in w)} for words in (words_a, words_b))
+    if numbers_a and numbers_b:
+        return numbers_a <= numbers_b or numbers_b <= numbers_a
+    return bool((words_a - GENERIC_PLACE_WORDS) & (words_b - GENERIC_PLACE_WORDS))
 
 
 def room_key(location: str | None) -> str:
