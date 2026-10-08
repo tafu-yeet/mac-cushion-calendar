@@ -41,11 +41,14 @@ CLAUDE_EFFORT = env("CLAUDE_EFFORT", "medium")  # ignored by Haiku 4.5
 # its dates and times win. "none" turns the check off.
 VERIFY_MODEL = env("VERIFY_MODEL", "claude-sonnet-5-5")
 
-# Free-food events at or above this confidence are published without review
-# when the check agreed and nothing similar is known (see auto_approve.py).
-# "none" sends every event to the review queue.
+# Events at or above these confidences are published without review when the
+# check agreed and nothing similar is known (see auto_approve.py). Free food
+# needs more: both models can wrongly assume food is free, while for other
+# events the risk is the date, which the check covers. "none" for the first
+# sends every event to the review queue.
 _auto = env("AUTO_APPROVE_MIN_CONFIDENCE", "0.9")
 AUTO_APPROVE_MIN_CONFIDENCE = None if _auto.lower() == "none" else float(_auto)
+AUTO_APPROVE_OTHER_MIN_CONFIDENCE = float(env("AUTO_APPROVE_OTHER_MIN_CONFIDENCE", "0.8"))
 
 GEMINI_MODEL = env("GEMINI_MODEL", "gemini-3.8-flash")
 # Free-tier requests-per-minute limits are low; space calls out.

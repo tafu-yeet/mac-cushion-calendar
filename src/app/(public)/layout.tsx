@@ -9,7 +9,7 @@ export default function PublicLayout({ children }: LayoutProps<"/">) {
     <div className="flex flex-1 flex-col">
       <header className="sticky top-0 z-10 border-b border-stone-200 bg-stone-50/90 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
-          <Link href="/" className="font-semibold tracking-tight text-stone-900">
+          <Link href="/" className="text-[15px] font-semibold leading-tight tracking-tight text-stone-900 sm:text-base">
             {campus.siteName}
           </Link>
           <Suspense fallback={<SiteNavLinks />}>

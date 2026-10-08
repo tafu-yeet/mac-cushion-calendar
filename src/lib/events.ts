@@ -2,13 +2,20 @@ import "server-only";
 
 import { cacheLife, cacheTag } from "next/cache";
 
+import type { Category } from "@/lib/categories";
 import { createPublicClient } from "@/lib/supabase/public";
 
-/** An approved free-food event as the public site shows it. */
+/** An approved event as the public site shows it. */
 export type PublicEvent = {
   id: number;
   name: string;
+  category: Category;
+  eventType: string;
+  tags: string[];
+  hasFreeFood: boolean;
   foodDescription: string | null;
+  cost: "free" | "paid" | "unknown";
+  price: string | null;
   startsAt: string; // UTC ISO; public events always have a date
   endsAt: string | null;
   startTimeKnown: boolean;
@@ -24,13 +31,19 @@ export type PublicEvent = {
 // on the next request instead of after the cache lifetime.
 export const EVENTS_TAG = "events";
 
-const COLUMNS = `id, name, food_description, starts_at, ends_at, start_time_known, location, hosted_by, open_to_all,
+const COLUMNS = `id, name, category, event_type, tags, has_free_food, food_description, cost, price, starts_at, ends_at, start_time_known, location, hosted_by, open_to_all,
   clubs (name, instagram_username), posts (permalink)`;
 
 type Row = {
   id: number;
   name: string;
+  category: string;
+  event_type: string;
+  tags: string[];
+  has_free_food: boolean;
   food_description: string | null;
+  cost: string;
+  price: string | null;
   starts_at: string | null;
   ends_at: string | null;
   start_time_known: boolean;
@@ -45,7 +58,13 @@ function toPublicEvent(r: Row): PublicEvent {
   return {
     id: r.id,
     name: r.name,
-    foodDescription: r.food_description,
+    category: r.category as Category,
+    eventType: r.event_type,
+    tags: r.tags,
+    hasFreeFood: r.has_free_food,
+    foodDescription: r.has_free_food ? r.food_description : null,
+    cost: r.cost as PublicEvent["cost"],
+    price: r.price,
     startsAt: r.starts_at!,
     endsAt: r.ends_at,
     startTimeKnown: r.start_time_known,
@@ -58,7 +77,7 @@ function toPublicEvent(r: Row): PublicEvent {
   };
 }
 
-/** Approved free-food events starting in [fromIso, toIso), earliest first. */
+/** Approved events starting in [fromIso, toIso), earliest first. */
 export async function getEventsBetween(fromIso: string, toIso: string): Promise<PublicEvent[]> {
   "use cache";
   cacheLife("minutes");
@@ -68,7 +87,6 @@ export async function getEventsBetween(fromIso: string, toIso: string): Promise<
     .from("events")
     .select(COLUMNS)
     .eq("status", "approved")
-    .eq("has_free_food", true)
     .gte("starts_at", fromIso)
     .lt("starts_at", toIso)
     .order("starts_at");
@@ -76,7 +94,7 @@ export async function getEventsBetween(fromIso: string, toIso: string): Promise<
   return (data as Row[]).map(toPublicEvent);
 }
 
-/** One approved free-food event, or null if it doesn't exist or isn't public. */
+/** One approved event, or null if it doesn't exist or isn't public. */
 export async function getEvent(id: number): Promise<PublicEvent | null> {
   "use cache";
   cacheLife("minutes");
@@ -88,7 +106,6 @@ export async function getEvent(id: number): Promise<PublicEvent | null> {
     .select(COLUMNS)
     .eq("id", id)
     .eq("status", "approved")
-    .eq("has_free_food", true)
     .not("starts_at", "is", null)
     .maybeSingle();
   if (error) throw new Error(`Couldn't load event ${id}: ${error.message}`);

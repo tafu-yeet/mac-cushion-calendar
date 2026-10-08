@@ -65,8 +65,10 @@ export type Database = {
       events: {
         Row: {
           auto_approved: boolean
+          category: string
           club_id: number
           confidence: number | null
+          cost: string
           created_at: string
           ends_at: string | null
           event_type: string
@@ -80,6 +82,7 @@ export type Database = {
           name: string
           open_to_all: boolean | null
           post_id: string
+          price: string | null
           reason: string | null
           review_notes: string[]
           reviewed_at: string | null
@@ -92,8 +95,10 @@ export type Database = {
         }
         Insert: {
           auto_approved?: boolean
+          category?: string
           club_id: number
           confidence?: number | null
+          cost?: string
           created_at?: string
           ends_at?: string | null
           event_type?: string
@@ -107,6 +112,7 @@ export type Database = {
           name: string
           open_to_all?: boolean | null
           post_id: string
+          price?: string | null
           reason?: string | null
           review_notes?: string[]
           reviewed_at?: string | null
@@ -119,8 +125,10 @@ export type Database = {
         }
         Update: {
           auto_approved?: boolean
+          category?: string
           club_id?: number
           confidence?: number | null
+          cost?: string
           created_at?: string
           ends_at?: string | null
           event_type?: string
@@ -134,6 +142,7 @@ export type Database = {
           name?: string
           open_to_all?: boolean | null
           post_id?: string
+          price?: string | null
           reason?: string | null
           review_notes?: string[]
           reviewed_at?: string | null

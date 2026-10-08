@@ -52,14 +52,16 @@ What that means for how it's built:
    if every attempt is blocked, Apify's Instagram Scraper is the fallback.
 2. **Store:** new posts are saved, and their images go to the private
    `post-images` bucket.
-3. **Extract:** Claude Haiku reads each new post (caption + image). When it
-   finds free food, Claude Sonnet rechecks the post and its dates win;
+3. **Extract:** Claude Haiku reads each new post (caption + image) and pulls
+   out its events: category, cost, free food, date, time, place. When it
+   finds an event, Claude Sonnet rechecks the post and its reading wins;
    disagreements become review notes (`worker/extractors/two_stage.py`).
-4. **Review:** free-food events at 0.9+ confidence that Sonnet agreed with,
-   with a start time, open to all, run by the posting club, and unlike any
-   event already known, are published right away and marked "auto-approved"
-   (`worker/auto_approve.py`; `AUTO_APPROVE_MIN_CONFIDENCE=none` turns this
-   off). Everything else waits as `pending` until it's approved at `/admin`.
+4. **Review:** an event that Sonnet read the same way (no notes), with a start
+   time, run by the posting club, and unlike any event already known, is
+   published right away and marked "auto-approved" when its confidence is
+   0.9+ (free food) or 0.8+ (anything else). See `worker/auto_approve.py`;
+   `AUTO_APPROVE_MIN_CONFIDENCE=none` turns this off. Everything else waits
+   as `pending` until it's approved at `/admin`.
 
 Every request is logged: `fetch_logs` (club, backend, status, bytes) and
 `llm_usage` (tokens and estimated cost; `python usage.py` for totals).

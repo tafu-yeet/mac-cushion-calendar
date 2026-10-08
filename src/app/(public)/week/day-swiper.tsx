@@ -10,6 +10,12 @@ import type { WeekDay } from "./types";
 export function DaySwiper({ days }: { days: WeekDay[] }) {
   const scroller = useRef<HTMLDivElement>(null);
   const [current, setCurrent] = useState(() => Math.max(days.findIndex((d) => d.isToday), 0));
+  const currentRef = useRef(current);
+
+  const select = (index: number) => {
+    currentRef.current = index;
+    setCurrent(index);
+  };
 
   const show = (index: number, smooth = true) => {
     const el = scroller.current;
@@ -17,10 +23,17 @@ export function DaySwiper({ days }: { days: WeekDay[] }) {
     el.scrollTo({ left: index * el.clientWidth, behavior: smooth ? "smooth" : "instant" });
   };
 
+  // Snap to the selected day whenever the width changes: on first layout (opening
+  // on today), on rotation, and when the page is shown again after navigating
+  // back, since a hidden page loses its scroll position.
   useEffect(() => {
-    show(current, false);
-    // Only on first render: open on today without animating.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const el = scroller.current;
+    if (!el) return;
+    const observer = new ResizeObserver(() => {
+      if (el.clientWidth) el.scrollTo({ left: currentRef.current * el.clientWidth, behavior: "instant" });
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
   }, []);
 
   return (
@@ -33,7 +46,7 @@ export function DaySwiper({ days }: { days: WeekDay[] }) {
             role="tab"
             aria-selected={i === current}
             onClick={() => {
-              setCurrent(i);
+              select(i);
               show(i);
             }}
             className={`flex flex-col items-center rounded-xl py-1.5 text-xs ${
@@ -42,7 +55,7 @@ export function DaySwiper({ days }: { days: WeekDay[] }) {
           >
             <span className="font-medium">{d.weekday}</span>
             <span className="text-base font-semibold">{d.dayOfMonth}</span>
-            <span className={`mt-0.5 size-1.5 rounded-full ${d.events.length ? (i === current ? "bg-white" : "bg-emerald-500") : "bg-transparent"}`} />
+            <span className={`mt-0.5 size-1.5 rounded-full ${d.events.length ? (i === current ? "bg-white" : "bg-stone-400") : "bg-transparent"}`} />
           </button>
         ))}
       </div>
@@ -51,8 +64,9 @@ export function DaySwiper({ days }: { days: WeekDay[] }) {
         ref={scroller}
         onScroll={(e) => {
           const el = e.currentTarget;
+          if (!el.clientWidth) return; // hidden
           const index = Math.round(el.scrollLeft / el.clientWidth);
-          if (index !== current) setCurrent(index);
+          if (index !== current) select(index);
         }}
         className="flex snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
@@ -66,7 +80,7 @@ export function DaySwiper({ days }: { days: WeekDay[] }) {
               d.events.map((e) => <EventCard key={e.id} event={e} />)
             ) : (
               <p className="rounded-2xl border border-dashed border-stone-300 bg-white px-4 py-8 text-center text-sm text-stone-500">
-                No free food announced for this day yet.
+                Nothing announced for this day yet.
               </p>
             )}
           </section>

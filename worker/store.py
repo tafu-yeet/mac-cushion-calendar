@@ -130,6 +130,24 @@ def pending_posts(sb: Client, limit: int) -> list[dict]:
     )
 
 
+def posts_with_upcoming_unreviewed_events(sb: Client) -> list[dict]:
+    """Posts with a pending event from today on, read before events had a category, and nothing reviewed yet.
+
+    So re-reading them loses no decision, and a run that stops partway can be repeated.
+    """
+    today = datetime.now(LOCAL_TZ).replace(hour=0, minute=0, second=0, microsecond=0)
+    upcoming = (
+        sb.table("events").select("post_id").eq("status", "pending").is_("extracted->>category", "null")
+        .gte("starts_at", today.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")).execute().data
+    )
+    ids = sorted({e["post_id"] for e in upcoming})
+    if not ids:
+        return []
+    reviewed = {e["post_id"] for e in sb.table("events").select("post_id").in_("post_id", ids).neq("status", "pending").execute().data}
+    keep = [i for i in ids if i not in reviewed]
+    return sb.table("posts").select("*, clubs(name)").in_("id", keep).order("posted_at").execute().data if keep else []
+
+
 def save_extraction(sb: Client, post: dict, result: PostResult) -> list[dict]:
     """Save the post's events, confident ones approved and the rest pending, and mark the post done.
 
@@ -199,7 +217,10 @@ def _event_row(post: dict, fe: FinalEvent) -> dict:
         "reviewed_at": None,
         "name": e.event_name,
         "event_type": e.event_type.strip().lower() or "other",
+        "category": e.category,
         "tags": [t.strip().lower() for t in e.tags if t.strip()],
+        "cost": e.cost,
+        "price": e.price if e.cost == "paid" else None,
         "has_free_food": e.has_free_food,
         "food_description": e.food_description,
         "starts_at": _localized(e.start),

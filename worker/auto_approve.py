@@ -1,19 +1,22 @@
-"""Publishes confident free-food events without waiting for review.
+"""Publishes confident events without waiting for review.
 
 An event is approved on its own only when all of these hold; anything else
 waits in the review queue as before:
-- it has free food, at a confidence of at least AUTO_APPROVE_MIN_CONFIDENCE;
+- its confidence is at least AUTO_APPROVE_MIN_CONFIDENCE with free food, or
+  AUTO_APPROVE_OTHER_MIN_CONFIDENCE without;
 - the second model rechecked the post and agreed: the event is its reading and
-  has no review notes;
+  has no review notes, so both models read the date, time, and room the same;
 - it has a date and start time, today or later (time-TBD posts are often
   teasers that a fuller post follows);
-- it's open to all and run by the posting club (collabs and reposts can be
-  another school's event, or a copy of one already listed);
+- it's run by the posting club (collabs and reposts can be another school's
+  event, or a copy of one already listed);
 - no other event, whatever its status, looks like the same one: the same club
   on the same day, a similar name on the same day or undated from the same
   club, the same start time and room, or a repost naming this club as host.
 
-Run directly to apply the rule to free-food events already waiting:
+Events limited to a group can pass: the site hides them unless asked.
+
+Run directly to apply the rule to events already waiting:
     python auto_approve.py           list what would be approved
     python auto_approve.py --apply   approve them
 """
@@ -28,7 +31,8 @@ from datetime import date, datetime, time, timedelta, timezone
 
 from supabase import Client
 
-from settings import AUTO_APPROVE_MIN_CONFIDENCE, LOCAL_TZ
+from extractors.two_stage import room_key
+from settings import AUTO_APPROVE_MIN_CONFIDENCE, AUTO_APPROVE_OTHER_MIN_CONFIDENCE, LOCAL_TZ
 
 # Same threshold and filler words as the review queue's grouping (src/lib/duplicates.ts).
 SIMILAR_NAMES = 0.6
@@ -41,9 +45,8 @@ def blocker(row: dict, verified_by: str | None, today: date) -> str | None:
     """Why this event can't be approved on its own, or None if it passes (before the lookalike check)."""
     if AUTO_APPROVE_MIN_CONFIDENCE is None:
         return "auto-approval is off"
-    if not row["has_free_food"]:
-        return "no free food"
-    if (row["confidence"] or 0) < AUTO_APPROVE_MIN_CONFIDENCE:
+    bar = AUTO_APPROVE_MIN_CONFIDENCE if row["has_free_food"] else AUTO_APPROVE_OTHER_MIN_CONFIDENCE
+    if (row["confidence"] or 0) < bar:
         return "confidence below the bar"
     if not verified_by or row["model"] != verified_by:
         return "not rechecked"
@@ -53,8 +56,6 @@ def blocker(row: dict, verified_by: str | None, today: date) -> str | None:
         return "no start time"
     if _local(row["starts_at"]).date() < today:
         return "already happened"
-    if not row["open_to_all"]:
-        return "not open to all"
     if row["hosted_by"]:
         return "hosted by another group"
     return None
@@ -84,8 +85,8 @@ def find_lookalike(sb: Client, row: dict, club_name: str, exclude_id: int | None
         same_slot = (
             other["start_time_known"]
             and _local(other["starts_at"]) == start
-            and _room(row["location"]) != ""
-            and _room(row["location"]) == _room(other["location"])
+            and room_key(row["location"]) != ""
+            and room_key(row["location"]) == room_key(other["location"])
         )
         if same_club or reposted or same_slot or similar_names(row["name"], other["name"]):
             return other
@@ -147,14 +148,6 @@ def _normalize(name: str) -> str:
     return " ".join(w for w in text.split() if w not in FILLER)
 
 
-def _room(location: str | None) -> str:
-    """The place as written, minus the model's expansion: "ETB 124 (Engineering Technology Building)" -> "etb124".
-
-    Comparing whole locations would match any two rooms whose expansions share "Engineering Building".
-    """
-    return re.sub(r"[^a-z0-9]", "", re.split(r"[(,]", (location or "").lower())[0])
-
-
 def _local(iso: str) -> datetime:
     dt = datetime.fromisoformat(iso)
     return (dt if dt.tzinfo else dt.replace(tzinfo=LOCAL_TZ)).astimezone(LOCAL_TZ)
@@ -165,7 +158,7 @@ def _utc(dt: datetime) -> str:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Apply the auto-approval rule to pending free-food events.")
+    parser = argparse.ArgumentParser(description="Apply the auto-approval rule to pending events.")
     parser.add_argument("--apply", action="store_true", help="approve them (otherwise just list them)")
     args = parser.parse_args()
 
@@ -174,7 +167,7 @@ def main() -> None:
     sb = connect()
     pending = (
         sb.table("events").select("*, clubs(name), posts(extraction)")
-        .eq("status", "pending").eq("has_free_food", True)
+        .eq("status", "pending")
         .order("confidence", desc=True).execute().data
     )
     today = datetime.now(LOCAL_TZ).date()

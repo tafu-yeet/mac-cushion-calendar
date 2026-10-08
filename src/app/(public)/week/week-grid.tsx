@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { UtensilsIcon } from "@/components/icons";
+import { categoryOf } from "@/lib/categories";
 import type { PublicEvent } from "@/lib/events";
 import { formatTimeRange, minutesIntoDay, toLocalInputs } from "@/lib/time";
 
@@ -86,8 +88,14 @@ export function WeekGrid({ days }: { days: WeekDay[] }) {
               {d.events
                 .filter((e) => !e.startTimeKnown)
                 .map((e) => (
-                  <Link key={e.id} href={`/events/${e.id}`} className="truncate rounded-md bg-emerald-50 px-1.5 py-1 text-xs font-medium text-emerald-900 ring-1 ring-emerald-200 hover:bg-emerald-100">
-                    {e.name}
+                  <Link
+                    key={e.id}
+                    href={`/events/${e.id}`}
+                    title={e.name}
+                    className={`flex items-center gap-1 truncate rounded-md border px-1.5 py-1 text-xs font-medium ${categoryOf(e.category).block}`}
+                  >
+                    {e.hasFreeFood && <UtensilsIcon className="size-3 shrink-0 text-emerald-700" />}
+                    <span className="truncate">{e.name}</span>
                   </Link>
                 ))}
             </div>
@@ -116,13 +124,18 @@ export function WeekGrid({ days }: { days: WeekDay[] }) {
                   <Link
                     key={event.id}
                     href={`/events/${event.id}`}
-                    title={`${event.name} · ${event.foodDescription ?? ""}`}
-                    className="absolute overflow-hidden rounded-md border border-emerald-200 bg-emerald-50 px-1.5 py-1 text-xs leading-tight text-emerald-950 hover:z-10 hover:bg-emerald-100"
+                    title={[event.name, event.foodDescription].filter(Boolean).join(" · ")}
+                    className={`absolute overflow-hidden rounded-md border px-1.5 py-1 text-xs leading-tight hover:z-10 ${categoryOf(event.category).block}`}
                     style={{ ...verticalSpan(start, end), left: `calc(${(lane / cluster.lanes) * 100}% + 2px)`, width: `calc(${100 / cluster.lanes}% - 4px)` }}
                   >
                     <div className="font-semibold">{formatTimeRange(event.startsAt, event.endsAt, true)}</div>
                     <div className="font-medium">{event.name}</div>
-                    {event.foodDescription && <div className="text-emerald-700 first-letter:uppercase">{event.foodDescription}</div>}
+                    {event.hasFreeFood && (
+                      <div className="flex items-start gap-1 text-emerald-700">
+                        <UtensilsIcon className="mt-px size-3 shrink-0" />
+                        <span className="first-letter:uppercase">{event.foodDescription ?? "Free food"}</span>
+                      </div>
+                    )}
                   </Link>
                 ))
               ),
@@ -138,13 +151,21 @@ export function WeekGrid({ days }: { days: WeekDay[] }) {
 function BusyBlock({ cluster }: { cluster: Cluster }) {
   return (
     <div
-      className="absolute inset-x-0.5 flex flex-col gap-0.5 overflow-y-auto rounded-md border border-emerald-200 bg-emerald-50 px-1.5 py-1 text-xs leading-tight"
+      className="absolute inset-x-0.5 flex flex-col gap-0.5 overflow-y-auto rounded-md border border-stone-200 bg-white px-1.5 py-1 text-xs leading-tight shadow-sm"
       style={verticalSpan(cluster.start, cluster.end)}
     >
-      <div className="font-semibold text-emerald-800">{cluster.items.length} events</div>
+      <div className="font-semibold text-stone-800">{cluster.items.length} events</div>
       {cluster.items.map(({ event }) => (
-        <Link key={event.id} href={`/events/${event.id}`} title={`${event.name} · ${event.foodDescription ?? ""}`} className="truncate rounded px-0.5 text-emerald-950 hover:bg-emerald-100">
-          <span className="text-emerald-700">{formatTimeRange(event.startsAt, null, true)}</span> {event.name}
+        <Link
+          key={event.id}
+          href={`/events/${event.id}`}
+          title={[event.name, event.foodDescription].filter(Boolean).join(" · ")}
+          className="flex items-center gap-1 truncate rounded px-0.5 text-stone-900 hover:bg-stone-100"
+        >
+          <span className={`size-1.5 shrink-0 rounded-full ${categoryOf(event.category).dot}`} />
+          <span className="shrink-0 text-stone-500">{formatTimeRange(event.startsAt, null, true)}</span>
+          <span className="truncate">{event.name}</span>
+          {event.hasFreeFood && <UtensilsIcon className="size-3 shrink-0 text-emerald-700" />}
         </Link>
       ))}
     </div>

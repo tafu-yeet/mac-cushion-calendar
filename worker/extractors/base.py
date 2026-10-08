@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
-from typing import Protocol
+from typing import Literal, Protocol
 
 from pydantic import BaseModel, Field
 
@@ -18,7 +18,12 @@ class ExtractedEvent(BaseModel):
         description="One lowercase label: social, workshop, info session, meeting, sports, "
         "cultural, fundraiser, competition, performance, volunteering, career, or other."
     )
+    category: Literal["social", "sports", "arts", "learn", "give", "meetings", "other"] = Field(
+        description="Which section of the calendar it belongs in; see Categories."
+    )
     tags: list[str] = Field(description="A few lowercase keywords, e.g. ['games', 'outdoors'].")
+    cost: Literal["free", "paid", "unknown"] = Field(description="What it costs to attend; see Other fields.")
+    price: str | None = Field(description="The price as written, e.g. '$15', for paid events; otherwise null.")
     has_free_food: bool
     food_description: str | None
     start: datetime | None = Field(description="ISO 8601 with the campus timezone's UTC offset.")
@@ -99,7 +104,7 @@ class Extractor(Protocol):
 
 def system_prompt() -> str:
     locations = "\n".join(f"- {abbr}: {name}" for abbr, name in CAMPUS["campusLocations"].items())
-    return f"""You read Instagram posts from student clubs at {CAMPUS['school']} in {CAMPUS['city']} and pull out the events they announce. The results feed a campus calendar that shows students which public events give out free food, after a person reviews each one.
+    return f"""You read Instagram posts from student clubs at {CAMPUS['school']} in {CAMPUS['city']} and pull out the events they announce. The results feed a campus calendar where students look for something to do, filtered by kind of event, cost, and free food. Each event is published only after a second reading or a person agrees with yours, so a wrong date or time does more harm than a missing detail.
 
 Each post comes with the club's name, when it was posted, its caption, and usually its image. The image is often a flyer with details the caption leaves out, so read both.
 
@@ -118,8 +123,18 @@ Free food
 - Food for sale, bake sales, and food covered by a paid ticket don't count. Prizes, raffles, merch, and free tickets are not food.
 - food_description says what food, as specifically as the post does (e.g. "pizza", "free bubble tea for the first 50 people"), or null when there is no free food.
 
+Categories
+- social: mixers, parties, game and trivia nights, karaoke, bonfires, gaming tournaments, hangouts.
+- sports: games to play or watch, fitness classes, sports tryouts, hikes and outdoor trips.
+- arts: shows, concerts, open mics, theatre, dance, art and crafts, cultural celebrations, faith gatherings.
+- learn: workshops, talks, info sessions, study sessions, networking and career events, academic, case, and coding competitions.
+- give: fundraisers, volunteering, charity drives, blood drives, advocacy.
+- meetings: club general meetings, AGMs, town halls, meet-the-exec sessions.
+- other: anything that fits none of these, such as sales and openings.
+
 Other fields
-- open_to_all is true if any student can come, including events with free sign-up. It is false if the event needs a paid ticket or membership, or is limited to a specific group.
+- cost is "paid" when attending needs a ticket, entry fee, or registration fee (put the price in price as written, e.g. "$15" or "$10 members, $15 others"); "free" when the post says it's free or nothing suggests a cost; "unknown" when it mentions tickets or registration without saying whether they cost money.
+- open_to_all is true if any student can come: free, free sign-up, or a ticket anyone can buy. It is false if the event is limited to members or a specific group, such as one program, year, or level of study.
 - location is the place as stated, with campus abbreviations expanded from the list below, e.g. "MUSC 230 (McMaster University Student Centre)". Use null if no place is given, including "link in bio".
 - hosted_by lists the clubs or groups other than the posting account that run or co-run the event: the club whose event a hub or events page is sharing, or the partner in a collaboration ("x", "teaming up with", "partnering with"). Name them as the post does, with the @handle if shown, e.g. "McMaster Geeks (@mcmastergeeks)". Sponsors, venues, and shops are not hosts. Use null when the posting account runs the event alone.
 

@@ -3,14 +3,16 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
-import { CalendarPlusIcon, ChevronIcon, ClockIcon, ExternalIcon, PinIcon, UtensilsIcon } from "@/components/icons";
+import { CalendarPlusIcon, ChevronIcon, ClockIcon, ExternalIcon, PinIcon, TicketIcon, UtensilsIcon } from "@/components/icons";
 import { ShareButton } from "@/components/share-button";
+import { categoryOf } from "@/lib/categories";
 import { getEvent, type PublicEvent } from "@/lib/events";
 import { formatDay, formatTimeRange, toLocalInputs } from "@/lib/time";
 
 function summary(e: PublicEvent): string {
   const when = `${formatDay(toLocalInputs(e.startsAt).date)}, ${formatTimeRange(e.startsAt, e.endsAt, e.startTimeKnown)}`;
-  return [e.foodDescription && `Free ${e.foodDescription}`, when, e.location].filter(Boolean).join(" · ");
+  const what = e.hasFreeFood ? `Free ${e.foodDescription ?? "food"}` : categoryOf(e.category).label;
+  return [what, when, e.location].filter(Boolean).join(" · ");
 }
 
 export async function generateMetadata({ params }: PageProps<"/events/[id]">): Promise<Metadata> {
@@ -30,7 +32,7 @@ export default function EventPage({ params }: PageProps<"/events/[id]">) {
     <div className="mx-auto max-w-2xl px-4 py-6">
       <Link href="/" className="mb-4 inline-flex items-center gap-1 text-sm font-medium text-stone-600 hover:text-stone-900">
         <ChevronIcon direction="left" className="size-4" />
-        Today&apos;s free food
+        What&apos;s on
       </Link>
       <Suspense fallback={<div className="h-80 animate-pulse rounded-2xl bg-stone-200/70" aria-label="Loading" />}>
         {params.then(({ id }) => (
@@ -48,7 +50,11 @@ async function EventDetail({ id }: { id: number }) {
 
   return (
     <article className="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm">
-      <p className="text-sm font-medium text-stone-500">
+      <p className="flex items-center gap-1.5 text-sm font-medium text-stone-500">
+        <span className={`size-2 rounded-full ${categoryOf(event.category).dot}`} />
+        {categoryOf(event.category).label}
+      </p>
+      <p className="mt-2 text-sm font-medium text-stone-500">
         {event.hostedBy ? (
           <>
             {event.hostedBy} <span className="text-stone-400">· shared by {event.clubName}</span>
@@ -59,10 +65,10 @@ async function EventDetail({ id }: { id: number }) {
       </p>
       <h1 className="mt-1 text-2xl font-bold leading-tight tracking-tight text-stone-900">{event.name}</h1>
 
-      {event.foodDescription && (
+      {event.hasFreeFood && (
         <p className="mt-3 flex items-start gap-2 text-lg font-semibold text-emerald-700">
           <UtensilsIcon className="mt-1 size-5 shrink-0" />
-          <span className="first-letter:uppercase">{event.foodDescription}</span>
+          <span className="first-letter:uppercase">{event.foodDescription ?? "Free food"}</span>
         </p>
       )}
 
@@ -80,6 +86,13 @@ async function EventDetail({ id }: { id: number }) {
           <PinIcon className="mt-0.5 size-5 shrink-0 text-stone-400" />
           <dd>{event.location ?? "Location not announced. Check the club's post."}</dd>
         </div>
+        {event.cost === "paid" && (
+          <div className="flex items-start gap-2">
+            <dt className="sr-only">Cost</dt>
+            <TicketIcon className="mt-0.5 size-5 shrink-0 text-stone-400" />
+            <dd>{event.price ?? "Paid entry. Check the club's post for the price."}</dd>
+          </div>
+        )}
       </dl>
 
       {!event.openToAll && (

@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 
+import { CATEGORIES } from "@/lib/categories";
 import { formatWhen, weekdayOf } from "@/lib/time";
 
 import { reviewEvent } from "./actions";
@@ -16,6 +17,7 @@ export function EventCard({ event, siblingIds }: { event: QueueEvent; siblingIds
   const [date, setDate] = useState(event.startDate);
   const [timeUnknown, setTimeUnknown] = useState(!event.startTimeKnown);
   const [hasFood, setHasFood] = useState(event.hasFreeFood);
+  const [cost, setCost] = useState(event.cost);
 
   return (
     <article className="overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
@@ -109,8 +111,30 @@ export function EventCard({ event, siblingIds }: { event: QueueEvent; siblingIds
               Open to all
             </label>
             <label className={label}>
-              Type
-              <input name="event_type" defaultValue={event.eventType} className={input} />
+              Cost
+              <select name="cost" value={cost} onChange={(e) => setCost(e.target.value)} className={input}>
+                <option value="free">Free</option>
+                <option value="paid">Paid</option>
+                <option value="unknown">Not sure</option>
+              </select>
+            </label>
+            <label className={label}>
+              Price
+              <input name="price" defaultValue={event.price ?? ""} disabled={cost !== "paid"} placeholder="e.g. $15" className={input} />
+            </label>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <input type="hidden" name="event_type" value={event.eventType} />
+            <label className={label}>
+              Category
+              <select name="category" defaultValue={event.category} className={input}>
+                {CATEGORIES.map((c) => (
+                  <option key={c.key} value={c.key}>
+                    {c.label}
+                  </option>
+                ))}
+              </select>
             </label>
             <label className={label}>
               Tags (comma-separated)

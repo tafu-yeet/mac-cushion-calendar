@@ -1,9 +1,10 @@
 """One worker cycle: fetch clubs that are due, store new posts and images, extract events.
 
 Run it on a schedule (for example every 15 minutes). Each club is fetched only
-once its polling interval has passed. Nothing is published: every extracted
-event lands in the review queue as "pending". Every LLM call is logged to
-llm_usage (see usage.py for totals); EXTRACTOR picks Claude or Gemini.
+once its polling interval has passed. Confident events that both models read
+the same way are published (auto_approve.py); the rest land in the review
+queue as "pending". Every LLM call is logged to llm_usage (see usage.py for
+totals); EXTRACTOR picks Claude or Gemini.
 
 Usage (from worker/):
     python run.py                  # one full cycle
@@ -11,6 +12,7 @@ Usage (from worker/):
     python run.py --no-extract     # fetch and store only
     python run.py --extract-only   # only process posts waiting for extraction
     python run.py --retry-failed   # also re-queue posts whose extraction failed
+    python run.py --reread-upcoming  # re-read posts behind upcoming, unreviewed events
     python run.py --log-dir logs   # scheduled runs: append output to logs/YYYY-MM-DD.log
 """
 
@@ -92,6 +94,19 @@ def extract_pending(sb: Client, limit: int) -> None:
         print_usage_total(used)
 
 
+def reread_upcoming(sb: Client) -> None:
+    rows = store.posts_with_upcoming_unreviewed_events(sb)
+    print(f"{len(rows)} post(s) to re-read")
+    pipeline = new_pipeline()
+    used: list[Usage] = []
+    try:
+        for row in rows:
+            if not extract_post(sb, pipeline, row, used):
+                break
+    finally:
+        print_usage_total(used)
+
+
 def extract_post(sb: Client, pipeline: TwoStageExtractor, row: dict, used: list[Usage]) -> bool:
     """Extract one post and queue its events. Returns False if the LLM API is unavailable."""
     image = None
@@ -134,7 +149,11 @@ def extract_post(sb: Client, pipeline: TwoStageExtractor, row: dict, used: list[
     for e in events:
         when = (e["starts_at"] or "no date") + ("" if e["start_time_known"] else " (time unknown)")
         published = " | auto-approved" if e["auto_approved"] else ""
-        print(f"    - {e['name']} | {when} | {e['location']} | free food: {e['food_description'] or 'no'}{published}")
+        cost = e["price"] or e["cost"]
+        print(
+            f"    - {e['name']} | {e['category']}, {cost} | {when} | {e['location']} | "
+            f"free food: {e['food_description'] or 'no'}{published}"
+        )
         for note in e["review_notes"]:
             print(f"      note: {note}")
     return True
@@ -170,6 +189,10 @@ def main() -> int:
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--no-extract", action="store_true", help="fetch and store only")
     group.add_argument("--extract-only", action="store_true", help="only extract waiting posts")
+    group.add_argument(
+        "--reread-upcoming", action="store_true",
+        help="only re-read posts whose events are all unreviewed and include one from today on (after a prompt change)",
+    )
     parser.add_argument("--retry-failed", action="store_true", help="queue failed extractions again")
     parser.add_argument("--log-dir", help="append output to a daily log in this folder (relative to worker/)")
     args = parser.parse_args()
@@ -187,6 +210,9 @@ def run(args: argparse.Namespace) -> int:
     sb = store.connect()
     if args.retry_failed:
         print(f"{store.reset_failed_extractions(sb)} failed post(s) queued for extraction again")
+    if args.reread_upcoming:
+        reread_upcoming(sb)
+        return 0
     if not args.extract_only:
         clubs = store.due_clubs(sb, args.club)
         if args.club and not clubs:

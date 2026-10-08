@@ -6,6 +6,9 @@ export type QueueEvent = {
   status: string;
   name: string;
   eventType: string;
+  category: string;
+  cost: string; // "free" | "paid" | "unknown"
+  price: string | null;
   tags: string[];
   hasFreeFood: boolean;
   foodDescription: string | null;

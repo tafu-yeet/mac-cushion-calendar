@@ -1,14 +1,16 @@
 import Link from "next/link";
 
+import { categoryOf } from "@/lib/categories";
 import type { PublicEvent } from "@/lib/events";
 import { formatDay, formatTimeRange, toLocalInputs } from "@/lib/time";
 
-import { CalendarPlusIcon, ClockIcon, ExternalIcon, PinIcon, UtensilsIcon } from "./icons";
+import { CalendarPlusIcon, ClockIcon, ExternalIcon, PinIcon, TicketIcon, UtensilsIcon } from "./icons";
 
 // Plain props only, so the card works in both server and client components.
 export function EventCard({ event, live = false, showDate = false }: { event: PublicEvent; live?: boolean; showDate?: boolean }) {
   const time = formatTimeRange(event.startsAt, event.endsAt, event.startTimeKnown);
   const date = formatDay(toLocalInputs(event.startsAt).date, "short");
+  const category = categoryOf(event.category);
 
   return (
     <article
@@ -27,6 +29,10 @@ export function EventCard({ event, live = false, showDate = false }: { event: Pu
           <ClockIcon className="size-4 text-stone-400" />
           {showDate ? `${date} · ${time}` : time}
         </span>
+        <span className="ml-auto inline-flex items-center gap-1.5 text-xs font-medium text-stone-500">
+          <span className={`size-2 rounded-full ${category.dot}`} />
+          {category.label}
+        </span>
       </div>
 
       <h3 className="mt-2 text-lg font-semibold leading-snug text-stone-900">
@@ -35,10 +41,17 @@ export function EventCard({ event, live = false, showDate = false }: { event: Pu
         </Link>
       </h3>
 
-      {event.foodDescription && (
+      {event.hasFreeFood && (
         <p className="mt-1.5 flex items-start gap-1.5 font-medium text-emerald-700">
           <UtensilsIcon className="mt-0.5 size-4 shrink-0" />
-          <span className="first-letter:uppercase">{event.foodDescription}</span>
+          <span className="first-letter:uppercase">{event.foodDescription ?? "Free food"}</span>
+        </p>
+      )}
+
+      {event.cost === "paid" && (
+        <p className="mt-1.5 flex items-start gap-1.5 text-sm font-medium text-stone-700">
+          <TicketIcon className="mt-0.5 size-4 shrink-0 text-stone-400" />
+          {event.price ?? "Paid entry"}
         </p>
       )}
 

@@ -47,7 +47,8 @@ export function eventToIcs(event: PublicEvent, eventUrl: string, now = new Date(
   }
 
   const description = [
-    event.foodDescription && `Free food: ${event.foodDescription}`,
+    event.hasFreeFood && `Free food: ${event.foodDescription ?? "yes"}`,
+    event.cost === "paid" && `Entry: ${event.price ?? "paid"}`,
     `Posted by ${event.clubName}${event.hostedBy ? `, hosted by ${event.hostedBy}` : ""}`,
     !event.startTimeKnown && "Start time not announced yet.",
     event.permalink && `Instagram post: ${event.permalink}`,

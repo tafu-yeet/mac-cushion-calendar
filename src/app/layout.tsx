@@ -23,7 +23,7 @@ const siteUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: { default: campus.siteName, template: `%s · ${campus.siteName}` },
-  description: `Free food at public ${campus.schoolShortName} campus events, from club Instagram posts.`,
+  description: `Every public ${campus.schoolShortName} campus event in one place, from club Instagram posts: free food, socials, sports, talks, and more.`,
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

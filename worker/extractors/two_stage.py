@@ -1,17 +1,21 @@
 """Two-stage extraction: a cheap first pass on every post, and a stronger model
-rechecking every post where the first pass found free food.
+rechecking every post where the first pass found an event.
 
-The check exists for dates: in testing, Haiku caught every free-food post but
-got dates wrong now and then (once at 0.9 confidence, so confidence can't
+The check exists for dates: in testing, Haiku found nearly every event but got
+about one date in sixteen wrong (once at 0.9 confidence, so confidence can't
 decide what to recheck). When the check runs:
 - its events replace the first pass's, so its dates, times, and places win;
 - if it finds no free food where the first pass did, the event keeps the free
   food and gets a review note: a "no" from the check never hides a find;
-- any other disagreement also becomes a review note.
+- other disagreements on date, time, or room, and events only one model
+  found, also become review notes. A note keeps an event from being
+  published automatically (auto_approve.py), so "no notes" means both models
+  read the event the same way.
 """
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from difflib import SequenceMatcher
@@ -52,7 +56,7 @@ class TwoStageExtractor:
             first.is_event, first.reason, [FinalEvent(e, first_usage.model) for e in first.events],
             first, first_usage.model, None, usages,
         )
-        if self.check is None or not any(e.has_free_food for e in first.events):
+        if self.check is None or not first.events:
             return result
 
         try:
@@ -88,6 +92,8 @@ def merge(first: list[ExtractedEvent], first_model: str, second: list[ExtractedE
         b = fe.event
         if when(a) != when(b):
             fe.notes.append(f"{a_name} said {when(a)}, {b_name} said {when(b)}; using {b_name}'s.")
+        if room_key(a.location) and room_key(b.location) and room_key(a.location) != room_key(b.location):
+            fe.notes.append(f"{a_name} said it's at {a.location}, {b_name} said {b.location}; using {b_name}'s.")
         if a.has_free_food and not b.has_free_food:
             b.has_free_food, b.food_description = True, a.food_description
             fe.notes.append(f"{a_name} found free food ({a.food_description}); {b_name} found none. Check the post.")
@@ -95,9 +101,18 @@ def merge(first: list[ExtractedEvent], first_model: str, second: list[ExtractedE
             fe.notes.append(f"{b_name} found free food that {a_name} missed.")
 
     for j, fe in enumerate(final[: len(second)]):
-        if j not in pairs.values() and fe.event.has_free_food:
+        if j not in pairs.values():
             fe.notes.append(f"Only {b_name} found this event.")
     return final
+
+
+def room_key(location: str | None) -> str:
+    """The place as written, minus the expansion: "ETB 124 (Engineering Technology Building)" -> "etb124".
+
+    Whole locations differ in wording too often to compare, and two rooms whose
+    expansions both say "Engineering Building" would look alike.
+    """
+    return re.sub(r"[^a-z0-9]", "", re.split(r"[(,]", (location or "").lower())[0])
 
 
 def match(first: list[ExtractedEvent], second: list[ExtractedEvent]) -> dict[int, int]:

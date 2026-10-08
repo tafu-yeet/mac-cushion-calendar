@@ -30,14 +30,14 @@ async function Queue({ searchParams }: { searchParams: PageProps<"/admin">["sear
   const params = await searchParams;
   const filters: Filters = {
     status: STATUSES.includes(params.status as Status) ? (params.status as Status) : "pending",
-    foodOnly: params.food !== "all",
+    foodOnly: params.food === "only",
     showPast: params.past === "1",
   };
 
   let query = supabase
     .from("events")
     .select(
-      `id, status, name, event_type, tags, has_free_food, food_description, starts_at, start_time_known,
+      `id, status, name, event_type, category, cost, price, tags, has_free_food, food_description, starts_at, start_time_known,
        ends_at, location, hosted_by, open_to_all, confidence, reason, review_notes, model, auto_approved, club_id, post_id,
        clubs (name, instagram_username), posts (caption, permalink, posted_at, image_path)`,
     )
@@ -66,6 +66,9 @@ async function Queue({ searchParams }: { searchParams: PageProps<"/admin">["sear
       status: r.status,
       name: r.name,
       eventType: r.event_type,
+      category: r.category,
+      cost: r.cost,
+      price: r.price,
       tags: r.tags,
       hasFreeFood: r.has_free_food,
       foodDescription: r.food_description,
@@ -94,10 +97,13 @@ async function Queue({ searchParams }: { searchParams: PageProps<"/admin">["sear
 
   const groups: QueueGroup[] =
     filters.status === "pending"
-      ? groupDuplicates(events).map((members) => ({
-          key: members.map((e) => e.id).join("-"),
-          events: members.sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0)),
-        }))
+      ? groupDuplicates(events)
+          .map((members) => ({
+            key: members.map((e) => e.id).join("-"),
+            events: members.sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0)),
+          }))
+          // Free food first; the sort is stable, so each half stays in date order.
+          .sort((a, b) => Number(b.events.some((e) => e.hasFreeFood)) - Number(a.events.some((e) => e.hasFreeFood)))
       : events.map((e) => ({ key: `${e.id}`, events: [e] }));
   const withNotes = events.filter((e) => e.reviewNotes.length > 0).length;
 
@@ -148,7 +154,7 @@ function FilterBar({ filters }: { filters: Filters }) {
     const next = { ...filters, ...change };
     const params = new URLSearchParams();
     if (next.status !== "pending") params.set("status", next.status);
-    if (!next.foodOnly) params.set("food", "all");
+    if (next.foodOnly) params.set("food", "only");
     if (next.showPast) params.set("past", "1");
     const qs = params.toString();
     return qs ? `/admin?${qs}` : "/admin";

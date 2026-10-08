@@ -4,6 +4,7 @@ import { refresh, updateTag } from "next/cache";
 
 import { requireAdmin } from "@/lib/auth";
 import type { Database } from "@/lib/database.types";
+import { isCategory } from "@/lib/categories";
 import { EVENTS_TAG } from "@/lib/events";
 import { fromLocalInputs } from "@/lib/time";
 
@@ -76,6 +77,11 @@ function parseEventFields(formData: FormData): EventUpdate | { error: string } {
   if (date && !timeUnknown && !TIME.test(time)) return { error: "Add a start time, or tick “Time unknown”." };
   if (endTime && !TIME.test(endTime)) return { error: "The end time doesn't look right." };
 
+  const category = text("category");
+  if (!isCategory(category)) return { error: "Pick a category." };
+  const cost = text("cost");
+  if (cost !== "free" && cost !== "paid" && cost !== "unknown") return { error: "Pick a cost." };
+
   const startsAt = date ? fromLocalInputs(date, timeUnknown ? "00:00" : time) : null;
   let endsAt: string | null = null;
   if (date && endTime) {
@@ -97,6 +103,9 @@ function parseEventFields(formData: FormData): EventUpdate | { error: string } {
     food_description: text("food_description") || null,
     open_to_all: checked("open_to_all"),
     event_type: text("event_type").toLowerCase() || "other",
+    category,
+    cost,
+    price: cost === "paid" ? text("price") || null : null,
     tags: text("tags")
       .split(",")
       .map((t) => t.trim().toLowerCase())
