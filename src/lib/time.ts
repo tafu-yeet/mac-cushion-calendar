@@ -65,6 +65,59 @@ export function formatWhen(iso: string | null, timeKnown = true, timeZone = TIME
 
 /** Start of today in campus time, as a UTC ISO string. */
 export function startOfTodayIso(timeZone = TIMEZONE): string {
-  const { date } = toLocalInputs(new Date().toISOString(), timeZone);
+  return fromLocalInputs(todayInCampus(timeZone), "00:00", timeZone);
+}
+
+/** Today's campus-local date, "YYYY-MM-DD". Reads the clock: call at request time. */
+export function todayInCampus(timeZone = TIMEZONE): string {
+  return toLocalInputs(new Date().toISOString(), timeZone).date;
+}
+
+/** Plain date string plus n days (n may be negative). */
+export function addDays(date: string, n: number): string {
+  const d = new Date(`${date}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+/** The Monday on or before a plain date. */
+export function mondayOf(date: string): string {
+  const weekday = new Date(`${date}T12:00:00Z`).getUTCDay(); // 0 = Sunday
+  return addDays(date, -((weekday + 6) % 7));
+}
+
+/** Start of a campus-local day as a UTC ISO string. */
+export function dayStartIso(date: string, timeZone = TIMEZONE): string {
   return fromLocalInputs(date, "00:00", timeZone);
+}
+
+/** "Wednesday, October 7" for a plain date string. */
+export function formatDay(date: string, style: "long" | "short" = "long"): string {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "UTC",
+    weekday: style,
+    month: style,
+    day: "numeric",
+  }).format(new Date(`${date}T12:00:00Z`));
+}
+
+/** "6:00 PM", or "6:00–8:00 PM", or "Time TBD", in campus time. */
+export function formatTimeRange(startIso: string, endIso: string | null, timeKnown: boolean, timeZone = TIMEZONE): string {
+  if (!timeKnown) return "Time TBD";
+  const fmt = (iso: string) =>
+    new Intl.DateTimeFormat("en-US", { timeZone, hour: "numeric", minute: "2-digit" }).format(new Date(iso));
+  const start = fmt(startIso);
+  if (!endIso) return start;
+  const end = fmt(endIso);
+  // "6:00 PM–8:00 PM" reads better as "6:00–8:00 PM" when both are PM.
+  const [startTime, startPeriod] = start.split(" ");
+  const [, endPeriod] = end.split(" ");
+  return startPeriod === endPeriod ? `${startTime}–${end}` : `${start}–${end}`;
+}
+
+/** Minutes after campus-local midnight for an instant. */
+export function minutesIntoDay(iso: string, timeZone = TIMEZONE): number {
+  const { time } = toLocalInputs(iso, timeZone);
+  const [h, m] = time.split(":").map(Number);
+  return h * 60 + m;
 }

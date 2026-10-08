@@ -1,8 +1,9 @@
 "use server";
 
-import { refresh } from "next/cache";
+import { refresh, updateTag } from "next/cache";
 
 import { requireAdmin } from "@/lib/auth";
+import { EVENTS_TAG } from "@/lib/events";
 
 export type AddClubState = { error: string } | { added: string } | null;
 
@@ -45,5 +46,6 @@ export async function setClubActive(id: number, active: boolean) {
 export async function deleteClub(id: number) {
   const { supabase } = await requireAdmin();
   await supabase.from("clubs").delete().eq("id", id);
+  updateTag(EVENTS_TAG); // its events disappear from the public pages too
   refresh();
 }

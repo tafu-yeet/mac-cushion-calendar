@@ -1,9 +1,10 @@
 "use server";
 
-import { refresh } from "next/cache";
+import { refresh, updateTag } from "next/cache";
 
 import { requireAdmin } from "@/lib/auth";
 import type { Database } from "@/lib/database.types";
+import { EVENTS_TAG } from "@/lib/events";
 import { fromLocalInputs } from "@/lib/time";
 
 type EventUpdate = Database["public"]["Tables"]["events"]["Update"];
@@ -54,6 +55,7 @@ export async function reviewEvent(_prev: ReviewState, formData: FormData): Promi
     return { error: `Unknown action "${intent}".` };
   }
 
+  updateTag(EVENTS_TAG); // the public pages show the change on their next request
   refresh();
   return null;
 }

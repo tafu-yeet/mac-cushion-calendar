@@ -15,7 +15,13 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+// Absolute URLs for share previews: the production domain on Vercel, localhost in development.
+const siteUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL
+  ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+  : "http://localhost:3000";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: { default: campus.siteName, template: `%s · ${campus.siteName}` },
   description: `Free food at public ${campus.schoolShortName} campus events, from club Instagram posts.`,
 };
