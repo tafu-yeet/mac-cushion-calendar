@@ -2,6 +2,7 @@
 
 export type QueueEvent = {
   id: number;
+  postId: string;
   status: string;
   name: string;
   eventType: string;

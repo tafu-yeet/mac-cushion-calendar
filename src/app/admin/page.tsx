@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { requireAdmin } from "@/lib/auth";
-import { groupDuplicates } from "@/lib/duplicates";
+import { groupDuplicates, rejectableDuplicates } from "@/lib/duplicates";
 import { formatWhen, startOfTodayIso, toLocalInputs } from "@/lib/time";
 
 import { EventCard } from "./event-card";
@@ -38,7 +38,7 @@ async function Queue({ searchParams }: { searchParams: PageProps<"/admin">["sear
     .from("events")
     .select(
       `id, status, name, event_type, tags, has_free_food, food_description, starts_at, start_time_known,
-       ends_at, location, hosted_by, open_to_all, confidence, reason, review_notes, model, club_id,
+       ends_at, location, hosted_by, open_to_all, confidence, reason, review_notes, model, club_id, post_id,
        clubs (name, instagram_username), posts (caption, permalink, posted_at, image_path)`,
     )
     .eq("status", filters.status);
@@ -62,6 +62,7 @@ async function Queue({ searchParams }: { searchParams: PageProps<"/admin">["sear
     const start = toLocalInputs(r.starts_at);
     return {
       id: r.id,
+      postId: r.post_id,
       status: r.status,
       name: r.name,
       eventType: r.event_type,
@@ -112,22 +113,31 @@ async function Queue({ searchParams }: { searchParams: PageProps<"/admin">["sear
       {groups.length === 0 && (
         <p className="rounded-xl border border-dashed border-stone-300 p-10 text-center text-stone-500">Nothing here. 🎉</p>
       )}
-      {groups.map((group) =>
-        group.events.length === 1 ? (
-          <EventCard key={group.key} event={group.events[0]} siblingIds={[]} />
-        ) : (
+      {groups.map((group) => {
+        if (group.events.length === 1) {
+          return <EventCard key={group.key} event={group.events[0]} siblingIds={[]} />;
+        }
+        const days = [
+          ...new Set(group.events.filter((e) => e.startsAt).map((e) => formatWhen(e.startsAt, false).replace(", time TBD", ""))),
+        ];
+        return (
           <section key={group.key} className="flex flex-col gap-3 rounded-2xl border-2 border-dashed border-stone-300 p-3">
             <h2 className="px-1 text-sm font-medium text-stone-700">
-              {group.events.length} possible duplicates · {formatWhen(group.events[0].startsAt, false).replace(", time TBD", "")} ·{" "}
+              {group.events.length} possible duplicates · {days.join(" / ") || "no date"} ·{" "}
               {[...new Set(group.events.map((e) => e.clubName))].join(", ")}
               <span className="font-normal text-stone-500"> — approve the best one and reject the rest in one click.</span>
             </h2>
+            {days.length > 1 && (
+              <p className="mx-1 rounded-md bg-amber-50 px-3 py-1.5 text-sm text-amber-900">
+                ⚠ These posts give different dates. Check which is right; the one-click reject skips entries with a different date.
+              </p>
+            )}
             {group.events.map((e) => (
-              <EventCard key={e.id} event={e} siblingIds={group.events.filter((o) => o.id !== e.id).map((o) => o.id)} />
+              <EventCard key={e.id} event={e} siblingIds={rejectableDuplicates(e, group.events).map((o) => o.id)} />
             ))}
           </section>
-        ),
-      )}
+        );
+      })}
     </div>
   );
 }
