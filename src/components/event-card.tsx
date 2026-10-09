@@ -2,79 +2,111 @@ import Link from "next/link";
 
 import { categoryOf } from "@/lib/categories";
 import type { PublicEvent } from "@/lib/events";
-import { formatDay, formatTimeRange, toLocalInputs } from "@/lib/time";
+import { formatDay, formatDuration, formatTime, toLocalInputs } from "@/lib/time";
 
-import { CalendarPlusIcon, ClockIcon, ExternalIcon, PinIcon, TicketIcon, UtensilsIcon } from "./icons";
+import { CalendarPlusIcon, ExternalIcon, PinIcon, TicketIcon, UtensilsIcon } from "./icons";
 
-// Plain props only, so the card works in both server and client components.
+// Words that don't help tell clubs apart in their initials.
+const NAME_FILLER = new Set(["mcmaster", "mac", "the", "of", "and", "at", "for", "university", "&"]);
+
+/** "ML" for "McMaster Linguistics Society": a stand-in for the club's avatar. */
+export function clubInitials(name: string): string {
+  const words = name.split(/[\s@()\-]+/).filter((w) => w && !NAME_FILLER.has(w.toLowerCase()));
+  return (words.length ? words : [name]).slice(0, 2).map((w) => w[0].toUpperCase()).join("");
+}
+
+/**
+ * A pastel card in the event's category colour: big title, then the start,
+ * how long it runs, and the end. Plain props only, so it works in server and
+ * client components.
+ */
 export function EventCard({ event, live = false, showDate = false }: { event: PublicEvent; live?: boolean; showDate?: boolean }) {
-  const time = formatTimeRange(event.startsAt, event.endsAt, event.startTimeKnown);
-  const date = formatDay(toLocalInputs(event.startsAt).date, "short");
   const category = categoryOf(event.category);
+  const duration = event.startTimeKnown ? formatDuration(event.startsAt, event.endsAt) : null;
+  const date = formatDay(toLocalInputs(event.startsAt).date, "short");
+  const host = event.hostedBy ?? event.clubName;
 
   return (
-    <article
-      className={`rounded-2xl border bg-white p-4 shadow-sm transition-colors ${
-        live ? "border-emerald-300 ring-1 ring-emerald-200" : "border-stone-200 hover:border-stone-300"
-      }`}
-    >
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-        {live && (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800">
-            <span className="size-1.5 animate-pulse rounded-full bg-emerald-500" />
-            On now
-          </span>
-        )}
-        <span className="inline-flex items-center gap-1.5 font-semibold text-stone-900">
-          <ClockIcon className="size-4 text-stone-400" />
-          {showDate ? `${date} · ${time}` : time}
-        </span>
-        <span className="ml-auto inline-flex items-center gap-1.5 text-xs font-medium text-stone-500">
-          <span className={`size-2 rounded-full ${category.dot}`} />
-          {category.label}
+    <article className={`rounded-[28px] p-5 ${category.tone.card}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-medium">
+            {live && (
+              <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 font-semibold ${category.tone.accent}`}>
+                <span className="size-1.5 animate-pulse rounded-full bg-current" />
+                On now
+              </span>
+            )}
+            <span className="opacity-75">{category.label}</span>
+          </p>
+          <h3 className="mt-1.5 font-display text-2xl font-semibold leading-[1.1]">
+            <Link href={`/events/${event.id}`} className="hover:underline">
+              {event.name}
+            </Link>
+          </h3>
+        </div>
+        <span
+          className="grid size-10 shrink-0 place-items-center rounded-full bg-current/15 font-display text-xs font-semibold"
+          title={host}
+          aria-hidden="true"
+        >
+          {clubInitials(host)}
         </span>
       </div>
 
-      <h3 className="mt-2 text-lg font-semibold leading-snug text-stone-900">
-        <Link href={`/events/${event.id}`} className="hover:underline">
-          {event.name}
-        </Link>
-      </h3>
-
-      {event.hasFreeFood && (
-        <p className="mt-1.5 flex items-start gap-1.5 font-medium text-emerald-700">
-          <UtensilsIcon className="mt-0.5 size-4 shrink-0" />
-          <span className="first-letter:uppercase">{event.foodDescription ?? "Free food"}</span>
-        </p>
-      )}
-
-      {event.cost === "paid" && (
-        <p className="mt-1.5 flex items-start gap-1.5 text-sm font-medium text-stone-700">
-          <TicketIcon className="mt-0.5 size-4 shrink-0 text-stone-400" />
-          {event.price ?? "Paid entry"}
-        </p>
-      )}
-
-      <p className="mt-2 flex items-start gap-1.5 text-sm text-stone-600">
-        <PinIcon className="mt-0.5 size-4 shrink-0 text-stone-400" />
-        {event.location ?? "Location not announced"}
-      </p>
-
-      <p className="mt-1 text-sm text-stone-500">
+      <p className="mt-1 text-sm opacity-80">
         {event.hostedBy ? (
           <>
-            {event.hostedBy} <span className="text-stone-400">· shared by {event.clubName}</span>
+            {event.hostedBy} · shared by {event.clubName}
           </>
         ) : (
           event.clubName
         )}
-        {!event.openToAll && <span className="ml-2 rounded bg-amber-50 px-1.5 py-0.5 text-xs text-amber-800">Limited entry</span>}
       </p>
 
-      <div className="mt-3 flex flex-wrap gap-2">
+      {(event.hasFreeFood || event.cost === "paid" || !event.openToAll) && (
+        <div className="mt-3 flex flex-wrap gap-2 text-sm font-medium">
+          {event.hasFreeFood && (
+            <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 ${category.tone.accent}`}>
+              <UtensilsIcon className="size-4 shrink-0" />
+              <span className="first-letter:uppercase">{event.foodDescription ?? "Free food"}</span>
+            </span>
+          )}
+          {event.cost === "paid" && (
+            <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 ring-1 ring-current/30">
+              <TicketIcon className="size-4 shrink-0" />
+              {event.price ?? "Paid entry"}
+            </span>
+          )}
+          {!event.openToAll && <span className="rounded-full px-3 py-1 ring-1 ring-current/30">Limited entry</span>}
+        </div>
+      )}
+
+      <p className="mt-3 flex items-start gap-1.5 text-sm opacity-80">
+        <PinIcon className="mt-0.5 size-4 shrink-0" />
+        {event.location ?? "Location not announced"}
+      </p>
+
+      <div className="mt-5 flex items-end justify-between gap-3">
+        <div>
+          <p className="font-display text-[1.65rem] font-medium leading-none whitespace-nowrap">
+            {event.startTimeKnown ? formatTime(event.startsAt) : "Time TBD"}
+          </p>
+          <p className="mt-1 text-xs opacity-70">{showDate ? `${date} · Start` : "Start"}</p>
+        </div>
+        {duration && <span className={`mb-4 rounded-full px-3 py-1 text-xs font-semibold whitespace-nowrap ${category.tone.chip}`}>{duration}</span>}
+        {event.startTimeKnown && event.endsAt && (
+          <div className="text-right">
+            <p className="font-display text-[1.65rem] font-medium leading-none whitespace-nowrap">{formatTime(event.endsAt)}</p>
+            <p className="mt-1 text-xs opacity-70">End</p>
+          </div>
+        )}
+      </div>
+
+      <div className="mt-5 flex flex-wrap gap-2">
         <a
           href={`/events/${event.id}/calendar.ics`}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-stone-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-stone-700"
+          className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold ${category.tone.button}`}
         >
           <CalendarPlusIcon className="size-4" />
           Add to calendar
@@ -84,9 +116,9 @@ export function EventCard({ event, live = false, showDate = false }: { event: Pu
             href={event.permalink}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-stone-700 ring-1 ring-stone-200 hover:bg-stone-50"
+            className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold ring-1 ring-current/30 hover:bg-current/10"
           >
-            Instagram post
+            Instagram
             <ExternalIcon className="size-3.5" />
           </a>
         )}

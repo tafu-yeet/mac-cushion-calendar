@@ -22,22 +22,23 @@ export default async function Image({ params }: { params: Promise<{ id: string }
       ? (event.foodDescription ?? "Free food")
       : [categoryOf(event.category).label, event.cost === "paid" ? event.price : null].filter(Boolean).join(" · ");
   const highlight = description.charAt(0).toUpperCase() + description.slice(1);
-  const color = event && !event.hasFreeFood ? "#57534e" : "#047857";
+  // The event's category colour, like its card on the site.
+  const { bg, ink } = event ? categoryOf(event.category).tone.hex : { bg: "#ffe3ea", ink: "#7a1f3d" };
   const when = event
     ? `${formatDay(toLocalInputs(event.startsAt).date)} · ${formatTimeRange(event.startsAt, event.endsAt, event.startTimeKnown)}`
     : "";
 
   return new ImageResponse(
     (
-      <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between", background: "#fafaf9", padding: 64, fontFamily: "sans-serif" }}>
-        <div style={{ display: "flex", fontSize: 28, color: "#78716c" }}>{event ? event.clubName : campus.siteName}</div>
+      <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between", background: bg, padding: 64, fontFamily: "sans-serif" }}>
+        <div style={{ display: "flex", fontSize: 28, color: ink, opacity: 0.75 }}>{event ? event.clubName : campus.siteName}</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-          <div style={{ display: "flex", fontSize: 64, fontWeight: 700, color: "#1c1917", lineHeight: 1.1 }}>{title}</div>
-          <div style={{ display: "flex", fontSize: 40, fontWeight: 600, color }}>{highlight}</div>
-          {when && <div style={{ display: "flex", fontSize: 32, color: "#44403c" }}>{when}</div>}
-          {event?.location && <div style={{ display: "flex", fontSize: 28, color: "#78716c" }}>{event.location}</div>}
+          <div style={{ display: "flex", fontSize: 68, fontWeight: 500, color: ink, lineHeight: 1.05, letterSpacing: -1.5 }}>{title}</div>
+          <div style={{ display: "flex", fontSize: 40, fontWeight: 600, color: ink }}>{event?.hasFreeFood ? `Free food: ${highlight}` : highlight}</div>
+          {when && <div style={{ display: "flex", fontSize: 32, color: ink }}>{when}</div>}
+          {event?.location && <div style={{ display: "flex", fontSize: 28, color: ink, opacity: 0.75 }}>{event.location}</div>}
         </div>
-        <div style={{ display: "flex", fontSize: 26, color: "#a8a29e" }}>{campus.siteName}</div>
+        <div style={{ display: "flex", fontSize: 26, color: ink, opacity: 0.6 }}>{campus.siteName}</div>
       </div>
     ),
     size,

@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 
+import { BigDate, DateStats } from "@/components/big-date";
 import { EventCard } from "@/components/event-card";
 import { FilterBar, useFilters } from "@/components/filter-bar";
 import { ChevronIcon } from "@/components/icons";
 import { campus } from "@/lib/campus";
 import type { PublicEvent } from "@/lib/events";
-import { DEFAULT_FILTERS, byStart, inWindow, isNarrowed, matchesFilters, timeWindow, type Filters } from "@/lib/filters";
+import { DAYS, DEFAULT_FILTERS, byStart, inWindow, isNarrowed, matchesFilters, timeWindow, type Filters } from "@/lib/filters";
 import { addDays, formatDay, toLocalInputs } from "@/lib/time";
 
 const COMING_UP_COUNT = 6;
@@ -52,46 +53,59 @@ export function WhatsOn({ events, today, now, fromUrl }: { events: PublicEvent[]
   const lastShown = groups[groups.length - 1].date;
   const comingUp = matching.filter((e) => dateOf(e) > lastShown && inWindow(e, slot) !== false).slice(0, COMING_UP_COUNT);
 
+  const when = { today: "today", tomorrow: "tomorrow", week: "in the next 7 days" }[filters.day];
+
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <p className="text-sm font-medium text-stone-500">{formatDay(today)}</p>
-        <h1 className="mt-1 text-3xl font-bold tracking-tight text-stone-900">What&apos;s on</h1>
-        <p className="mt-1 text-stone-600">Every public {campus.schoolShortName} event in one place, from club posts.</p>
-      </div>
-
-      <FilterBar filters={filters} update={update} showWhen />
-
-      <p className="text-sm text-stone-600" aria-live="polite">
-        {total} event{total === 1 ? "" : "s"}
-        {withFood > 0 && !filters.food && <span className="text-emerald-700"> · {withFood} with free food</span>}
-      </p>
-
-      {groups.map((g) => (
-        <DaySection key={g.date} group={g} today={today} now={now} showHeading={filters.day === "week"} />
-      ))}
-
-      {total === 0 && (
-        <EmptyState
-          filters={filters}
-          onClear={() => update({ ...DEFAULT_FILTERS, day: filters.day })}
-          onTomorrow={() => update({ day: "tomorrow" })}
-          hasComingUp={comingUp.length > 0}
+      <div className="flex items-end justify-between gap-4">
+        <BigDate date={today} />
+        <DateStats
+          stats={[
+            { value: total, label: `event${total === 1 ? "" : "s"} ${when}` },
+            { value: withFood, label: "with free food" },
+          ]}
         />
-      )}
+      </div>
+      <p className="-mt-2 text-maroon/75">Every public {campus.schoolShortName} event in one place, from club posts.</p>
 
-      {total === 0 && comingUp.length > 0 && (
-        <Section title="Coming up">
-          {comingUp.map((e) => (
-            <EventCard key={e.id} event={e} showDate />
-          ))}
-        </Section>
-      )}
+      <section className="-mx-1 flex flex-col gap-5 rounded-[32px] bg-panel p-3 shadow-sm sm:mx-0 sm:p-6">
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="font-display text-xl font-semibold lowercase">
+            What&apos;s on {filters.day === "week" ? "this week" : DAYS[filters.day].toLowerCase()}
+          </h1>
+          <Link href="/week" className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-sm font-medium ring-1 ring-maroon/25 hover:bg-maroon/5">
+            Calendar
+            <ChevronIcon className="size-4" />
+          </Link>
+        </div>
 
-      <Link href="/week" className="inline-flex items-center gap-1 self-start text-sm font-medium text-stone-700 hover:text-stone-900">
-        See the week as a calendar
-        <ChevronIcon className="size-4" />
-      </Link>
+        <FilterBar filters={filters} update={update} showWhen />
+
+        <p className="sr-only" aria-live="polite">
+          {total} event{total === 1 ? "" : "s"} {when}
+        </p>
+
+        {groups.map((g) => (
+          <DaySection key={g.date} group={g} today={today} now={now} showHeading={filters.day === "week"} />
+        ))}
+
+        {total === 0 && (
+          <EmptyState
+            filters={filters}
+            onClear={() => update({ ...DEFAULT_FILTERS, day: filters.day })}
+            onTomorrow={() => update({ day: "tomorrow" })}
+            hasComingUp={comingUp.length > 0}
+          />
+        )}
+
+        {total === 0 && comingUp.length > 0 && (
+          <Section title="Coming up">
+            {comingUp.map((e) => (
+              <EventCard key={e.id} event={e} showDate />
+            ))}
+          </Section>
+        )}
+      </section>
     </div>
   );
 }
@@ -101,17 +115,17 @@ function DaySection({ group, today, now, showHeading }: { group: DayGroup; today
   return (
     <section className="flex flex-col gap-3">
       {showHeading && (
-        <h2 className="text-sm font-semibold text-stone-800">
+        <h2 className="mt-2 px-1 font-display text-base font-semibold">
           {formatDay(group.date)}
-          {group.date === today && <span className="ml-2 text-emerald-700">Today</span>}
+          {group.date === today && <span className="ml-2 text-maroon/65">Today</span>}
         </h2>
       )}
       {group.fits.map((e) => (
         <EventCard key={e.id} event={e} live={isOnNow(e, now)} />
       ))}
       {group.timeUnknown.length > 0 && (
-        <details className="group rounded-xl border border-dashed border-stone-300 px-4 py-2">
-          <summary className="cursor-pointer text-sm text-stone-600">
+        <details className="rounded-[28px] bg-canvas px-5 py-3">
+          <summary className="cursor-pointer text-sm font-medium text-maroon/85">
             {group.timeUnknown.length} more with no time announced yet
           </summary>
           <div className="mt-3 flex flex-col gap-3 pb-2">
@@ -137,13 +151,13 @@ function EmptyState({
   hasComingUp: boolean;
 }) {
   const narrowed = isNarrowed(filters);
-  const button = "mt-3 rounded-lg px-3 py-1.5 text-sm font-medium text-stone-800 ring-1 ring-stone-300 hover:bg-stone-50";
+  const button = "mt-4 rounded-full bg-maroon px-4 py-1.5 text-sm font-medium text-cream hover:bg-plum";
   return (
-    <div className="rounded-2xl border border-dashed border-stone-300 bg-white px-5 py-8 text-center">
-      <p className="text-lg font-semibold text-stone-900">
+    <div className="rounded-[28px] bg-canvas px-5 py-10 text-center">
+      <p className="text-lg font-semibold text-maroon">
         {narrowed ? "Nothing matches" : filters.day === "today" ? "Nothing else on today" : "Nothing announced yet"}
       </p>
-      <p className="mt-1 text-sm text-stone-600">
+      <p className="mt-1 text-sm text-maroon/75">
         {narrowed
           ? "Try another time or category."
           : hasComingUp
@@ -168,7 +182,7 @@ function EmptyState({
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="text-xs font-semibold uppercase tracking-wider text-stone-500">{title}</h2>
+      <h2 className="mt-2 px-1 font-display text-base font-semibold">{title}</h2>
       {children}
     </section>
   );

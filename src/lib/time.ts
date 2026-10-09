@@ -115,6 +115,28 @@ export function formatTimeRange(startIso: string, endIso: string | null, timeKno
   return startPeriod === endPeriod ? `${startTime}–${end}` : `${start}–${end}`;
 }
 
+/** "3:00 PM" in campus time. */
+export function formatTime(iso: string, timeZone = TIMEZONE): string {
+  return new Intl.DateTimeFormat("en-US", { timeZone, hour: "numeric", minute: "2-digit" }).format(new Date(iso));
+}
+
+/** "30 min", "1h", or "2h 15m" between two instants (short, for a pill); null without an end after the start. */
+export function formatDuration(startIso: string, endIso: string | null): string | null {
+  if (!endIso) return null;
+  const minutes = Math.round((Date.parse(endIso) - Date.parse(startIso)) / 60_000);
+  if (minutes <= 0) return null;
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return hours === 0 ? `${rest} min` : rest === 0 ? `${hours}h` : `${hours}h ${rest}m`;
+}
+
+/** The pieces of a big date display: { weekday: "Friday", day: "09", month: "OCT" }. */
+export function dateParts(date: string): { weekday: string; day: string; month: string } {
+  const instant = new Date(`${date}T12:00:00Z`);
+  const part = (options: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat("en-US", { timeZone: "UTC", ...options }).format(instant);
+  return { weekday: part({ weekday: "long" }), day: date.slice(8), month: part({ month: "short" }).toUpperCase() };
+}
+
 /** Minutes after campus-local midnight for an instant. */
 export function minutesIntoDay(iso: string, timeZone = TIMEZONE): number {
   const { time } = toLocalInputs(iso, timeZone);

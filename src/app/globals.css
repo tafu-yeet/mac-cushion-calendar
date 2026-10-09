@@ -3,6 +3,25 @@
 @theme inline {
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-fredoka);
+  --font-body: var(--font-nunito);
+}
+
+/* The brand, sampled from the logo and Instagram posts, plus in-between
+   shades so categories and weekdays can differ while staying on-brand
+   (see src/lib/categories.ts). */
+@theme {
+  --color-maroon: #7a1f3d;
+  --color-plum: #4f1229;
+  --color-mauve: #a55e74;
+  --color-gold: #f9b93b;
+  --color-butter: #fcd98c;
+  --color-blush: #f7bccb;
+  --color-pink: #ffe3ea;
+  --color-cream: #fff4e6;
+
+  --color-canvas: #ffe3ea; /* page background: the pink from the posts */
+  --color-panel: #fff4e6; /* sheets and bars on it: the cream */
 }
 
 :root {

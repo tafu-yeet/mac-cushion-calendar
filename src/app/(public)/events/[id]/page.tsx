@@ -3,11 +3,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
-import { CalendarPlusIcon, ChevronIcon, ClockIcon, ExternalIcon, PinIcon, TicketIcon, UtensilsIcon } from "@/components/icons";
+import { clubInitials } from "@/components/event-card";
+import { CalendarPlusIcon, ChevronIcon, ExternalIcon, PinIcon, TicketIcon, UtensilsIcon } from "@/components/icons";
 import { ShareButton } from "@/components/share-button";
 import { categoryOf } from "@/lib/categories";
 import { getEvent, type PublicEvent } from "@/lib/events";
-import { formatDay, formatTimeRange, toLocalInputs } from "@/lib/time";
+import { formatDay, formatDuration, formatTime, formatTimeRange, toLocalInputs } from "@/lib/time";
 
 function summary(e: PublicEvent): string {
   const when = `${formatDay(toLocalInputs(e.startsAt).date)}, ${formatTimeRange(e.startsAt, e.endsAt, e.startTimeKnown)}`;
@@ -30,11 +31,11 @@ export async function generateMetadata({ params }: PageProps<"/events/[id]">): P
 export default function EventPage({ params }: PageProps<"/events/[id]">) {
   return (
     <div className="mx-auto max-w-2xl px-4 py-6">
-      <Link href="/" className="mb-4 inline-flex items-center gap-1 text-sm font-medium text-stone-600 hover:text-stone-900">
+      <Link href="/" className="mb-4 inline-flex items-center gap-1 rounded-full px-3 py-1 text-sm font-semibold ring-1 ring-maroon/30 hover:bg-panel/60">
         <ChevronIcon direction="left" className="size-4" />
         What&apos;s on
       </Link>
-      <Suspense fallback={<div className="h-80 animate-pulse rounded-2xl bg-stone-200/70" aria-label="Loading" />}>
+      <Suspense fallback={<div className="h-96 animate-pulse rounded-[32px] bg-maroon/10" aria-label="Loading" />}>
         {params.then(({ id }) => (
           <EventDetail id={Number(id)} />
         ))}
@@ -46,57 +47,73 @@ export default function EventPage({ params }: PageProps<"/events/[id]">) {
 async function EventDetail({ id }: { id: number }) {
   const event = await getEvent(id);
   if (!event) notFound();
+  const category = categoryOf(event.category);
   const date = toLocalInputs(event.startsAt).date;
+  const duration = event.startTimeKnown ? formatDuration(event.startsAt, event.endsAt) : null;
+  const host = event.hostedBy ?? event.clubName;
 
   return (
-    <article className="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm">
-      <p className="flex items-center gap-1.5 text-sm font-medium text-stone-500">
-        <span className={`size-2 rounded-full ${categoryOf(event.category).dot}`} />
-        {categoryOf(event.category).label}
-      </p>
-      <p className="mt-2 text-sm font-medium text-stone-500">
+    <article className={`rounded-[32px] p-6 sm:p-8 ${category.tone.card}`}>
+      <div className="flex items-start justify-between gap-4">
+        <p className="text-sm font-medium opacity-75">{category.label}</p>
+        <span className="grid size-12 shrink-0 place-items-center rounded-full bg-current/15 font-display text-sm font-semibold" title={host} aria-hidden="true">
+          {clubInitials(host)}
+        </span>
+      </div>
+      <h1 className="-mt-4 font-display text-4xl font-semibold leading-[1.05] sm:text-5xl">{event.name}</h1>
+      <p className="mt-3 opacity-80">
         {event.hostedBy ? (
           <>
-            {event.hostedBy} <span className="text-stone-400">· shared by {event.clubName}</span>
+            {event.hostedBy} · shared by {event.clubName}
           </>
         ) : (
           event.clubName
         )}
       </p>
-      <h1 className="mt-1 text-2xl font-bold leading-tight tracking-tight text-stone-900">{event.name}</h1>
 
-      {event.hasFreeFood && (
-        <p className="mt-3 flex items-start gap-2 text-lg font-semibold text-emerald-700">
-          <UtensilsIcon className="mt-1 size-5 shrink-0" />
-          <span className="first-letter:uppercase">{event.foodDescription ?? "Free food"}</span>
-        </p>
+      {(event.hasFreeFood || event.cost === "paid") && (
+        <div className="mt-5 flex flex-wrap gap-2 font-medium">
+          {event.hasFreeFood && (
+            <span className={`inline-flex items-center gap-2 rounded-full px-4 py-1.5 ${category.tone.accent}`}>
+              <UtensilsIcon className="size-5 shrink-0" />
+              <span className="first-letter:uppercase">{event.foodDescription ?? "Free food"}</span>
+            </span>
+          )}
+          {event.cost === "paid" && (
+            <span className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 ring-1 ring-current/30">
+              <TicketIcon className="size-5 shrink-0" />
+              {event.price ?? "Paid entry: check the post for the price"}
+            </span>
+          )}
+        </div>
       )}
 
-      <dl className="mt-5 space-y-3 text-stone-700">
-        <div className="flex items-start gap-2">
-          <dt className="sr-only">When</dt>
-          <ClockIcon className="mt-0.5 size-5 shrink-0 text-stone-400" />
-          <dd>
-            <div className="font-medium text-stone-900">{formatDay(date)}</div>
-            <div>{formatTimeRange(event.startsAt, event.endsAt, event.startTimeKnown)}</div>
-          </dd>
-        </div>
-        <div className="flex items-start gap-2">
-          <dt className="sr-only">Where</dt>
-          <PinIcon className="mt-0.5 size-5 shrink-0 text-stone-400" />
-          <dd>{event.location ?? "Location not announced. Check the club's post."}</dd>
-        </div>
-        {event.cost === "paid" && (
-          <div className="flex items-start gap-2">
-            <dt className="sr-only">Cost</dt>
-            <TicketIcon className="mt-0.5 size-5 shrink-0 text-stone-400" />
-            <dd>{event.price ?? "Paid entry. Check the club's post for the price."}</dd>
+      <div className="mt-8">
+        <p className="text-sm font-medium opacity-75">{formatDay(date)}</p>
+        <div className="mt-2 flex items-end justify-between gap-3">
+          <div>
+            <p className="font-display text-4xl font-medium leading-none whitespace-nowrap sm:text-5xl">
+              {event.startTimeKnown ? formatTime(event.startsAt) : "Time TBD"}
+            </p>
+            <p className="mt-1.5 text-xs opacity-70">Start</p>
           </div>
-        )}
-      </dl>
+          {duration && <span className={`mb-6 rounded-full px-3 py-1 text-xs font-medium ${category.tone.chip}`}>{duration}</span>}
+          {event.startTimeKnown && event.endsAt && (
+            <div className="text-right">
+              <p className="font-display text-4xl font-medium leading-none whitespace-nowrap sm:text-5xl">{formatTime(event.endsAt)}</p>
+              <p className="mt-1.5 text-xs opacity-70">End</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <p className={`mt-6 flex items-start gap-2 border-t pt-5 ${category.tone.line}`}>
+        <PinIcon className="mt-0.5 size-5 shrink-0 opacity-70" />
+        {event.location ?? "Location not announced. Check the club's post."}
+      </p>
 
       {!event.openToAll && (
-        <p className="mt-4 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
+        <p className="mt-4 rounded-2xl bg-current/10 px-4 py-2.5 text-sm">
           Entry may be limited (members, sign-up, or a specific group). Check the post before you go.
         </p>
       )}
@@ -104,7 +121,7 @@ async function EventDetail({ id }: { id: number }) {
       <div className="mt-6 flex flex-wrap gap-2">
         <a
           href={`/events/${event.id}/calendar.ics`}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-stone-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-stone-700"
+          className={`inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-semibold ${category.tone.button}`}
         >
           <CalendarPlusIcon className="size-4" />
           Add to calendar
@@ -114,7 +131,7 @@ async function EventDetail({ id }: { id: number }) {
             href={event.permalink}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-stone-700 ring-1 ring-stone-200 hover:bg-stone-50"
+            className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold ring-1 ring-current/30 hover:bg-current/10"
           >
             Instagram post
             <ExternalIcon className="size-3.5" />

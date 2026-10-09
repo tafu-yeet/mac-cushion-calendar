@@ -70,3 +70,11 @@ export const TicketIcon = (p: IconProps) => (
     <path d="M14 6v12" strokeDasharray="2 2" />
   </Icon>
 );
+
+export const TodayIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <rect x="3" y="5" width="18" height="16" rx="2" />
+    <path d="M3 10h18M8 3v4M16 3v4" />
+    <circle cx="12" cy="15.5" r="1.5" fill="currentColor" />
+  </Icon>
+);
