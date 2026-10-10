@@ -13,7 +13,7 @@
 @theme {
   --color-maroon: #7a1f3d;
   --color-plum: #4f1229;
-  --color-mauve: #a55e74;
+  --color-mauve: #8f4d66; /* a shade deeper than the logo tiles, so cream text on it passes 4.5:1 */
   --color-gold: #f9b93b;
   --color-butter: #fcd98c;
   --color-blush: #f7bccb;

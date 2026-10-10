@@ -2,8 +2,9 @@ import Link from "next/link";
 
 import { UtensilsIcon } from "@/components/icons";
 import { categoryOf, dayTone } from "@/lib/categories";
+import { freeFoodPhrase } from "@/lib/clean";
 import type { PublicEvent } from "@/lib/events";
-import { dateParts, minutesIntoDay } from "@/lib/time";
+import { dateParts, minutesIntoDay, otherYear } from "@/lib/time";
 
 import type { WeekDay } from "./types";
 
@@ -25,7 +26,7 @@ function hourColumns(events: PublicEvent[]): Column[] {
 }
 
 /** One day of the week view: the big date on a pastel card, its events as chips on a mini timeline. */
-export function DayCard({ day, dayHref }: { day: WeekDay; dayHref: string }) {
+export function DayCard({ day, dayHref, today }: { day: WeekDay; dayHref: string; today: string }) {
   const tone = dayTone(day.date);
   const { weekday, day: dayOfMonth, month } = dateParts(day.date);
   const columns = hourColumns(day.events);
@@ -38,7 +39,10 @@ export function DayCard({ day, dayHref }: { day: WeekDay; dayHref: string }) {
       }`}
     >
       <Link href={dayHref} className="group w-[5.25rem] shrink-0 sm:w-28" aria-label={`${day.label}: open the day`}>
-        <p className="text-sm font-medium">{weekday}</p>
+        <p className="text-sm font-medium">
+          {weekday}
+          {otherYear(day.date, today) && ` ${day.date.slice(0, 4)}`}
+        </p>
         <p className="mt-1.5 font-display text-[2.75rem] font-semibold leading-[0.85] tracking-[-0.02em] group-hover:underline sm:text-6xl">
           {dayOfMonth}
           <br />
@@ -49,30 +53,42 @@ export function DayCard({ day, dayHref }: { day: WeekDay; dayHref: string }) {
             Today
           </span>
         )}
-        <p className={`text-xs opacity-70 ${day.isToday ? "mt-1.5" : "mt-3"}`}>{count ? `${count} event${count === 1 ? "" : "s"}` : "Nothing yet"}</p>
+        <p className={`text-xs opacity-90 ${day.isToday ? "mt-1.5" : "mt-3"}`}>{count ? `${count} event${count === 1 ? "" : "s"}` : "Nothing yet"}</p>
       </Link>
 
       {columns.length ? (
-        <div
-          className={`min-w-0 flex-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
-            // On phones only two columns fit: fade the edge so it reads as "scroll for more".
-            columns.length > 2 ? "max-sm:[mask-image:linear-gradient(to_right,black_80%,transparent)]" : ""
-          }`}
-        >
-          <div className="flex h-full min-w-max">
+        // Hour columns wrap, two to a row on phones and four on wider screens, so no event is hidden off to the side.
+        <div className="min-w-0 flex-1">
+          <div className="flex h-full flex-wrap gap-y-3">
             {columns.map((column) => (
-              <div key={column.label} className={`flex w-[7.25rem] flex-col gap-1.5 border-l px-2 pb-1 sm:w-36 ${tone.line}`}>
-                <p className="text-[11px] font-medium opacity-70">{column.label}</p>
+              <div key={column.label} className={`flex w-1/2 min-w-0 flex-col gap-1.5 border-l px-2 pb-1 sm:w-1/4 ${tone.line}`}>
+                <p className="text-[11px] font-semibold opacity-90">{column.label}</p>
                 {column.events.map((e) => (
                   <Link
                     key={e.id}
                     href={`/events/${e.id}`}
-                    title={[e.name, e.foodDescription && `Free ${e.foodDescription}`].filter(Boolean).join(" · ")}
-                    className={`flex items-start gap-1.5 rounded-xl px-2 py-1.5 text-[11px] font-semibold leading-tight hover:opacity-90 ${tone.chip}`}
+                    className={`flex flex-col gap-1 rounded-xl px-2 py-1.5 text-[11px] font-semibold leading-tight hover:opacity-90 ${tone.chip}`}
                   >
-                    <span className={`mt-[3px] size-1.5 shrink-0 rounded-full ${categoryOf(e.category).tone.swatch}`} />
-                    <span className="line-clamp-2">{e.name}</span>
-                    {e.hasFreeFood && <UtensilsIcon className="mt-px size-3 shrink-0" />}
+                    <span className="flex items-start gap-1.5">
+                      <span className={`mt-[3px] size-1.5 shrink-0 rounded-full ${categoryOf(e.category).tone.swatch}`} />
+                      <span className="line-clamp-2">{e.name}</span>
+                    </span>
+                    {(e.hasFreeFood || e.cost === "paid") && (
+                      <span className="flex flex-wrap gap-1 pl-3">
+                        {e.hasFreeFood && (
+                          <span
+                            className={`inline-flex items-center gap-0.5 rounded-full px-1.5 py-px text-[10px] font-bold ${tone.chipBadge}`}
+                            title={freeFoodPhrase(e.foodDescription)}
+                          >
+                            <UtensilsIcon className="size-2.5" />
+                            Free food
+                          </span>
+                        )}
+                        {e.cost === "paid" && (
+                          <span className="rounded-full px-1.5 py-px text-[10px] font-bold ring-1 ring-current/50">{e.price ?? "Paid"}</span>
+                        )}
+                      </span>
+                    )}
                   </Link>
                 ))}
               </div>
@@ -80,7 +96,7 @@ export function DayCard({ day, dayHref }: { day: WeekDay; dayHref: string }) {
           </div>
         </div>
       ) : (
-        <p className="self-center text-sm opacity-60">Nothing announced yet.</p>
+        <p className="self-center text-sm opacity-90">Nothing announced yet.</p>
       )}
     </article>
   );

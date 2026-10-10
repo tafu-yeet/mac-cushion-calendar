@@ -112,35 +112,42 @@ export function FilterBar({ filters, update, showWhen = false }: { filters: Filt
         </>
       )}
 
-      <div className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0 [&::-webkit-scrollbar]:hidden">
+      {/* Tags any event can have, whatever its type. */}
+      <div className="flex flex-wrap items-center gap-1.5">
         <Chip active={filters.food} onClick={() => update({ food: !filters.food })} food>
           <UtensilsIcon className="size-3.5" />
           Free food
         </Chip>
-        {CATEGORIES.map((c) => (
-          <Chip key={c.key} active={filters.categories.includes(c.key)} onClick={() => toggleCategory(c.key)}>
-            <span className={`size-2.5 rounded-full ${c.tone.swatch}`} />
-            {c.label}
-          </Chip>
-        ))}
-      </div>
-
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-maroon/85">
-        <Toggle checked={filters.freeEntry} onChange={(freeEntry) => update({ freeEntry })}>
+        <Chip active={filters.freeEntry} onClick={() => update({ freeEntry: !filters.freeEntry })}>
           Free entry
-        </Toggle>
-        <Toggle checked={filters.limited} onChange={(limited) => update({ limited })}>
-          Include limited entry
-        </Toggle>
+        </Chip>
+        <Chip active={filters.limited} onClick={() => update({ limited: !filters.limited })} describedBy="members-only-hint">
+          Members-only too
+        </Chip>
         {isNarrowed(filters) && (
           <button
             type="button"
             onClick={() => update({ ...DEFAULT_FILTERS, day: filters.day })}
-            className="font-medium text-maroon/65 underline-offset-2 hover:text-maroon hover:underline"
+            className="ml-1 text-sm font-semibold text-maroon underline underline-offset-2 hover:text-plum"
           >
             Clear filters
           </button>
         )}
+      </div>
+      <p id="members-only-hint" className="-mt-1.5 text-xs text-maroon/80">
+        Events only for a club&apos;s members or one program are hidden unless you add them.
+      </p>
+
+      <div className="flex items-center gap-2">
+        <span className="shrink-0 text-sm font-medium text-maroon/85">Type</span>
+        <div className="-mr-4 flex gap-1.5 overflow-x-auto pr-4 pb-1 [scrollbar-width:none] sm:mr-0 sm:flex-wrap sm:pr-0 [&::-webkit-scrollbar]:hidden">
+          {CATEGORIES.map((c) => (
+            <Chip key={c.key} active={filters.categories.includes(c.key)} onClick={() => toggleCategory(c.key)}>
+              <span className={`size-2.5 rounded-full ${c.tone.swatch}`} />
+              {c.label}
+            </Chip>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -150,11 +157,13 @@ function Chip({
   active,
   onClick,
   food = false,
+  describedBy,
   children,
 }: {
   active: boolean;
   onClick: () => void;
   food?: boolean;
+  describedBy?: string;
   children: React.ReactNode;
 }) {
   const on = food ? "bg-gold text-maroon ring-gold" : "bg-maroon text-cream ring-maroon";
@@ -163,20 +172,12 @@ function Chip({
     <button
       type="button"
       aria-pressed={active}
+      aria-describedby={describedBy}
       onClick={onClick}
       className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium ring-1 transition-colors ${active ? on : off}`}
     >
       {children}
     </button>
-  );
-}
-
-function Toggle({ checked, onChange, children }: { checked: boolean; onChange: (v: boolean) => void; children: React.ReactNode }) {
-  return (
-    <label className="inline-flex cursor-pointer items-center gap-2">
-      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="size-4 accent-maroon" />
-      {children}
-    </label>
   );
 }
 

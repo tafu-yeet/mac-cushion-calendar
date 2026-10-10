@@ -1,18 +1,21 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
 import { Suspense } from "react";
 
 import { clubInitials } from "@/components/event-card";
 import { CalendarPlusIcon, ChevronIcon, ExternalIcon, PinIcon, TicketIcon, UtensilsIcon } from "@/components/icons";
 import { ShareButton } from "@/components/share-button";
 import { categoryOf } from "@/lib/categories";
+import { freeFoodPhrase } from "@/lib/clean";
 import { getEvent, type PublicEvent } from "@/lib/events";
-import { formatDay, formatDuration, formatTime, formatTimeRange, toLocalInputs } from "@/lib/time";
+import { formatDay, formatDuration, formatTime, formatTimeRange, toLocalInputs, todayInCampus } from "@/lib/time";
 
-function summary(e: PublicEvent): string {
-  const when = `${formatDay(toLocalInputs(e.startsAt).date)}, ${formatTimeRange(e.startsAt, e.endsAt, e.startTimeKnown)}`;
-  const what = e.hasFreeFood ? `Free ${e.foodDescription ?? "food"}` : categoryOf(e.category).label;
+/** "Free pizza · Friday, October 9, 6:00 PM · MUSC 230", for share text and link previews. */
+function summary(e: PublicEvent, today: string): string {
+  const when = `${formatDay(toLocalInputs(e.startsAt).date, "long", today)}, ${formatTimeRange(e.startsAt, e.endsAt, e.startTimeKnown)}`;
+  const what = e.hasFreeFood ? freeFoodPhrase(e.foodDescription) : categoryOf(e.category).label;
   return [what, when, e.location].filter(Boolean).join(" · ");
 }
 
@@ -20,7 +23,8 @@ export async function generateMetadata({ params }: PageProps<"/events/[id]">): P
   const { id } = await params;
   const event = await getEvent(Number(id));
   if (!event) return { title: "Event not found" };
-  const description = `${summary(event)}. Posted by ${event.clubName}.`;
+  await connection(); // the summary reads the clock, for the year
+  const description = `${summary(event, todayInCampus())}. Posted by ${event.clubName}.`;
   return {
     title: event.name,
     description,
@@ -45,6 +49,8 @@ export default function EventPage({ params }: PageProps<"/events/[id]">) {
 }
 
 async function EventDetail({ id }: { id: number }) {
+  await connection(); // reads the clock, for the year
+  const today = todayInCampus();
   const event = await getEvent(id);
   if (!event) notFound();
   const category = categoryOf(event.category);
@@ -55,13 +61,13 @@ async function EventDetail({ id }: { id: number }) {
   return (
     <article className={`rounded-[32px] p-6 sm:p-8 ${category.tone.card}`}>
       <div className="flex items-start justify-between gap-4">
-        <p className="text-sm font-medium opacity-75">{category.label}</p>
+        <p className="text-sm font-medium opacity-90">{category.label}</p>
         <span className="grid size-12 shrink-0 place-items-center rounded-full bg-current/15 font-display text-sm font-semibold" title={host} aria-hidden="true">
           {clubInitials(host)}
         </span>
       </div>
       <h1 className="-mt-4 font-display text-4xl font-semibold leading-[1.05] sm:text-5xl">{event.name}</h1>
-      <p className="mt-3 opacity-80">
+      <p className="mt-3 opacity-90">
         {event.hostedBy ? (
           <>
             {event.hostedBy} · shared by {event.clubName}
@@ -89,32 +95,32 @@ async function EventDetail({ id }: { id: number }) {
       )}
 
       <div className="mt-8">
-        <p className="text-sm font-medium opacity-75">{formatDay(date)}</p>
+        <p className="text-sm font-medium opacity-90">{formatDay(date, "long", today)}</p>
         <div className="mt-2 flex items-end justify-between gap-3">
           <div>
             <p className="font-display text-4xl font-medium leading-none whitespace-nowrap sm:text-5xl">
               {event.startTimeKnown ? formatTime(event.startsAt) : "Time TBD"}
             </p>
-            <p className="mt-1.5 text-xs opacity-70">Start</p>
+            <p className="mt-1.5 text-xs opacity-90">Start</p>
           </div>
           {duration && <span className={`mb-6 rounded-full px-3 py-1 text-xs font-medium ${category.tone.chip}`}>{duration}</span>}
           {event.startTimeKnown && event.endsAt && (
             <div className="text-right">
               <p className="font-display text-4xl font-medium leading-none whitespace-nowrap sm:text-5xl">{formatTime(event.endsAt)}</p>
-              <p className="mt-1.5 text-xs opacity-70">End</p>
+              <p className="mt-1.5 text-xs opacity-90">End</p>
             </div>
           )}
         </div>
       </div>
 
       <p className={`mt-6 flex items-start gap-2 border-t pt-5 ${category.tone.line}`}>
-        <PinIcon className="mt-0.5 size-5 shrink-0 opacity-70" />
+        <PinIcon className="mt-0.5 size-5 shrink-0 opacity-90" />
         {event.location ?? "Location not announced. Check the club's post."}
       </p>
 
       {!event.openToAll && (
         <p className="mt-4 rounded-2xl bg-current/10 px-4 py-2.5 text-sm">
-          Entry may be limited (members, sign-up, or a specific group). Check the post before you go.
+          Members or group only: this event is for a club&apos;s members or one program. Check the post to see if you can go.
         </p>
       )}
 
@@ -137,7 +143,7 @@ async function EventDetail({ id }: { id: number }) {
             <ExternalIcon className="size-3.5" />
           </a>
         )}
-        <ShareButton title={event.name} text={summary(event)} />
+        <ShareButton title={event.name} text={summary(event, today)} />
       </div>
     </article>
   );

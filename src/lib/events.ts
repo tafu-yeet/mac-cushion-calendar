@@ -3,6 +3,8 @@ import "server-only";
 import { cacheLife, cacheTag } from "next/cache";
 
 import type { Category } from "@/lib/categories";
+import { cleanFood, cleanPlace } from "@/lib/clean";
+import { similarNames } from "@/lib/duplicates";
 import { createPublicClient } from "@/lib/supabase/public";
 
 /** An approved event as the public site shows it. */
@@ -22,6 +24,7 @@ export type PublicEvent = {
   location: string | null;
   hostedBy: string | null;
   openToAll: boolean;
+  clubId: number;
   clubName: string;
   clubUsername: string;
   permalink: string | null;
@@ -31,11 +34,12 @@ export type PublicEvent = {
 // on the next request instead of after the cache lifetime.
 export const EVENTS_TAG = "events";
 
-const COLUMNS = `id, name, category, event_type, tags, has_free_food, food_description, cost, price, starts_at, ends_at, start_time_known, location, hosted_by, open_to_all,
+const COLUMNS = `id, club_id, name, category, event_type, tags, has_free_food, food_description, cost, price, starts_at, ends_at, start_time_known, location, hosted_by, open_to_all,
   clubs (name, instagram_username), posts (permalink)`;
 
 type Row = {
   id: number;
+  club_id: number;
   name: string;
   category: string;
   event_type: string;
@@ -62,22 +66,42 @@ function toPublicEvent(r: Row): PublicEvent {
     eventType: r.event_type,
     tags: r.tags,
     hasFreeFood: r.has_free_food,
-    foodDescription: r.has_free_food ? r.food_description : null,
+    foodDescription: r.has_free_food ? cleanFood(r.food_description) : null,
     cost: r.cost as PublicEvent["cost"],
     price: r.price,
     startsAt: r.starts_at!,
     endsAt: r.ends_at,
     startTimeKnown: r.start_time_known,
-    location: r.location,
+    location: cleanPlace(r.location),
     hostedBy: r.hosted_by,
     openToAll: r.open_to_all ?? true,
+    clubId: r.club_id,
     clubName: r.clubs?.name ?? "A McMaster club",
     clubUsername: r.clubs?.instagram_username ?? "",
     permalink: r.posts?.permalink ?? null,
   };
 }
 
-/** Approved events starting in [fromIso, toIso), earliest first. */
+// How complete a listing is, to pick which of several copies to keep.
+const detail = (e: PublicEvent) =>
+  Number(e.startTimeKnown) + Number(!!e.endsAt) * 2 + Number(!!e.location) + Number(!!e.foodDescription) + Number(!!e.price);
+
+/**
+ * One listing per event: a club that posts the same event twice (a flyer,
+ * then a reminder) gets copies with the same start and near-identical
+ * names. Keeps the most complete copy.
+ */
+function collapseCopies(events: PublicEvent[]): PublicEvent[] {
+  const kept: PublicEvent[] = [];
+  for (const e of events) {
+    const i = kept.findIndex((k) => k.clubId === e.clubId && k.startsAt === e.startsAt && similarNames(k.name, e.name));
+    if (i === -1) kept.push(e);
+    else if (detail(e) > detail(kept[i]) || (detail(e) === detail(kept[i]) && e.id < kept[i].id)) kept[i] = e;
+  }
+  return kept;
+}
+
+/** Approved events starting in [fromIso, toIso), earliest first, one listing per event. */
 export async function getEventsBetween(fromIso: string, toIso: string): Promise<PublicEvent[]> {
   "use cache";
   cacheLife("minutes");
@@ -91,7 +115,7 @@ export async function getEventsBetween(fromIso: string, toIso: string): Promise<
     .lt("starts_at", toIso)
     .order("starts_at");
   if (error) throw new Error(`Couldn't load events: ${error.message}`);
-  return (data as Row[]).map(toPublicEvent);
+  return collapseCopies((data as Row[]).map(toPublicEvent));
 }
 
 /** One approved event, or null if it doesn't exist or isn't public. */

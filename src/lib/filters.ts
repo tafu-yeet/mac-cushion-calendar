@@ -3,6 +3,7 @@
 
 import { categoryOf, isCategory, type Category } from "@/lib/categories";
 import type { PublicEvent } from "@/lib/events";
+import { ASSUMED_LENGTH_MINUTES } from "@/lib/status";
 import { minutesIntoDay, toLocalInputs } from "@/lib/time";
 
 export const TIME_PRESETS = {
@@ -98,13 +99,10 @@ export function timeWindow(f: Filters): [number, number] | null {
   return [minutes(range.from), minutes(range.to)];
 }
 
-// Without an end time, an event counts as running this long.
-const ASSUMED_MINUTES = 60;
-
 /** Start and end in minutes after its day's midnight; the end is capped at midnight. */
 export function eventSpan(e: PublicEvent): [number, number] {
   const start = minutesIntoDay(e.startsAt);
-  if (!e.endsAt) return [start, start + ASSUMED_MINUTES];
+  if (!e.endsAt) return [start, Math.min(start + ASSUMED_LENGTH_MINUTES, 24 * 60)];
   const sameDay = toLocalInputs(e.endsAt).date === toLocalInputs(e.startsAt).date;
   return [start, sameDay ? Math.max(minutesIntoDay(e.endsAt), start + 1) : 24 * 60];
 }

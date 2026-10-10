@@ -91,14 +91,28 @@ export function dayStartIso(date: string, timeZone = TIMEZONE): string {
   return fromLocalInputs(date, "00:00", timeZone);
 }
 
-/** "Wednesday, October 7" for a plain date string. */
-export function formatDay(date: string, style: "long" | "short" = "long"): string {
+/**
+ * "Wednesday, October 7" for a plain date string. Pass `today` to add the
+ * year when the date falls in another year: "Friday, January 8, 2027".
+ */
+export function formatDay(date: string, style: "long" | "short" = "long", today?: string): string {
   return new Intl.DateTimeFormat("en-US", {
     timeZone: "UTC",
     weekday: style,
     month: style,
     day: "numeric",
+    year: otherYear(date, today) ? "numeric" : undefined,
   }).format(new Date(`${date}T12:00:00Z`));
+}
+
+/** Whether `date` is in a different year from `today` (both "YYYY-MM-DD"). */
+export function otherYear(date: string, today?: string): boolean {
+  return !!today && date.slice(0, 4) !== today.slice(0, 4);
+}
+
+/** Today's campus date from an instant in milliseconds, e.g. a ticking clock. */
+export function campusDate(nowMs: number, timeZone = TIMEZONE): string {
+  return toLocalInputs(new Date(nowMs).toISOString(), timeZone).date;
 }
 
 /** "6:00 PM", or "6:00–8:00 PM", or "Time TBD", in campus time. */

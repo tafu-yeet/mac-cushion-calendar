@@ -11,7 +11,7 @@ export function weekDays(monday: string, today: string, events: PublicEvent[]): 
       date,
       weekday: formatDay(date, "short").split(",")[0],
       dayOfMonth: Number(date.slice(8)),
-      label: formatDay(date),
+      label: formatDay(date, "long", today),
       isToday: date === today,
       events: events.filter((e) => toLocalInputs(e.startsAt).date === date),
     };

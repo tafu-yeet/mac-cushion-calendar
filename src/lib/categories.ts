@@ -7,6 +7,7 @@
 export type Tone = {
   card: string; // background and text
   chip: string; // small pills on the card (durations, week-view events)
+  chipBadge: string; // a tiny label inside a chip (the week view's "Free food"), contrasting with it
   accent: string; // the free-food highlight: gold and maroon, whichever stands out here
   button: string; // the main button on the card
   swatch: string; // a small dot of the colour, for legends and markers
@@ -18,6 +19,7 @@ export const TONES = {
   maroon: {
     card: "bg-maroon text-cream",
     chip: "bg-gold text-maroon",
+    chipBadge: "bg-maroon text-gold",
     accent: "bg-gold text-maroon",
     button: "bg-cream text-maroon hover:bg-white",
     swatch: "bg-maroon ring-1 ring-current/40",
@@ -27,6 +29,7 @@ export const TONES = {
   gold: {
     card: "bg-gold text-maroon",
     chip: "bg-maroon text-cream",
+    chipBadge: "bg-gold text-maroon",
     accent: "bg-maroon text-gold",
     button: "bg-maroon text-cream hover:bg-plum",
     swatch: "bg-gold ring-1 ring-current/40",
@@ -36,6 +39,7 @@ export const TONES = {
   blush: {
     card: "bg-blush text-maroon",
     chip: "bg-maroon text-cream",
+    chipBadge: "bg-gold text-maroon",
     accent: "bg-gold text-maroon",
     button: "bg-maroon text-cream hover:bg-plum",
     swatch: "bg-blush ring-1 ring-current/40",
@@ -45,15 +49,17 @@ export const TONES = {
   mauve: {
     card: "bg-mauve text-cream",
     chip: "bg-cream text-maroon",
+    chipBadge: "bg-gold text-maroon",
     accent: "bg-gold text-maroon",
     button: "bg-cream text-maroon hover:bg-white",
     swatch: "bg-mauve ring-1 ring-current/40",
     line: "border-cream/30",
-    hex: { bg: "#a55e74", ink: "#fff4e6" },
+    hex: { bg: "#8f4d66", ink: "#fff4e6" },
   },
   butter: {
     card: "bg-butter text-maroon",
     chip: "bg-maroon text-cream",
+    chipBadge: "bg-gold text-maroon",
     accent: "bg-maroon text-gold",
     button: "bg-maroon text-cream hover:bg-plum",
     swatch: "bg-butter ring-1 ring-current/40",
@@ -63,6 +69,7 @@ export const TONES = {
   plum: {
     card: "bg-plum text-pink",
     chip: "bg-gold text-maroon",
+    chipBadge: "bg-maroon text-gold",
     accent: "bg-gold text-maroon",
     button: "bg-pink text-plum hover:bg-white",
     swatch: "bg-plum ring-1 ring-current/40",
@@ -72,6 +79,7 @@ export const TONES = {
   cream: {
     card: "bg-cream text-maroon ring-1 ring-maroon/15",
     chip: "bg-maroon text-cream",
+    chipBadge: "bg-gold text-maroon",
     accent: "bg-gold text-maroon",
     button: "bg-maroon text-cream hover:bg-plum",
     swatch: "bg-cream ring-1 ring-current/40",

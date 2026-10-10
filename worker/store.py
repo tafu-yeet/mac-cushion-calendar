@@ -8,6 +8,7 @@ from curl_cffi import requests
 from supabase import Client, create_client
 
 import auto_approve
+from clean import clean_food, clean_place
 from extractors import FinalEvent, PostResult, Usage
 from fetchers import Attempt, Post
 from settings import LOCAL_TZ, MAX_POST_AGE_DAYS, POST_IMAGE_BUCKET, require
@@ -222,11 +223,11 @@ def _event_row(post: dict, fe: FinalEvent) -> dict:
         "cost": e.cost,
         "price": e.price if e.cost == "paid" else None,
         "has_free_food": e.has_free_food,
-        "food_description": e.food_description,
+        "food_description": clean_food(e.food_description),
         "starts_at": _localized(e.start),
         "start_time_known": e.start_time_known,
         "ends_at": _localized(e.end),
-        "location": e.location,
+        "location": clean_place(e.location),
         "hosted_by": e.hosted_by,
         "open_to_all": e.open_to_all,
         "confidence": min(max(e.confidence, 0.0), 1.0),

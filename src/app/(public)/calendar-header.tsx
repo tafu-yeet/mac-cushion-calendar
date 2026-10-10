@@ -4,6 +4,7 @@ import Link from "next/link";
 
 import { ChevronIcon, TodayIcon } from "@/components/icons";
 import { filterParams, type Filters } from "@/lib/filters";
+import { otherYear } from "@/lib/time";
 
 export type CalendarView = "week" | "day";
 
@@ -87,17 +88,22 @@ export function CalendarHeader({
 const fmt = (date: string, options: Intl.DateTimeFormatOptions) =>
   new Intl.DateTimeFormat("en-US", { timeZone: "UTC", ...options }).format(new Date(`${date}T12:00:00Z`));
 
+// Each label adds the year when the date isn't in the current one: "Dec 28 – Jan 3, 2027".
+const year = (date: string, today: string) => (otherYear(date, today) ? `, ${date.slice(0, 4)}` : "");
+
 /** "Oct 12" */
-export const monthDay = (date: string) => fmt(date, { month: "short", day: "numeric" });
+export const monthDay = (date: string, today: string) => fmt(date, { month: "short", day: "numeric" }) + year(date, today);
 
 /** "Oct 5–11", or "Sep 28 – Oct 4" across months. */
-export function weekRange(monday: string, sunday: string): string {
+export function weekRange(monday: string, sunday: string, today: string): string {
+  const md = (d: string) => fmt(d, { month: "short", day: "numeric" });
   const sameMonth = monday.slice(5, 7) === sunday.slice(5, 7);
-  return sameMonth ? `${monthDay(monday)}–${Number(sunday.slice(8))}` : `${monthDay(monday)} – ${monthDay(sunday)}`;
+  const range = sameMonth ? `${md(monday)}–${Number(sunday.slice(8))}` : `${md(monday)} – ${md(sunday)}`;
+  return range + (otherYear(monday, today) || otherYear(sunday, today) ? `, ${sunday.slice(0, 4)}` : "");
 }
 
 /** "Thu 8" */
 export const shortDay = (date: string) => `${fmt(date, { weekday: "short" })} ${Number(date.slice(8))}`;
 
 /** "Fri, Oct 9" */
-export const dayLabel = (date: string) => `${fmt(date, { weekday: "short" })}, ${monthDay(date)}`;
+export const dayLabel = (date: string, today: string) => `${fmt(date, { weekday: "short" })}, ${monthDay(date, today)}`;

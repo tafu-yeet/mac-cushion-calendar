@@ -1,12 +1,14 @@
 import Link from "next/link";
 
+import { StatusBadge } from "@/components/event-card";
 import { UtensilsIcon } from "@/components/icons";
 import { categoryOf } from "@/lib/categories";
+import { freeFoodPhrase } from "@/lib/clean";
 import type { PublicEvent } from "@/lib/events";
+import { ASSUMED_LENGTH_MINUTES } from "@/lib/status";
 import { formatTime, formatTimeRange, minutesIntoDay, toLocalInputs } from "@/lib/time";
 
 const PX_PER_MINUTE = 1.1;
-const DEFAULT_MINUTES = 60; // when an event has no end time
 const MIN_MINUTES = 30; // so short events stay readable
 // More side-by-side events than this get too narrow to read, so they become one list block.
 const MAX_LANES = 2;
@@ -23,7 +25,7 @@ function clusterEvents(day: string, events: PublicEvent[]): Cluster[] {
     .filter((e) => e.startTimeKnown)
     .map((e) => {
       const start = minutesIntoDay(e.startsAt);
-      let end = e.endsAt ? minutesIntoDay(e.endsAt) : start + DEFAULT_MINUTES;
+      let end = e.endsAt ? minutesIntoDay(e.endsAt) : start + ASSUMED_LENGTH_MINUTES;
       if (e.endsAt && toLocalInputs(e.endsAt).date !== day) end = DAY_END; // runs past midnight
       return { event: e, start, end: Math.min(Math.max(end, start + MIN_MINUTES), DAY_END), lane: 0 };
     })
@@ -54,8 +56,9 @@ function clusterEvents(day: string, events: PublicEvent[]): Cluster[] {
 
 const hourLabel = (hour: number) => (hour === 0 ? "12 am" : hour === 12 ? "12 pm" : hour > 12 ? `${hour - 12} pm` : `${hour} am`);
 
-/** One day's timed events on an hour scale, with a line at the current time when `nowMinutes` is given. */
-export function DayTimeline({ date, events, nowMinutes }: { date: string; events: PublicEvent[]; nowMinutes: number | null }) {
+/** One day's timed events on an hour scale; for today, pass `now` for a line at the current time and "On now" badges. */
+export function DayTimeline({ date, events, now }: { date: string; events: PublicEvent[]; now: number | null }) {
+  const nowMinutes = now === null ? null : minutesIntoDay(new Date(now).toISOString());
   const clusters = clusterEvents(date, events);
   const firstHour = Math.min(EARLIEST_SHOWN_HOUR, Math.floor((clusters[0]?.start ?? DAY_END) / 60));
   const origin = firstHour * 60;
@@ -83,6 +86,7 @@ export function DayTimeline({ date, events, nowMinutes }: { date: string; events
               <EventBlock
                 key={event.id}
                 event={event}
+                now={now}
                 style={{
                   ...span(start, end),
                   left: `calc(${(lane / cluster.lanes) * 100}% + 2px)`,
@@ -104,25 +108,30 @@ export function DayTimeline({ date, events, nowMinutes }: { date: string; events
   );
 }
 
-function EventBlock({ event, style }: { event: PublicEvent; style: React.CSSProperties & { height: number } }) {
+function EventBlock({ event, now, style }: { event: PublicEvent; now: number | null; style: React.CSSProperties & { height: number } }) {
   const tone = categoryOf(event.category).tone;
   const roomy = style.height >= ROOM_FOR_DETAILS_PX;
   return (
     <Link
       href={`/events/${event.id}`}
-      title={[event.name, event.foodDescription && `Free ${event.foodDescription}`].filter(Boolean).join(" · ")}
+      title={[event.name, event.hasFreeFood && freeFoodPhrase(event.foodDescription)].filter(Boolean).join(" · ")}
       className={`absolute z-10 flex flex-col gap-1 overflow-hidden rounded-2xl px-3 py-2 text-xs leading-tight transition-shadow hover:z-20 hover:shadow-md ${tone.card}`}
       style={style}
     >
+      {now !== null && (
+        <span className="text-[10px] leading-none">
+          <StatusBadge event={event} now={now} className={tone.accent} />
+        </span>
+      )}
       <span className="font-display text-sm font-semibold leading-tight">{event.name}</span>
-      <span className="opacity-75">{formatTimeRange(event.startsAt, event.endsAt, true)}</span>
+      <span className="opacity-90">{formatTimeRange(event.startsAt, event.endsAt, true)}</span>
       {event.hasFreeFood && (
         <span className={`inline-flex items-center gap-1 self-start rounded-full px-2 py-0.5 font-semibold ${tone.accent}`}>
           <UtensilsIcon className="size-3 shrink-0" />
           <span className="line-clamp-1 first-letter:uppercase">{event.foodDescription ?? "Free food"}</span>
         </span>
       )}
-      {roomy && event.location && <span className="line-clamp-1 opacity-75">{event.location}</span>}
+      {roomy && event.location && <span className="line-clamp-1 opacity-90">{event.location}</span>}
     </Link>
   );
 }
@@ -141,7 +150,7 @@ function BusyBlock({ cluster, style }: { cluster: Cluster; style: React.CSSPrope
           href={`/events/${event.id}`}
           className={`flex items-center gap-2 rounded-xl px-2 py-1.5 hover:opacity-90 ${categoryOf(event.category).tone.card}`}
         >
-          <span className="shrink-0 font-medium opacity-75">{formatTime(event.startsAt)}</span>
+          <span className="shrink-0 font-medium opacity-90">{formatTime(event.startsAt)}</span>
           <span className="truncate font-semibold">{event.name}</span>
           {event.hasFreeFood && <UtensilsIcon className="ml-auto size-3 shrink-0" />}
         </Link>

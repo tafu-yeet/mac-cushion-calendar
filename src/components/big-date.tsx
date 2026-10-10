@@ -1,11 +1,15 @@
-import { dateParts } from "@/lib/time";
+import { dateParts, otherYear } from "@/lib/time";
 
 /** The oversized "09 / OCT" date at the top of a page, with a small label above it. */
-export function BigDate({ date, label }: { date: string; label?: string }) {
+export function BigDate({ date, today, label }: { date: string; today: string; label?: string }) {
   const { weekday, day, month } = dateParts(date);
+  const year = otherYear(date, today) ? ` · ${date.slice(0, 4)}` : "";
   return (
     <div>
-      <p className="text-sm font-medium text-maroon/75">{label ?? weekday}</p>
+      <p className="text-sm font-medium text-maroon/75">
+        {label ?? weekday}
+        {year}
+      </p>
       <p className="mt-2 font-display text-[5.25rem] font-semibold leading-[0.82] tracking-[-0.03em] sm:text-[6.5rem]">
         {day}
         <br />

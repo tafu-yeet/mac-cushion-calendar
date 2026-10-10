@@ -25,7 +25,9 @@ class ExtractedEvent(BaseModel):
     cost: Literal["free", "paid", "unknown"] = Field(description="What it costs to attend; see Other fields.")
     price: str | None = Field(description="The price as written, e.g. '$15', for paid events; otherwise null.")
     has_free_food: bool
-    food_description: str | None
+    food_description: str | None = Field(
+        description="What free food, in a few words for a student, e.g. 'pizza' or 'snacks and drinks'; null when none."
+    )
     start: datetime | None = Field(description="ISO 8601 with the campus timezone's UTC offset.")
     start_time_known: bool = Field(
         description="False when the post gives the date but not the start time (start is then 00:00 that day)."
@@ -41,7 +43,9 @@ class ExtractedEvent(BaseModel):
         description="0 to 1: how sure you are that the details, especially date, time, "
         "and free food, are correct."
     )
-    reason: str = Field(description="One short sentence: why has_free_food is true or false, and anything uncertain.")
+    reason: str = Field(
+        description="One short sentence for the reviewer: why has_free_food is true or false, and anything uncertain."
+    )
 
 
 class PostExtraction(BaseModel):
@@ -121,7 +125,7 @@ Dates and times
 Free food
 - has_free_food is true only when attendees can get food, snacks, drinks, or treats without paying, whether the whole event is free or the food is handed out free at it.
 - Food for sale, bake sales, and food covered by a paid ticket don't count. Prizes, raffles, merch, and free tickets are not food.
-- food_description says what food, as specifically as the post does (e.g. "pizza", "free bubble tea for the first 50 people"), or null when there is no free food.
+- food_description says what food, as specifically as the post does, in a few plain words a student reads on an event card (e.g. "pizza", "snacks and drinks", "free bubble tea for the first 50 people"), or null when there is no free food. No brackets and no notes about the caption, flyer, or emojis: if the food isn't named, write "free food", and put any doubt in reason.
 
 Categories
 - social: mixers, parties, game and trivia nights, karaoke, bonfires, gaming tournaments, hangouts.
@@ -135,7 +139,7 @@ Categories
 Other fields
 - cost is "paid" when attending needs a ticket, entry fee, or registration fee (put the price in price as written, e.g. "$15" or "$10 members, $15 others"); "free" when the post says it's free or nothing suggests a cost; "unknown" when it mentions tickets or registration without saying whether they cost money.
 - open_to_all is true if any student can come: free, free sign-up, or a ticket anyone can buy. It is false if the event is limited to members or a specific group, such as one program, year, or level of study.
-- location is the place as stated, with campus abbreviations expanded from the list below, e.g. "MUSC 230 (McMaster University Student Centre)". Use null if no place is given, including "link in bio".
+- location is the place as stated, with campus abbreviations expanded from the list below, e.g. "MUSC 230 (McMaster University Student Centre)". Use null if no place is given, including "link in bio". Give only the place: never notes about the flyer, the caption, or a changed room. If the post disagrees with itself, use the latest or most specific place and explain in reason.
 - hosted_by lists the clubs or groups other than the posting account that run or co-run the event: the club whose event a hub or events page is sharing, or the partner in a collaboration ("x", "teaming up with", "partnering with"). Name them as the post does, with the @handle if shown, e.g. "McMaster Geeks (@mcmastergeeks)". Sponsors, venues, and shops are not hosts. Use null when the posting account runs the event alone.
 
 Known campus locations

@@ -5,8 +5,9 @@ import Link from "next/link";
 import { BigDate, DateStats } from "@/components/big-date";
 import { EventCard } from "@/components/event-card";
 import { FilterBar, useFilters } from "@/components/filter-bar";
+import { useNow } from "@/components/use-now";
 import { byStart, matchesFilters, type Filters } from "@/lib/filters";
-import { addDays, dateParts, minutesIntoDay, mondayOf } from "@/lib/time";
+import { addDays, dateParts, mondayOf } from "@/lib/time";
 
 import { CalendarHeader, calendarHref, dayLabel, shortDay } from "../calendar-header";
 import type { WeekDay } from "../week/types";
@@ -17,7 +18,7 @@ export function DayBrowser({
   days,
   date,
   today,
-  now,
+  now: serverNow,
   fromUrl,
 }: {
   days: WeekDay[]; // the week containing `date`
@@ -27,6 +28,7 @@ export function DayBrowser({
   fromUrl: Filters;
 }) {
   const [filters, update] = useFilters(fromUrl);
+  const now = useNow(serverNow);
   const shown = days.map((d) => ({ ...d, events: d.events.filter((e) => matchesFilters(e, filters)).sort(byStart) }));
   const selected = shown.find((d) => d.date === date) ?? shown[0];
   const timed = selected.events.filter((e) => e.startTimeKnown);
@@ -46,12 +48,12 @@ export function DayBrowser({
         todayHref={day(today)}
         atToday={isToday}
         prev={{ label: shortDay(addDays(date, -1)), href: day(addDays(date, -1)) }}
-        current={dayLabel(date)}
+        current={dayLabel(date, today)}
         next={{ label: shortDay(addDays(date, 1)), href: day(addDays(date, 1)) }}
       />
 
       <div className="flex items-end justify-between gap-4">
-        <BigDate date={date} label={isToday ? `${dateParts(date).weekday} · Today` : undefined} />
+        <BigDate date={date} today={today} label={isToday ? `${dateParts(date).weekday} · Today` : undefined} />
         <DateStats
           stats={[
             { value: selected.events.length, label: `event${selected.events.length === 1 ? "" : "s"}` },
@@ -91,7 +93,7 @@ export function DayBrowser({
       <section className="rounded-[32px] bg-panel p-4 shadow-sm sm:p-6">
         <h1 className="mb-5 font-display text-xl font-semibold lowercase">{selected.label}</h1>
         {timed.length ? (
-          <DayTimeline date={date} events={timed} nowMinutes={isToday ? minutesIntoDay(new Date(now).toISOString()) : null} />
+          <DayTimeline date={date} events={timed} now={isToday ? now : null} />
         ) : (
           <p className="rounded-[28px] bg-canvas px-5 py-10 text-center text-sm text-maroon/75">
             {untimed.length ? "Nothing with a set time yet." : "Nothing announced for this day yet."}
@@ -103,7 +105,7 @@ export function DayBrowser({
         <section className="flex flex-col gap-3">
           <h2 className="px-1 font-display text-base font-semibold">No time announced yet</h2>
           {untimed.map((e) => (
-            <EventCard key={e.id} event={e} />
+            <EventCard key={e.id} event={e} now={now} />
           ))}
         </section>
       )}

@@ -79,7 +79,7 @@ export function wordOverlap(a: string, b: string): number {
   return shared / Math.min(x.size, y.size);
 }
 
-function similarNames(a: string, b: string): boolean {
+export function similarNames(a: string, b: string): boolean {
   return wordOverlap(a, b) >= SIMILAR_NAMES || nameSimilarity(a, b) >= SIMILAR_NAMES;
 }
 

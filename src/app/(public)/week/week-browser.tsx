@@ -25,6 +25,7 @@ export function WeekBrowser({
   const [filters, update] = useFilters(fromUrl);
   const shown = days.map((d) => ({ ...d, events: d.events.filter((e) => matchesFilters(e, filters)).sort(byStart) }));
   const count = shown.reduce((n, d) => n + d.events.length, 0);
+  const withFood = shown.reduce((n, d) => n + d.events.filter((e) => e.hasFreeFood).length, 0);
 
   const week = (start: string) => calendarHref("week", start === thisMonday ? null : start, filters);
   const day = (date: string) => calendarHref("day", date === today ? null : date, filters);
@@ -41,9 +42,9 @@ export function WeekBrowser({
         dayHref={day(openDay)}
         todayHref={week(thisMonday)}
         atToday={monday === thisMonday}
-        prev={{ label: monthDay(prevMonday), href: week(prevMonday) }}
-        current={weekRange(monday, addDays(monday, 6))}
-        next={{ label: monthDay(nextMonday), href: week(nextMonday) }}
+        prev={{ label: monthDay(prevMonday, today), href: week(prevMonday) }}
+        current={weekRange(monday, addDays(monday, 6), today)}
+        next={{ label: monthDay(nextMonday, today), href: week(nextMonday) }}
       />
 
       <div className="flex items-baseline justify-between gap-3 px-1">
@@ -52,6 +53,7 @@ export function WeekBrowser({
         </h1>
         <p className="text-sm text-maroon/75" aria-live="polite">
           {count === 0 ? "Nothing that matches yet" : `${count} event${count === 1 ? "" : "s"}`}
+          {withFood > 0 && ` · ${withFood} with free food`}
         </p>
       </div>
 
@@ -59,7 +61,7 @@ export function WeekBrowser({
 
       <div className="flex flex-col gap-3">
         {shown.map((d) => (
-          <DayCard key={d.date} day={d} dayHref={day(d.date)} />
+          <DayCard key={d.date} day={d} dayHref={day(d.date)} today={today} />
         ))}
       </div>
     </div>

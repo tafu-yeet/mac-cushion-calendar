@@ -2,7 +2,8 @@ import Link from "next/link";
 
 import { categoryOf } from "@/lib/categories";
 import type { PublicEvent } from "@/lib/events";
-import { formatDay, formatDuration, formatTime, toLocalInputs } from "@/lib/time";
+import { eventStatus, startsInLabel } from "@/lib/status";
+import { campusDate, formatDay, formatDuration, formatTime, toLocalInputs } from "@/lib/time";
 
 import { CalendarPlusIcon, ExternalIcon, PinIcon, TicketIcon, UtensilsIcon } from "./icons";
 
@@ -15,15 +16,31 @@ export function clubInitials(name: string): string {
   return (words.length ? words : [name]).slice(0, 2).map((w) => w[0].toUpperCase()).join("");
 }
 
+/** "On now" or "Starts in 25 min" from the current time; nothing otherwise (the start time says it). */
+export function StatusBadge({ event, now, className }: { event: PublicEvent; now: number; className: string }) {
+  const status = eventStatus(event, now);
+  if (status.kind === "live") {
+    return (
+      <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 font-semibold ${className}`}>
+        <span className="size-1.5 animate-pulse rounded-full bg-current" />
+        On now
+      </span>
+    );
+  }
+  if (status.kind === "soon") {
+    return <span className={`rounded-full px-2 py-0.5 font-semibold ${className}`}>{startsInLabel(status.minutes)}</span>;
+  }
+  return null;
+}
+
 /**
- * A pastel card in the event's category colour: big title, then the start,
- * how long it runs, and the end. Plain props only, so it works in server and
- * client components.
+ * A card in the event's category colour: big title, then the start, how long
+ * it runs, and the end. `now` drives the "On now" / "Starts in" badge.
  */
-export function EventCard({ event, live = false, showDate = false }: { event: PublicEvent; live?: boolean; showDate?: boolean }) {
+export function EventCard({ event, now, showDate = false }: { event: PublicEvent; now: number; showDate?: boolean }) {
   const category = categoryOf(event.category);
   const duration = event.startTimeKnown ? formatDuration(event.startsAt, event.endsAt) : null;
-  const date = formatDay(toLocalInputs(event.startsAt).date, "short");
+  const date = formatDay(toLocalInputs(event.startsAt).date, "short", campusDate(now));
   const host = event.hostedBy ?? event.clubName;
 
   return (
@@ -31,13 +48,8 @@ export function EventCard({ event, live = false, showDate = false }: { event: Pu
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-medium">
-            {live && (
-              <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 font-semibold ${category.tone.accent}`}>
-                <span className="size-1.5 animate-pulse rounded-full bg-current" />
-                On now
-              </span>
-            )}
-            <span className="opacity-75">{category.label}</span>
+            <StatusBadge event={event} now={now} className={category.tone.accent} />
+            <span className="opacity-90">{category.label}</span>
           </p>
           <h3 className="mt-1.5 font-display text-2xl font-semibold leading-[1.1]">
             <Link href={`/events/${event.id}`} className="hover:underline">
@@ -54,7 +66,7 @@ export function EventCard({ event, live = false, showDate = false }: { event: Pu
         </span>
       </div>
 
-      <p className="mt-1 text-sm opacity-80">
+      <p className="mt-1 text-sm opacity-90">
         {event.hostedBy ? (
           <>
             {event.hostedBy} · shared by {event.clubName}
@@ -73,16 +85,16 @@ export function EventCard({ event, live = false, showDate = false }: { event: Pu
             </span>
           )}
           {event.cost === "paid" && (
-            <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 ring-1 ring-current/30">
+            <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 ring-1 ring-current/40">
               <TicketIcon className="size-4 shrink-0" />
               {event.price ?? "Paid entry"}
             </span>
           )}
-          {!event.openToAll && <span className="rounded-full px-3 py-1 ring-1 ring-current/30">Limited entry</span>}
+          {!event.openToAll && <span className="rounded-full px-3 py-1 ring-1 ring-current/40">Members or group only</span>}
         </div>
       )}
 
-      <p className="mt-3 flex items-start gap-1.5 text-sm opacity-80">
+      <p className="mt-3 flex items-start gap-1.5 text-sm opacity-90">
         <PinIcon className="mt-0.5 size-4 shrink-0" />
         {event.location ?? "Location not announced"}
       </p>
@@ -92,13 +104,13 @@ export function EventCard({ event, live = false, showDate = false }: { event: Pu
           <p className="font-display text-[1.65rem] font-medium leading-none whitespace-nowrap">
             {event.startTimeKnown ? formatTime(event.startsAt) : "Time TBD"}
           </p>
-          <p className="mt-1 text-xs opacity-70">{showDate ? `${date} · Start` : "Start"}</p>
+          <p className="mt-1 text-xs opacity-90">{showDate ? `${date} · Start` : "Start"}</p>
         </div>
         {duration && <span className={`mb-4 rounded-full px-3 py-1 text-xs font-semibold whitespace-nowrap ${category.tone.chip}`}>{duration}</span>}
         {event.startTimeKnown && event.endsAt && (
           <div className="text-right">
             <p className="font-display text-[1.65rem] font-medium leading-none whitespace-nowrap">{formatTime(event.endsAt)}</p>
-            <p className="mt-1 text-xs opacity-70">End</p>
+            <p className="mt-1 text-xs opacity-90">End</p>
           </div>
         )}
       </div>
@@ -116,7 +128,7 @@ export function EventCard({ event, live = false, showDate = false }: { event: Pu
             href={event.permalink}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold ring-1 ring-current/30 hover:bg-current/10"
+            className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold ring-1 ring-current/40 hover:bg-current/10"
           >
             Instagram
             <ExternalIcon className="size-3.5" />

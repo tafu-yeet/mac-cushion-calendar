@@ -2,10 +2,11 @@
 // works with Google Calendar, Apple Calendar, and Outlook.
 
 import { campus } from "@/lib/campus";
+import { freeFoodPhrase } from "@/lib/clean";
 import type { PublicEvent } from "@/lib/events";
+import { ASSUMED_LENGTH_MINUTES } from "@/lib/status";
 import { addDays, toLocalInputs } from "@/lib/time";
 
-const DEFAULT_DURATION_MS = 60 * 60 * 1000;
 
 /** Escape commas, semicolons, backslashes and newlines in a text value. */
 function text(value: string): string {
@@ -38,7 +39,7 @@ export function eventToIcs(event: PublicEvent, eventUrl: string, now = new Date(
   const start = new Date(event.startsAt);
   const when: string[] = [];
   if (event.startTimeKnown) {
-    const end = event.endsAt ? new Date(event.endsAt) : new Date(start.getTime() + DEFAULT_DURATION_MS);
+    const end = event.endsAt ? new Date(event.endsAt) : new Date(start.getTime() + ASSUMED_LENGTH_MINUTES * 60_000);
     when.push(`DTSTART:${utc(start)}`, `DTEND:${utc(end)}`);
   } else {
     // No start time: an all-day event on its campus-local date.
@@ -47,7 +48,7 @@ export function eventToIcs(event: PublicEvent, eventUrl: string, now = new Date(
   }
 
   const description = [
-    event.hasFreeFood && `Free food: ${event.foodDescription ?? "yes"}`,
+    event.hasFreeFood && freeFoodPhrase(event.foodDescription),
     event.cost === "paid" && `Entry: ${event.price ?? "paid"}`,
     `Posted by ${event.clubName}${event.hostedBy ? `, hosted by ${event.hostedBy}` : ""}`,
     !event.startTimeKnown && "Start time not announced yet.",
