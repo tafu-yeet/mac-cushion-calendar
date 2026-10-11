@@ -51,7 +51,9 @@ What that means for how it's built:
    profile page is loaded through residential proxies (`worker/fetchers/profile_page.py`);
    if every attempt is blocked, Apify's Instagram Scraper is the fallback.
 2. **Store:** new posts are saved, and their images go to the private
-   `post-images` bucket.
+   `post-images` bucket. Reels and other videos are saved but not read: clubs
+   post a flyer for anything they promote, so a reel mostly duplicates it
+   (`SKIP_REELS=false` reads them again).
 3. **Extract:** Claude Haiku reads each new post (caption + image) and pulls
    out its events: category, cost, free food, date, time, place. When it
    finds an event, Claude Sonnet rechecks the post and its reading wins;

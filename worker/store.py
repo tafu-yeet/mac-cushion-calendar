@@ -11,7 +11,7 @@ import auto_approve
 from clean import clean_food, clean_place
 from extractors import FinalEvent, PostResult, Usage
 from fetchers import Attempt, Post
-from settings import LOCAL_TZ, MAX_POST_AGE_DAYS, POST_IMAGE_BUCKET, require
+from settings import LOCAL_TZ, MAX_POST_AGE_DAYS, POST_IMAGE_BUCKET, SKIP_REELS, require
 
 IMAGE_TIMEOUT_S = 30
 # Ask the CDN for formats Claude accepts (no AVIF/HEIC).
@@ -73,7 +73,8 @@ def insert_new_posts(sb: Client, club_id: int, posts: list[Post], backend: str) 
     """Store posts whose ids aren't stored yet and return the inserted rows.
 
     Posts older than MAX_POST_AGE_DAYS are stored as "skipped" so they never
-    reach Claude (a newly added club's first fetch includes old posts).
+    reach Claude (a newly added club's first fetch includes old posts), and so
+    are reels unless SKIP_REELS is off.
     """
     if not posts:
         return []
@@ -92,7 +93,7 @@ def insert_new_posts(sb: Client, club_id: int, posts: list[Post], backend: str) 
             "permalink": p.permalink,
             "media_type": p.media_type,
             "fetched_via": backend,
-            "extraction_status": "pending" if p.posted_at >= cutoff else "skipped",
+            "extraction_status": "skipped" if p.posted_at < cutoff or (SKIP_REELS and p.is_video) else "pending",
             "raw": p.raw,
         }
         for p in posts

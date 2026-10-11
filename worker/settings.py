@@ -69,5 +69,8 @@ MODEL_PRICES = {
 POST_IMAGE_BUCKET = "post-images"
 # Posts older than this when first seen are stored but not sent to Claude.
 MAX_POST_AGE_DAYS = int(env("MAX_POST_AGE_DAYS", "7"))
+# Reels are stored but not read: clubs post a flyer for anything they promote,
+# so a reel mostly duplicates it. "false" reads them again.
+SKIP_REELS = env("SKIP_REELS", "true").lower() != "false"
 # Cap on Claude calls per run, so a burst of new clubs can't run up a big bill.
 MAX_EXTRACTIONS_PER_RUN = int(env("MAX_EXTRACTIONS_PER_RUN", "50"))

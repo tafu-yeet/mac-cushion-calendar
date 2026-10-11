@@ -22,6 +22,15 @@ class Post:
     def permalink(self) -> str:
         return f"https://www.instagram.com/p/{self.shortcode}/"
 
+    @property
+    def is_video(self) -> bool:
+        """Reels and other videos: "clips"/"igtv" (or media_type 2) from the profile page, "Video" from Apify."""
+        return (
+            self.media_type in ("clips", "igtv", "Video")
+            or self.raw.get("media_type") == 2
+            or self.raw.get("productType") == "clips"
+        )
+
 
 @dataclass
 class Attempt:
