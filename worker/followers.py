@@ -16,11 +16,14 @@ import sys
 import time
 from datetime import datetime, timezone
 
+import httpx
+
 import store
 from fetchers import profile_page
 from fetchers.base import FetchError
 
 DELAY_S = (3.0, 6.0)
+NETWORK_PAUSE_S = 30
 
 
 def main() -> int:
@@ -38,20 +41,27 @@ def main() -> int:
 
     saved = 0
     for i, club in enumerate(clubs):
-        if i:
-            time.sleep(random.uniform(*DELAY_S))
         try:
+            # Another run (or the scheduled worker) may have filled it in since the list was read.
+            if not args.all and sb.table("clubs").select("followers").eq("id", club["id"]).single().execute().data["followers"] is not None:
+                continue
+            if i:
+                time.sleep(random.uniform(*DELAY_S))
             _, followers = profile_page.fetch(
                 club["instagram_username"], None, lambda a, club_id=club["id"]: store.log_attempt(sb, club_id, a)
             )
+            if followers is not None:
+                sb.table("clubs").update(
+                    {"followers": followers, "followers_at": datetime.now(timezone.utc).isoformat()}
+                ).eq("id", club["id"]).execute()
+                saved += 1
         except FetchError as e:
             print(f"  @{club['instagram_username']}: {e}")
             continue
-        if followers is not None:
-            sb.table("clubs").update(
-                {"followers": followers, "followers_at": datetime.now(timezone.utc).isoformat()}
-            ).eq("id", club["id"]).execute()
-            saved += 1
+        except httpx.TransportError as e:  # a network blip reaching Supabase; the club stays for the next run
+            print(f"  @{club['instagram_username']}: database unreachable ({e}); pausing")
+            time.sleep(NETWORK_PAUSE_S)
+            continue
         print(f"  @{club['instagram_username']}: {followers}")
     print(f"saved {saved} follower count(s)")
     return 0
