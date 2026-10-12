@@ -151,21 +151,25 @@ def posts_with_upcoming_unreviewed_events(sb: Client) -> list[dict]:
 
 
 def save_extraction(sb: Client, post: dict, result: PostResult) -> list[dict]:
-    """Save the post's events, confident ones approved and the rest pending, and mark the post done.
-
-    Returns the event rows.
+    """Save the post's events, each decided by auto_approve (published, rejected as a
+    copy, or pending for review), and mark the post done. Returns the event rows.
     """
     # Re-running a post replaces its unreviewed events instead of duplicating them.
     sb.table("events").delete().eq("post_id", post["id"]).eq("status", "pending").execute()
     rows = [_event_row(post, fe) for fe in result.events]
     # Each is compared with events already saved, not with this post's others (the model split those).
     club_name = (post.get("clubs") or {}).get("name", "")
+    replaced: list[tuple[int, str]] = []
     for row in rows:
-        auto_approve.review(sb, row, result.verified_by, club_name)
+        decision = auto_approve.review(sb, row, result.verified_by, club_name, post["posted_at"])
+        row["decision"] = decision.reason or "published"
+        replaced += decision.reject_others
     if rows:
-        sb.table("events").insert(rows).execute()
+        sb.table("events").insert([{k: v for k, v in row.items() if k != "decision"} for row in rows]).execute()
+    for event_id, note in replaced:  # older copies this post's events replace
+        auto_approve.reject(sb, event_id, note)
     extraction = {"is_event": result.is_event, "reason": result.reason, "model": result.first_model,
-                  "verified_by": result.verified_by}
+                  "verified_by": result.verified_by, "settled_by": result.settled_by}
     if result.verified_by:
         extraction["first_pass"] = result.first_pass.model_dump(mode="json")
     sb.table("posts").update({

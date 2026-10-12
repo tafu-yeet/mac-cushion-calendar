@@ -58,12 +58,16 @@ What that means for how it's built:
    out its events: category, cost, free food, date, time, place. When it
    finds an event, Claude Sonnet rechecks the post and its reading wins;
    disagreements become review notes (`worker/extractors/two_stage.py`).
-4. **Review:** an event that Sonnet read the same way (no notes), with a start
-   time, run by the posting club, and unlike any event already known, is
-   published right away and marked "auto-approved" when its confidence is
-   0.9+ (free food) or 0.8+ (anything else). See `worker/auto_approve.py`;
-   `AUTO_APPROVE_MIN_CONFIDENCE=none` turns this off. Everything else waits
-   as `pending` until it's approved at `/admin`.
+4. **Review:** an event publishes itself when Sonnet read it the same way as
+   Haiku (or, where they disagreed, an Opus tie-breaker sided with Sonnet), it
+   has a start time, the confidence is 0.9+ with free food or 0.75+ without,
+   and it isn't another club's event or an off-campus collab. Copies sort
+   themselves out (a copy of a published event, the less complete of two
+   pending copies, a teaser once the dated post arrives, and a date a newer
+   post moved are rejected with a note), and pending events expire when their
+   date passes. Everything else waits as `pending` at `/admin`. See
+   `worker/auto_approve.py`; `AUTO_APPROVE_MIN_CONFIDENCE=none` turns
+   auto-approval off.
 
 Every request is logged: `fetch_logs` (club, backend, status, bytes) and
 `llm_usage` (tokens and estimated cost; `python usage.py` for totals).

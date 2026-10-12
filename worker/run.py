@@ -30,6 +30,7 @@ from curl_cffi.requests.exceptions import RequestException
 from storage3.exceptions import StorageException
 from supabase import Client
 
+import auto_approve
 import store
 from extractors import ExtractionError, ExtractorUnavailable, TwoStageExtractor, Usage, new_pipeline
 from fetchers import Attempt, FetchError, fetch_posts, print_attempt
@@ -148,7 +149,7 @@ def extract_post(sb: Client, pipeline: TwoStageExtractor, row: dict, used: list[
     )
     for e in events:
         when = (e["starts_at"] or "no date") + ("" if e["start_time_known"] else " (time unknown)")
-        published = " | auto-approved" if e["auto_approved"] else ""
+        published = {"approved": " | auto-approved", "rejected": f" | rejected: {e['decision']}"}.get(e["status"], f" | queued: {e['decision']}")
         cost = e["price"] or e["cost"]
         print(
             f"    - {e['name']} | {e['category']}, {cost} | {when} | {e['location']} | "
@@ -226,6 +227,9 @@ def run(args: argparse.Namespace) -> int:
             fetch_club(sb, club)
 
     if not args.no_extract:
+        expired = auto_approve.expire_stale(sb)
+        if expired:
+            print(f"{expired} stale pending event(s) expired")
         extract_pending(sb, MAX_EXTRACTIONS_PER_RUN)
     return 0
 

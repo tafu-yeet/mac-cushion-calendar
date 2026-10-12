@@ -28,13 +28,16 @@ __all__ = [
 
 
 def new_pipeline(check: bool = True) -> TwoStageExtractor:
-    """The configured first pass plus, unless VERIFY_MODEL is "none", the date check."""
-    verifier = None
+    """The configured first pass plus, unless VERIFY_MODEL is "none", the date check,
+    and unless TIEBREAK_MODEL is "none", a tie-breaker for disagreements."""
+    verifier = tiebreak = None
     if check and settings.VERIFY_MODEL.lower() != "none":
         from .claude import ClaudeExtractor
 
         verifier = ClaudeExtractor(settings.VERIFY_MODEL, cache=False)
-    return TwoStageExtractor(new_extractor(), verifier)
+        if settings.TIEBREAK_MODEL.lower() != "none":
+            tiebreak = ClaudeExtractor(settings.TIEBREAK_MODEL, cache=False)
+    return TwoStageExtractor(new_extractor(), verifier, tiebreak)
 
 
 def new_extractor(name: str | None = None, model: str | None = None) -> Extractor:

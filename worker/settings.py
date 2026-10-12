@@ -40,6 +40,8 @@ CLAUDE_EFFORT = env("CLAUDE_EFFORT", "medium")  # ignored by Haiku 4.5
 # Second pass: rechecks every post where the first pass found free food, and
 # its dates and times win. "none" turns the check off.
 VERIFY_MODEL = env("VERIFY_MODEL", "claude-sonnet-5-5")
+# Tie-breaker: reads a post again only when the first two readings disagree. "none" turns it off.
+TIEBREAK_MODEL = env("TIEBREAK_MODEL", "claude-opus-5-5")
 
 # Events at or above these confidences are published without review when the
 # check agreed and nothing similar is known (see auto_approve.py). Free food
@@ -48,7 +50,7 @@ VERIFY_MODEL = env("VERIFY_MODEL", "claude-sonnet-5-5")
 # sends every event to the review queue.
 _auto = env("AUTO_APPROVE_MIN_CONFIDENCE", "0.9")
 AUTO_APPROVE_MIN_CONFIDENCE = None if _auto.lower() == "none" else float(_auto)
-AUTO_APPROVE_OTHER_MIN_CONFIDENCE = float(env("AUTO_APPROVE_OTHER_MIN_CONFIDENCE", "0.8"))
+AUTO_APPROVE_OTHER_MIN_CONFIDENCE = float(env("AUTO_APPROVE_OTHER_MIN_CONFIDENCE", "0.75"))
 
 GEMINI_MODEL = env("GEMINI_MODEL", "gemini-3.8-flash")
 # Free-tier requests-per-minute limits are low; space calls out.
