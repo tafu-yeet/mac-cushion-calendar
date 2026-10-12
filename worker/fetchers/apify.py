@@ -22,7 +22,7 @@ RESULTS_LIMIT = 12
 TIMEOUT_S = 330  # Apify ends synchronous runs after 300 s
 
 
-def fetch(username: str, since: datetime | None, on_attempt: AttemptLogger) -> list[Post]:
+def fetch(username: str, since: datetime | None, on_attempt: AttemptLogger) -> tuple[list[Post], int | None]:
     payload = {
         "directUrls": [f"https://www.instagram.com/{username}/"],
         "resultsType": "posts",
@@ -54,7 +54,7 @@ def fetch(username: str, since: datetime | None, on_attempt: AttemptLogger) -> l
 
     posts = [to_post(item, username) for item in items if "error" not in item]
     on_attempt(Attempt(username, NAME, 1, status, "ok", size, "apify", f"{len(posts)} posts"))
-    return posts
+    return posts, None  # the post scraper doesn't report follower counts
 
 
 def to_post(item: dict, username: str) -> Post:

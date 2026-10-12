@@ -41,8 +41,11 @@ def due_clubs(sb: Client, username: str | None = None) -> list[dict]:
     ]
 
 
-def mark_checked(sb: Client, club_id: int) -> None:
-    sb.table("clubs").update({"last_checked_at": now().isoformat()}).eq("id", club_id).execute()
+def mark_checked(sb: Client, club_id: int, followers: int | None = None) -> None:
+    update = {"last_checked_at": now().isoformat()}
+    if followers is not None:
+        update |= {"followers": followers, "followers_at": update["last_checked_at"]}
+    sb.table("clubs").update(update).eq("id", club_id).execute()
 
 
 def log_attempt(sb: Client, club_id: int, a: Attempt) -> None:

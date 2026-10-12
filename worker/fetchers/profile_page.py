@@ -59,8 +59,11 @@ def proxy_label(proxy: str | None) -> str:
     return proxy.rsplit("@", 1)[1] if proxy else "direct"
 
 
-def fetch(username: str, since: datetime | None, on_attempt: AttemptLogger) -> list[Post]:
-    """Fetch a profile page, retrying through a different proxy when blocked."""
+def fetch(username: str, since: datetime | None, on_attempt: AttemptLogger) -> tuple[list[Post], int | None]:
+    """Fetch a profile page, retrying through a different proxy when blocked.
+
+    Returns the recent posts and the follower count (None if the page didn't show it).
+    """
     proxies = proxy_pool()
     if not proxies:
         raise SystemExit("Proxy settings missing: set PROXY_HOST, PROXY_LOGIN, PROXY_PASSWORD, PROXY_PORTS.")
@@ -79,7 +82,7 @@ def fetch(username: str, since: datetime | None, on_attempt: AttemptLogger) -> l
                     allow_redirects=False,
                 )
             status, size = resp.status_code, resp.response_size
-            nodes = parse_page(resp)
+            nodes, followers = parse_page(resp)
         except (_Retryable, RequestException) as e:
             on_attempt(Attempt(username, NAME, attempt, status, "retry", size, proxy_label(proxy), str(e)))
             continue
@@ -87,13 +90,13 @@ def fetch(username: str, since: datetime | None, on_attempt: AttemptLogger) -> l
             on_attempt(Attempt(username, NAME, attempt, status, "failed", size, proxy_label(proxy), str(e)))
             raise
         on_attempt(Attempt(username, NAME, attempt, status, "ok", size, proxy_label(proxy)))
-        return [to_post(node, username) for node in nodes]
+        return [to_post(node, username) for node in nodes], followers
 
     raise BlockedError(f"all {MAX_ATTEMPTS} attempts were blocked")
 
 
-def parse_page(resp: requests.Response) -> list[dict]:
-    """Return the post nodes from a good profile page, or raise."""
+def parse_page(resp: requests.Response) -> tuple[list[dict], int | None]:
+    """Return the post nodes and follower count from a good profile page, or raise."""
     status = resp.status_code
     if 300 <= status < 400:
         location = resp.headers.get("location", "")
@@ -112,7 +115,21 @@ def parse_page(resp: requests.Response) -> list[dict]:
             raise UnavailableError("account is private")
         # Usually a login wall served in place of the profile.
         raise _Retryable("no post data in page")
-    return nodes
+    return nodes, followers_from_html(html)
+
+
+FOLLOWER_JSON = re.compile(r'"follower_count":(\d+)')
+FOLLOWER_META = re.compile(r'content="([\d.,]+)([KkMm]?) Followers')
+
+
+def followers_from_html(html: str) -> int | None:
+    """The follower count from the page's data, or from its "959 Followers" description."""
+    if m := FOLLOWER_JSON.search(html):
+        return int(m.group(1))
+    if m := FOLLOWER_META.search(html):
+        number, suffix = float(m.group(1).replace(",", "")), m.group(2).lower()
+        return round(number * {"k": 1_000, "m": 1_000_000}.get(suffix, 1))
+    return None
 
 
 def extract_post_nodes(html: str) -> list[dict] | None:

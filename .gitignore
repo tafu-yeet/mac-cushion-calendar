@@ -27,3 +27,6 @@ npm-debug.log*
 
 # Review screenshots (scripts/screenshots.mjs)
 /screenshots/
+
+# Outreach spreadsheet (worker/club_scores.py): a working copy you fill in
+/club_outreach.xlsx

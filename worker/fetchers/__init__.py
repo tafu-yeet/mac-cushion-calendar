@@ -35,6 +35,7 @@ __all__ = [
 class FetchResult:
     posts: list[Post]
     backend: str
+    followers: int | None = None  # when the backend's page showed it
 
 
 def fetch_posts(
@@ -48,9 +49,14 @@ def fetch_posts(
     if choice != "auto":
         if choice not in BACKENDS:
             raise SystemExit(f"Unknown FETCH_BACKEND {choice!r}; use auto, primary, or apify.")
-        return FetchResult(BACKENDS[choice].fetch(username, since, on_attempt), choice)
+        return _result(BACKENDS[choice].fetch(username, since, on_attempt), choice)
 
     try:
-        return FetchResult(profile_page.fetch(username, since, on_attempt), profile_page.NAME)
+        return _result(profile_page.fetch(username, since, on_attempt), profile_page.NAME)
     except BlockedError:
-        return FetchResult(apify.fetch(username, since, on_attempt), apify.NAME)
+        return _result(apify.fetch(username, since, on_attempt), apify.NAME)
+
+
+def _result(fetched: tuple[list[Post], int | None], backend: str) -> FetchResult:
+    posts, followers = fetched
+    return FetchResult(posts, backend, followers)

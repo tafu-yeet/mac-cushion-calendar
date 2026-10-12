@@ -73,7 +73,7 @@ def fetch_club(sb: Client, club: dict) -> None:
         except (RequestException, StorageException) as e:
             # Extraction still runs on the caption alone.
             print(f"  image download failed for post {row['id']}: {e}")
-    store.mark_checked(sb, club["id"])
+    store.mark_checked(sb, club["id"], result.followers)
     print(
         f"  @{username}: {len(result.posts)} posts via {result.backend}, "
         f"{len(new_rows)} new, {len(to_extract)} queued for extraction"
