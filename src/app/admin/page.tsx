@@ -12,7 +12,9 @@ const STATUSES = ["pending", "approved", "rejected"] as const;
 type Status = (typeof STATUSES)[number];
 const LIMIT = 200;
 
-type Filters = { status: Status; foodOnly: boolean; showPast: boolean };
+// showUntimed: in the Pending tab, events with no start time are hidden unless asked for. They
+// need no decision: the dated post replaces them, or they expire (worker/auto_approve.py).
+type Filters = { status: Status; foodOnly: boolean; showPast: boolean; showUntimed: boolean };
 
 export default function QueuePage({ searchParams }: PageProps<"/admin">) {
   return (
@@ -32,7 +34,10 @@ async function Queue({ searchParams }: { searchParams: PageProps<"/admin">["sear
     status: STATUSES.includes(params.status as Status) ? (params.status as Status) : "pending",
     foodOnly: params.food === "only",
     showPast: params.past === "1",
+    showUntimed: params.untimed === "1",
   };
+  const hideUntimed = filters.status === "pending" && !filters.showUntimed;
+  const today = startOfTodayIso();
 
   let query = supabase
     .from("events")
@@ -43,8 +48,25 @@ async function Queue({ searchParams }: { searchParams: PageProps<"/admin">["sear
     )
     .eq("status", filters.status);
   if (filters.foodOnly) query = query.eq("has_free_food", true);
-  if (!filters.showPast) query = query.or(`starts_at.is.null,starts_at.gte.${startOfTodayIso()}`);
+  if (hideUntimed) {
+    query = query.eq("start_time_known", true).not("starts_at", "is", null);
+    if (!filters.showPast) query = query.gte("starts_at", today);
+  } else if (!filters.showPast) {
+    query = query.or(`starts_at.is.null,starts_at.gte.${today}`);
+  }
   const { data: rows, error } = await query.order("starts_at", { ascending: true, nullsFirst: false }).limit(LIMIT);
+
+  // How many no-time events the toggle is hiding, for the count line.
+  let hiddenUntimed = 0;
+  if (hideUntimed) {
+    let count = supabase
+      .from("events")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "pending")
+      .or(filters.showPast ? "starts_at.is.null,start_time_known.eq.false" : `starts_at.is.null,and(start_time_known.eq.false,starts_at.gte.${today})`);
+    if (filters.foodOnly) count = count.eq("has_free_food", true);
+    hiddenUntimed = (await count).count ?? 0;
+  }
 
   if (error) {
     return <p className="text-sm text-red-700">Couldn&apos;t load events: {error.message}</p>;
@@ -116,6 +138,14 @@ async function Queue({ searchParams }: { searchParams: PageProps<"/admin">["sear
         {filters.foodOnly ? " with free food" : ""}
         {filters.showPast ? "" : ", today onward"}
         {withNotes > 0 && <span className="font-medium text-amber-800"> · {withNotes} flagged for a closer look</span>}
+        {hiddenUntimed > 0 && (
+          <>
+            {" · "}
+            <Link href={filterHref({ ...filters, showUntimed: true })} className="underline underline-offset-2 hover:text-stone-900">
+              {hiddenUntimed} with no start time hidden
+            </Link>
+          </>
+        )}
       </p>
       {groups.length === 0 && (
         <p className="rounded-xl border border-dashed border-stone-300 p-10 text-center text-stone-500">Nothing here. 🎉</p>
@@ -149,16 +179,18 @@ async function Queue({ searchParams }: { searchParams: PageProps<"/admin">["sear
   );
 }
 
+function filterHref(next: Filters): string {
+  const params = new URLSearchParams();
+  if (next.status !== "pending") params.set("status", next.status);
+  if (next.foodOnly) params.set("food", "only");
+  if (next.showPast) params.set("past", "1");
+  if (next.showUntimed) params.set("untimed", "1");
+  const qs = params.toString();
+  return qs ? `/admin?${qs}` : "/admin";
+}
+
 function FilterBar({ filters }: { filters: Filters }) {
-  const href = (change: Partial<Filters>) => {
-    const next = { ...filters, ...change };
-    const params = new URLSearchParams();
-    if (next.status !== "pending") params.set("status", next.status);
-    if (next.foodOnly) params.set("food", "only");
-    if (next.showPast) params.set("past", "1");
-    const qs = params.toString();
-    return qs ? `/admin?${qs}` : "/admin";
-  };
+  const href = (change: Partial<Filters>) => filterHref({ ...filters, ...change });
   const pill = (active: boolean) =>
     `rounded-full px-3 py-1 text-sm ${active ? "bg-stone-900 text-white" : "bg-white text-stone-700 ring-1 ring-stone-300 hover:bg-stone-100"}`;
 
@@ -176,6 +208,11 @@ function FilterBar({ filters }: { filters: Filters }) {
       <Link href={href({ showPast: !filters.showPast })} className={pill(filters.showPast)}>
         Include past events
       </Link>
+      {filters.status === "pending" && (
+        <Link href={href({ showUntimed: !filters.showUntimed })} className={pill(filters.showUntimed)}>
+          Include no start time
+        </Link>
+      )}
     </div>
   );
 }
