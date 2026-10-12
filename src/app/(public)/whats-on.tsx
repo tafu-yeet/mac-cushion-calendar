@@ -3,13 +3,14 @@
 import Link from "next/link";
 
 import { BigDate, DateStats } from "@/components/big-date";
+import type { DayCounts } from "@/components/day-picker";
 import { EventCard } from "@/components/event-card";
 import { FilterBar, useFilters } from "@/components/filter-bar";
 import { ChevronIcon } from "@/components/icons";
 import { useNow } from "@/components/use-now";
 import { campus } from "@/lib/campus";
 import type { PublicEvent } from "@/lib/events";
-import { DAYS, DEFAULT_FILTERS, byStart, inWindow, isNarrowed, matchesFilters, timeWindow, type Filters } from "@/lib/filters";
+import { DEFAULT_FILTERS, byStart, inWindow, isNarrowed, matchesFilters, timeWindow, type Filters } from "@/lib/filters";
 import { endMs } from "@/lib/status";
 import { addDays, formatDay, toLocalInputs } from "@/lib/time";
 
@@ -17,7 +18,7 @@ const COMING_UP_COUNT = 6;
 
 type DayGroup = { date: string; fits: PublicEvent[]; timeUnknown: PublicEvent[] };
 
-/** Everything on today, tomorrow, or this week that matches the filters. */
+/** Everything on today, tomorrow, this week, or a picked day that matches the filters. */
 export function WhatsOn({ events, today, now: serverNow, fromUrl }: { events: PublicEvent[]; today: string; now: number; fromUrl: Filters }) {
   const [filters, update] = useFilters(fromUrl);
   const now = useNow(serverNow);
@@ -30,10 +31,10 @@ export function WhatsOn({ events, today, now: serverNow, fromUrl }: { events: Pu
     .filter((e) => matchesFilters(e, filters))
     .sort(byStart);
 
+  const picked = filters.day === "date" ? filters.date : null;
   const first = filters.day === "tomorrow" ? 1 : 0;
-  const count = filters.day === "week" ? 7 : 1;
-  const groups: DayGroup[] = Array.from({ length: count }, (_, i) => {
-    const date = addDays(today, first + i);
+  const dates = picked ? [picked] : Array.from({ length: filters.day === "week" ? 7 : 1 }, (_, i) => addDays(today, first + i));
+  const groups: DayGroup[] = dates.map((date) => {
     const onDay = matching.filter((e) => dateOf(e) === date);
     return {
       date,
@@ -46,12 +47,23 @@ export function WhatsOn({ events, today, now: serverNow, fromUrl }: { events: Pu
   const lastShown = groups[groups.length - 1].date;
   const comingUp = matching.filter((e) => dateOf(e) > lastShown && inWindow(e, slot) !== false).slice(0, COMING_UP_COUNT);
 
-  const when = { today: "today", tomorrow: "tomorrow", week: "in the next 7 days" }[filters.day];
+  // What the calendar picker marks: per day, what you could go to with these filters.
+  const counts: DayCounts = new Map();
+  for (const e of matching) {
+    if (inWindow(e, slot) === false) continue;
+    const day = counts.get(dateOf(e)) ?? { events: 0, food: 0 };
+    counts.set(dateOf(e), { events: day.events + 1, food: day.food + (e.hasFreeFood ? 1 : 0) });
+  }
+
+  const week = filters.day === "week";
+  const shown = dates[0]; // the day the list shows, or the first of the week
+  const dayName = shown === today ? "today" : shown === addDays(today, 1) ? "tomorrow" : formatDay(shown, "short", today);
+  const when = week ? "in the next 7 days" : picked ? `on ${dayName}` : dayName;
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-end justify-between gap-4">
-        <BigDate date={today} today={today} />
+        <BigDate date={shown} today={today} />
         <DateStats
           stats={[
             { value: total, label: `event${total === 1 ? "" : "s"} ${when}` },
@@ -64,7 +76,7 @@ export function WhatsOn({ events, today, now: serverNow, fromUrl }: { events: Pu
       <section className="-mx-1 flex flex-col gap-5 rounded-[32px] bg-panel p-3 shadow-sm sm:mx-0 sm:p-6">
         <div className="flex items-center justify-between gap-3">
           <h1 className="font-display text-xl font-semibold lowercase">
-            What&apos;s on {filters.day === "week" ? "this week" : DAYS[filters.day].toLowerCase()}
+            What&apos;s on {week ? "this week" : dayName}
           </h1>
           <Link href="/week" className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-sm font-medium ring-1 ring-maroon/25 hover:bg-maroon/5">
             Calendar
@@ -72,21 +84,22 @@ export function WhatsOn({ events, today, now: serverNow, fromUrl }: { events: Pu
           </Link>
         </div>
 
-        <FilterBar filters={filters} update={update} showWhen />
+        <FilterBar filters={filters} update={update} when={{ today, counts }} />
 
         <p className="sr-only" aria-live="polite">
           {total} event{total === 1 ? "" : "s"} {when}
         </p>
 
         {groups.map((g) => (
-          <DaySection key={g.date} group={g} today={today} now={now} showHeading={filters.day === "week"} />
+          <DaySection key={g.date} group={g} today={today} now={now} showHeading={week} />
         ))}
 
         {total === 0 && (
           <EmptyState
             filters={filters}
-            onClear={() => update({ ...DEFAULT_FILTERS, day: filters.day })}
-            onTomorrow={() => update({ day: "tomorrow" })}
+            showingToday={!week && shown === today}
+            onClear={() => update({ ...DEFAULT_FILTERS, day: filters.day, date: filters.date })}
+            onTomorrow={() => update({ day: "tomorrow", date: "" })}
             hasComingUp={comingUp.length > 0}
           />
         )}
@@ -134,11 +147,13 @@ function DaySection({ group, today, now, showHeading }: { group: DayGroup; today
 
 function EmptyState({
   filters,
+  showingToday,
   onClear,
   onTomorrow,
   hasComingUp,
 }: {
   filters: Filters;
+  showingToday: boolean;
   onClear: () => void;
   onTomorrow: () => void;
   hasComingUp: boolean;
@@ -148,7 +163,7 @@ function EmptyState({
   return (
     <div className="rounded-[28px] bg-canvas px-5 py-10 text-center">
       <p className="text-lg font-semibold text-maroon">
-        {narrowed ? "Nothing matches" : filters.day === "today" ? "Nothing else on today" : "Nothing announced yet"}
+        {narrowed ? "Nothing matches" : showingToday ? "Nothing else on today" : "Nothing announced yet"}
       </p>
       <p className="mt-1 text-sm text-maroon/75">
         {narrowed
@@ -162,7 +177,7 @@ function EmptyState({
           Clear filters
         </button>
       ) : (
-        filters.day === "today" && (
+        showingToday && (
           <button type="button" onClick={onTomorrow} className={button}>
             See tomorrow
           </button>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { CATEGORIES, type Category } from "@/lib/categories";
 import {
@@ -11,12 +11,15 @@ import {
   filterParams,
   isNarrowed,
   sameFilters,
+  settleDay,
   type Day,
   type Filters,
   type TimePreset,
 } from "@/lib/filters";
+import { addDays, formatDay } from "@/lib/time";
 
-import { SearchIcon, UtensilsIcon } from "./icons";
+import { DayPicker, type DayCounts } from "./day-picker";
+import { ChevronIcon, SearchIcon, TodayIcon, UtensilsIcon } from "./icons";
 
 /**
  * Filters that start from the URL and write every change back to it without a
@@ -45,8 +48,21 @@ export function useFilters(fromUrl: Filters) {
 
 type Update = (change: Partial<Filters>) => void;
 
-/** Search, category and cost filters; with `showWhen`, also the day and "I'm free" time window. */
-export function FilterBar({ filters, update, showWhen = false }: { filters: Filters; update: Update; showWhen?: boolean }) {
+/**
+ * Search, category and cost filters; with `when`, also the day (a preset or one
+ * picked from a calendar) and the "I'm free" time window.
+ */
+export function FilterBar({
+  filters,
+  update,
+  when,
+}: {
+  filters: Filters;
+  update: Update;
+  when?: { today: string; counts: DayCounts };
+}) {
+  const [picking, setPicking] = useState(false);
+  const pickButton = useRef<HTMLButtonElement>(null);
   const toggleCategory = (key: Category) =>
     update({
       categories: filters.categories.includes(key) ? filters.categories.filter((c) => c !== key) : [...filters.categories, key],
@@ -66,24 +82,64 @@ export function FilterBar({ filters, update, showWhen = false }: { filters: Filt
         />
       </label>
 
-      {showWhen && (
+      {when && (
         <>
-          <div className="flex gap-1.5" role="radiogroup" aria-label="Day">
-            {(Object.keys(DAYS) as Day[]).map((day) => (
-              <button
-                key={day}
-                type="button"
-                role="radio"
-                aria-checked={filters.day === day}
-                onClick={() => update({ day })}
-                className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors ${
-                  filters.day === day ? "bg-maroon text-cream" : "text-maroon ring-1 ring-maroon/25 hover:bg-maroon/5"
-                }`}
-              >
-                {DAYS[day]}
-              </button>
-            ))}
+          <div className="flex flex-wrap gap-1.5">
+            <div className="flex gap-1.5" role="radiogroup" aria-label="Day">
+              {(Object.keys(DAYS) as Day[]).map((day) => (
+                <button
+                  key={day}
+                  type="button"
+                  role="radio"
+                  aria-checked={filters.day === day}
+                  onClick={() => update({ day, date: "" })}
+                  className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors ${pill(filters.day === day)}`}
+                >
+                  {DAYS[day]}
+                </button>
+              ))}
+            </div>
+            <button
+              ref={pickButton}
+              type="button"
+              aria-expanded={picking}
+              aria-controls="day-picker"
+              onClick={() => setPicking(!picking)}
+              className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors ${pill(
+                filters.day === "date",
+              )}`}
+            >
+              <TodayIcon className="size-4" />
+              {filters.day === "date" ? formatDay(filters.date, "short", when.today) : "Pick a day"}
+              <ChevronIcon className={`size-3.5 transition-transform ${picking ? "-rotate-90" : "rotate-90"}`} />
+            </button>
           </div>
+
+          {picking && (
+            <DayPicker
+              id="day-picker"
+              today={when.today}
+              selected={
+                filters.day === "date"
+                  ? filters.date
+                  : filters.day === "today"
+                    ? when.today
+                    : filters.day === "tomorrow"
+                      ? addDays(when.today, 1)
+                      : null
+              }
+              counts={when.counts}
+              onPick={(date) => {
+                // Today and tomorrow light up their own buttons (and keep links short).
+                update(settleDay({ ...filters, day: "date", date }, when.today));
+                setPicking(false);
+              }}
+              onClose={() => {
+                setPicking(false);
+                pickButton.current?.focus();
+              }}
+            />
+          )}
 
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="mr-0.5 text-sm font-medium text-maroon/75">I&apos;m free</span>
@@ -127,7 +183,7 @@ export function FilterBar({ filters, update, showWhen = false }: { filters: Filt
         {isNarrowed(filters) && (
           <button
             type="button"
-            onClick={() => update({ ...DEFAULT_FILTERS, day: filters.day })}
+            onClick={() => update({ ...DEFAULT_FILTERS, day: filters.day, date: filters.date })}
             className="ml-1 text-sm font-semibold text-maroon underline underline-offset-2 hover:text-plum"
           >
             Clear filters
@@ -152,6 +208,8 @@ export function FilterBar({ filters, update, showWhen = false }: { filters: Filt
     </div>
   );
 }
+
+const pill = (active: boolean) => (active ? "bg-maroon text-cream" : "text-maroon ring-1 ring-maroon/25 hover:bg-maroon/5");
 
 function Chip({
   active,

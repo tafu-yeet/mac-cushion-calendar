@@ -1,10 +1,11 @@
 // What the public pages filter by, kept in the URL so a filtered view can be
 // shared: ?day=tomorrow&time=evening&cat=social,arts&food=1&free=1&all=1&q=karaoke
+// (day can also be a date picked from the calendar: ?day=2026-10-17)
 
 import { categoryOf, isCategory, type Category } from "@/lib/categories";
 import type { PublicEvent } from "@/lib/events";
 import { ASSUMED_LENGTH_MINUTES } from "@/lib/status";
-import { minutesIntoDay, toLocalInputs } from "@/lib/time";
+import { addDays, minutesIntoDay, toLocalInputs } from "@/lib/time";
 
 export const TIME_PRESETS = {
   morning: { label: "Morning", from: "06:00", to: "12:00" },
@@ -15,9 +16,12 @@ export type TimePreset = keyof typeof TIME_PRESETS;
 
 export const DAYS = { today: "Today", tomorrow: "Tomorrow", week: "Next 7 days" } as const;
 export type Day = keyof typeof DAYS;
+/** How far the day picker reaches: this week and the five after it. */
+export const PICKER_WEEKS = 6;
 
 export type Filters = {
-  day: Day;
+  day: Day | "date"; // "date": the day in `date`, picked from the calendar
+  date: string; // "YYYY-MM-DD" when day is "date", otherwise ""
   time: TimePreset | "custom" | null; // null: any time
   from: string; // "HH:MM", used when time is "custom"
   to: string;
@@ -30,6 +34,7 @@ export type Filters = {
 
 export const DEFAULT_FILTERS: Filters = {
   day: "today",
+  date: "",
   time: null,
   from: "",
   to: "",
@@ -45,6 +50,7 @@ export const FILTER_KEYS = ["day", "time", "from", "to", "cat", "food", "free", 
 
 type Params = Record<string, string | string[] | undefined>;
 const HHMM = /^([01]\d|2[0-4]):[0-5]\d$/;
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 export function parseFilters(params: Params): Filters {
   const get = (key: string) => {
@@ -55,8 +61,12 @@ export function parseFilters(params: Params): Filters {
   const from = get("from");
   const to = get("to");
   const custom = HHMM.test(from) && HHMM.test(to) && from < to;
+  const day = get("day");
+  // Only a real date: addDays would turn "2026-02-30" into March 2.
+  const date = ISO_DATE.test(day) && addDays(day, 0) === day ? day : "";
   return {
-    day: get("day") in DAYS ? (get("day") as Day) : "today",
+    day: date ? "date" : day in DAYS ? (day as Day) : "today",
+    date,
     time: time in TIME_PRESETS ? (time as TimePreset) : custom ? "custom" : null,
     from: custom ? from : "",
     to: custom ? to : "",
@@ -68,10 +78,22 @@ export function parseFilters(params: Params): Filters {
   };
 }
 
+/**
+ * A picked date as the day buttons see it: today (or a day that's over, from
+ * an old link) is "today", tomorrow is "tomorrow", and later days stay picked.
+ */
+export function settleDay(f: Filters, today: string): Filters {
+  if (f.day !== "date") return f;
+  if (f.date <= today) return { ...f, day: "today", date: "" };
+  if (f.date === addDays(today, 1)) return { ...f, day: "tomorrow", date: "" };
+  return f;
+}
+
 /** URL parameters for these filters, leaving out defaults. */
 export function filterParams(f: Filters): Record<string, string> {
   const out: Record<string, string> = {};
-  if (f.day !== "today") out.day = f.day;
+  if (f.day === "date") out.day = f.date;
+  else if (f.day !== "today") out.day = f.day;
   if (f.time === "custom") Object.assign(out, { from: f.from, to: f.to });
   else if (f.time) out.time = f.time;
   if (f.categories.length) out.cat = f.categories.join(",");

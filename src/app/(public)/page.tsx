@@ -3,13 +3,13 @@ import { Suspense } from "react";
 
 import { AutoRefresh } from "@/components/auto-refresh";
 import { getEventsBetween } from "@/lib/events";
-import { parseFilters } from "@/lib/filters";
+import { PICKER_WEEKS, parseFilters, settleDay } from "@/lib/filters";
 import { addDays, dayStartIso, todayInCampus } from "@/lib/time";
 
 import { WhatsOn } from "./whats-on";
 
-// Today plus the next six days: everything "Next 7 days" can show.
-const DAYS_LOADED = 7;
+// Six weeks: everything "Next 7 days" and the day picker can show.
+const DAYS_LOADED = PICKER_WEEKS * 7;
 
 export default function HomePage({ searchParams }: PageProps<"/">) {
   return (
@@ -21,16 +21,17 @@ export default function HomePage({ searchParams }: PageProps<"/">) {
   );
 }
 
-/** The week's events and the filters in the URL. Reads the clock, so it runs per request. */
+/** The coming weeks' events and the filters in the URL. Reads the clock, so it runs per request. */
 async function loadFeed(searchParams: PageProps<"/">["searchParams"]) {
   await connection();
   const now = Date.now();
   const today = todayInCampus();
-  const [events, params] = await Promise.all([
-    getEventsBetween(dayStartIso(today), dayStartIso(addDays(today, DAYS_LOADED))),
-    searchParams,
-  ]);
-  return { events, today, now, filters: parseFilters(params) };
+  const filters = settleDay(parseFilters(await searchParams), today);
+  const usual = addDays(today, DAYS_LOADED);
+  // A link to a day past the picker's range loads up to that day.
+  const end = filters.day === "date" && filters.date >= usual ? addDays(filters.date, 1) : usual;
+  const events = await getEventsBetween(dayStartIso(today), dayStartIso(end));
+  return { events, today, now, filters };
 }
 
 async function Feed({ searchParams }: { searchParams: PageProps<"/">["searchParams"] }) {
