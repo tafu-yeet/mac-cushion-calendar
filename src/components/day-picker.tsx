@@ -9,30 +9,25 @@ export type DayCounts = Map<string, { events: number; food: number }>;
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 /**
- * "Which day are you free?": six weeks from this Monday, one button a day,
- * with a dot on days that have something (gold when there's free food).
+ * Six weeks from this Monday, one button a day, with a dot on days that have
+ * something (gold when there's free food).
  */
 export function DayPicker({
-  id,
   today,
   selected,
   counts,
   onPick,
-  onClose,
 }: {
-  id: string;
   today: string;
   selected: string | null;
   counts: DayCounts;
   onPick: (date: string) => void;
-  onClose: () => void;
 }) {
   const start = mondayOf(today);
   const days = Array.from({ length: PICKER_WEEKS * 7 }, (_, i) => addDays(start, i));
 
   return (
-    <div id={id} className="rounded-[24px] bg-canvas p-3 sm:p-4" onKeyDown={(e) => e.key === "Escape" && onClose()}>
-      <p className="px-1 pb-2 font-display text-base font-semibold">Which day are you free?</p>
+    <div>
       <div className="grid grid-cols-7 gap-1 text-center" role="group" aria-label="Pick a day">
         {WEEKDAYS.map((w) => (
           <span key={w} aria-hidden="true" className="pb-1 text-[11px] font-semibold text-maroon/80">

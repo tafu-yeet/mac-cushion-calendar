@@ -1,8 +1,8 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
-import { CATEGORIES, type Category } from "@/lib/categories";
+import { CATEGORIES, categoryOf, type Category } from "@/lib/categories";
 import {
   DAYS,
   DEFAULT_FILTERS,
@@ -19,7 +19,7 @@ import {
 import { addDays, formatDay } from "@/lib/time";
 
 import { DayPicker, type DayCounts } from "./day-picker";
-import { ChevronIcon, SearchIcon, TodayIcon, UtensilsIcon } from "./icons";
+import { ChevronIcon, ClockIcon, SearchIcon, TodayIcon, UtensilsIcon } from "./icons";
 
 /**
  * Filters that start from the URL and write every change back to it without a
@@ -47,10 +47,13 @@ export function useFilters(fromUrl: Filters) {
 }
 
 type Update = (change: Partial<Filters>) => void;
+type Menu = "day" | "time" | "type" | "more";
 
 /**
- * Search, category and cost filters; with `when`, also the day (a preset or one
- * picked from a calendar) and the "I'm free" time window.
+ * Search, then one dropdown per kind of filter, each labelled with what's
+ * chosen: the day (a preset or a date from the calendar) and "I'm free" time
+ * window when `when` is given, event types, and more (cost, members-only).
+ * Free food stays a one-tap chip. The open menu's options appear under the row.
  */
 export function FilterBar({
   filters,
@@ -61,15 +64,36 @@ export function FilterBar({
   update: Update;
   when?: { today: string; counts: DayCounts };
 }) {
-  const [picking, setPicking] = useState(false);
-  const pickButton = useRef<HTMLButtonElement>(null);
+  const [open, setOpen] = useState<Menu | null>(null);
+  const bar = useRef<HTMLDivElement>(null);
+
+  // A tap or click anywhere outside the filters closes the open menu.
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (!bar.current?.contains(e.target as Node)) setOpen(null);
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [open]);
+
+  /** Closes the open menu and puts focus back on its button. */
+  const close = () => {
+    if (open) document.getElementById(`filter-${open}-button`)?.focus();
+    setOpen(null);
+  };
+  const toggle = (menu: Menu) => setOpen(open === menu ? null : menu);
+
   const toggleCategory = (key: Category) =>
     update({
       categories: filters.categories.includes(key) ? filters.categories.filter((c) => c !== key) : [...filters.categories, key],
     });
+  const moreCount = Number(filters.freeEntry) + Number(filters.limited);
 
   return (
-    <div className="flex flex-col gap-3">
+    <div ref={bar} className="flex flex-col gap-3" onKeyDown={(e) => {
+        if (e.key === "Escape" && open) close();
+      }}>
       <label className="relative block">
         <span className="sr-only">Search events</span>
         <SearchIcon className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-maroon/50" />
@@ -82,104 +106,39 @@ export function FilterBar({
         />
       </label>
 
-      {when && (
-        <>
-          <div className="flex flex-wrap gap-1.5">
-            <div className="flex gap-1.5" role="radiogroup" aria-label="Day">
-              {(Object.keys(DAYS) as Day[]).map((day) => (
-                <button
-                  key={day}
-                  type="button"
-                  role="radio"
-                  aria-checked={filters.day === day}
-                  onClick={() => update({ day, date: "" })}
-                  className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors ${pill(filters.day === day)}`}
-                >
-                  {DAYS[day]}
-                </button>
-              ))}
-            </div>
-            <button
-              ref={pickButton}
-              type="button"
-              aria-expanded={picking}
-              aria-controls="day-picker"
-              onClick={() => setPicking(!picking)}
-              className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors ${pill(
-                filters.day === "date",
-              )}`}
-            >
-              <TodayIcon className="size-4" />
-              {filters.day === "date" ? formatDay(filters.date, "short", when.today) : "Pick a day"}
-              <ChevronIcon className={`size-3.5 transition-transform ${picking ? "-rotate-90" : "rotate-90"}`} />
-            </button>
-          </div>
-
-          {picking && (
-            <DayPicker
-              id="day-picker"
-              today={when.today}
-              selected={
-                filters.day === "date"
-                  ? filters.date
-                  : filters.day === "today"
-                    ? when.today
-                    : filters.day === "tomorrow"
-                      ? addDays(when.today, 1)
-                      : null
-              }
-              counts={when.counts}
-              onPick={(date) => {
-                // Today and tomorrow light up their own buttons (and keep links short).
-                update(settleDay({ ...filters, day: "date", date }, when.today));
-                setPicking(false);
-              }}
-              onClose={() => {
-                setPicking(false);
-                pickButton.current?.focus();
-              }}
-            />
-          )}
-
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="mr-0.5 text-sm font-medium text-maroon/75">I&apos;m free</span>
-            <Chip active={!filters.time} onClick={() => update({ time: null })}>
-              Any time
-            </Chip>
-            {(Object.keys(TIME_PRESETS) as TimePreset[]).map((key) => (
-              <Chip key={key} active={filters.time === key} onClick={() => update({ time: key })}>
-                {TIME_PRESETS[key].label}
-              </Chip>
-            ))}
-            <Chip
-              active={filters.time === "custom"}
-              onClick={() => update({ time: "custom", from: filters.from || "14:00", to: filters.to || "17:00" })}
-            >
-              From… to…
-            </Chip>
-            {filters.time === "custom" && (
-              <span className="flex items-center gap-1.5 text-sm text-maroon/75">
-                <TimeInput label="From" value={filters.from} onChange={(from) => update({ from })} />
-                to
-                <TimeInput label="To" value={filters.to} onChange={(to) => update({ to })} />
-              </span>
-            )}
-          </div>
-        </>
-      )}
-
-      {/* Tags any event can have, whatever its type. */}
       <div className="flex flex-wrap items-center gap-1.5">
+        {when && (
+          <>
+            <MenuButton menu="day" name="Day" open={open} onToggle={toggle} active={filters.day !== "today"} icon={<TodayIcon className="size-4" />}>
+              {filters.day === "date" ? formatDay(filters.date, "short", when.today) : DAYS[filters.day]}
+            </MenuButton>
+            <MenuButton menu="time" name="Time" open={open} onToggle={toggle} active={!!filters.time} icon={<ClockIcon className="size-4" />}>
+              {timeLabel(filters)}
+            </MenuButton>
+          </>
+        )}
         <Chip active={filters.food} onClick={() => update({ food: !filters.food })} food>
           <UtensilsIcon className="size-3.5" />
           Free food
         </Chip>
-        <Chip active={filters.freeEntry} onClick={() => update({ freeEntry: !filters.freeEntry })}>
-          Free entry
-        </Chip>
-        <Chip active={filters.limited} onClick={() => update({ limited: !filters.limited })} describedBy="members-only-hint">
-          Members-only too
-        </Chip>
+        <MenuButton menu="type" name="Type" open={open} onToggle={toggle} active={filters.categories.length > 0}>
+          {filters.categories.length === 0
+            ? "All types"
+            : filters.categories.length === 1
+              ? categoryOf(filters.categories[0]).label
+              : `${filters.categories.length} types`}
+        </MenuButton>
+        <MenuButton menu="more" name="" open={open} onToggle={toggle} active={moreCount > 0}>
+          More
+          {moreCount > 0 && (
+            <>
+              <span aria-hidden="true" className="rounded-full bg-cream px-1.5 text-xs font-bold text-maroon">
+                {moreCount}
+              </span>
+              <span className="sr-only">, {moreCount} on</span>
+            </>
+          )}
+        </MenuButton>
         {isNarrowed(filters) && (
           <button
             type="button"
@@ -190,26 +149,219 @@ export function FilterBar({
           </button>
         )}
       </div>
-      <p id="members-only-hint" className="-mt-1.5 text-xs text-maroon/80">
-        Events only for a club&apos;s members or one program are hidden unless you add them.
-      </p>
 
-      <div className="flex items-center gap-2">
-        <span className="shrink-0 text-sm font-medium text-maroon/85">Type</span>
-        <div className="-mr-4 flex gap-1.5 overflow-x-auto pr-4 pb-1 [scrollbar-width:none] sm:mr-0 sm:flex-wrap sm:pr-0 [&::-webkit-scrollbar]:hidden">
-          {CATEGORIES.map((c) => (
-            <Chip key={c.key} active={filters.categories.includes(c.key)} onClick={() => toggleCategory(c.key)}>
-              <span className={`size-2.5 rounded-full ${c.tone.swatch}`} />
-              {c.label}
+      {open === "day" && when && (
+        <Panel menu="day" title="Which day are you free?" onDone={close}>
+          <div className="mb-3 flex flex-wrap gap-1.5" role="radiogroup" aria-label="Day">
+            {(Object.keys(DAYS) as Day[]).map((day) => (
+              <Option
+                key={day}
+                checked={filters.day === day}
+                onClick={() => {
+                  update({ day, date: "" });
+                  close();
+                }}
+              >
+                {DAYS[day]}
+              </Option>
+            ))}
+          </div>
+          <DayPicker
+            today={when.today}
+            selected={
+              filters.day === "date"
+                ? filters.date
+                : filters.day === "today"
+                  ? when.today
+                  : filters.day === "tomorrow"
+                    ? addDays(when.today, 1)
+                    : null
+            }
+            counts={when.counts}
+            onPick={(date) => {
+              // Today and tomorrow light up their own options (and keep links short).
+              update(settleDay({ ...filters, day: "date", date }, when.today));
+              close();
+            }}
+          />
+        </Panel>
+      )}
+
+      {open === "time" && (
+        <Panel menu="time" title="When are you free?" onDone={close}>
+          <div className="flex flex-wrap items-center gap-1.5" role="radiogroup" aria-label="Time">
+            <Option
+              checked={!filters.time}
+              onClick={() => {
+                update({ time: null });
+                close();
+              }}
+            >
+              Any time
+            </Option>
+            {(Object.keys(TIME_PRESETS) as TimePreset[]).map((key) => (
+              <Option
+                key={key}
+                checked={filters.time === key}
+                onClick={() => {
+                  update({ time: key });
+                  close();
+                }}
+              >
+                {TIME_PRESETS[key].label}
+              </Option>
+            ))}
+            <Option
+              checked={filters.time === "custom"}
+              onClick={() => update({ time: "custom", from: filters.from || "14:00", to: filters.to || "17:00" })}
+            >
+              From… to…
+            </Option>
+          </div>
+          {filters.time === "custom" && (
+            <p className="mt-3 flex items-center gap-1.5 text-sm text-maroon/80">
+              <TimeInput label="From" value={filters.from} onChange={(from) => update({ from })} />
+              to
+              <TimeInput label="To" value={filters.to} onChange={(to) => update({ to })} />
+            </p>
+          )}
+        </Panel>
+      )}
+
+      {open === "type" && (
+        <Panel menu="type" title="What kind of event?" onDone={close}>
+          <div className="flex flex-wrap gap-1.5">
+            <Chip active={filters.categories.length === 0} onClick={() => update({ categories: [] })}>
+              All types
             </Chip>
-          ))}
-        </div>
-      </div>
+            {CATEGORIES.map((c) => (
+              <Chip key={c.key} active={filters.categories.includes(c.key)} onClick={() => toggleCategory(c.key)}>
+                <span className={`size-2.5 rounded-full ${c.tone.swatch}`} />
+                {c.label}
+              </Chip>
+            ))}
+          </div>
+        </Panel>
+      )}
+
+      {open === "more" && (
+        <Panel menu="more" title="More filters" onDone={close}>
+          <div className="flex flex-col gap-3">
+            <Toggle
+              active={filters.freeEntry}
+              onClick={() => update({ freeEntry: !filters.freeEntry })}
+              label="Free entry"
+              hint="Only events that cost nothing to get into."
+              hintId="free-entry-hint"
+            />
+            <Toggle
+              active={filters.limited}
+              onClick={() => update({ limited: !filters.limited })}
+              label="Members-only too"
+              hint="Events only for a club's members or one program are hidden unless you add them."
+              hintId="members-only-hint"
+            />
+          </div>
+        </Panel>
+      )}
     </div>
   );
 }
 
-const pill = (active: boolean) => (active ? "bg-maroon text-cream" : "text-maroon ring-1 ring-maroon/25 hover:bg-maroon/5");
+/** "Any time", "Evening", or "2 PM–5 PM". */
+function timeLabel(f: Filters): string {
+  if (!f.time) return "Any time";
+  if (f.time !== "custom") return TIME_PRESETS[f.time].label;
+  const clock = (hhmm: string) => {
+    const [h, m] = hhmm.split(":").map(Number);
+    return `${h % 12 || 12}${m ? `:${String(m).padStart(2, "0")}` : ""} ${h < 12 || h === 24 ? "AM" : "PM"}`;
+  };
+  return `${clock(f.from)}–${clock(f.to)}`;
+}
+
+/** A dropdown's button: what's chosen, filled in maroon once it narrows the list. */
+function MenuButton({
+  menu,
+  name,
+  open,
+  onToggle,
+  active,
+  icon,
+  children,
+}: {
+  menu: Menu;
+  name: string; // read before the choice by screen readers: "Day: Tomorrow"
+  open: Menu | null;
+  onToggle: (menu: Menu) => void;
+  active: boolean;
+  icon?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  const expanded = open === menu;
+  return (
+    <button
+      id={`filter-${menu}-button`}
+      type="button"
+      aria-expanded={expanded}
+      aria-controls={`filter-${menu}`}
+      onClick={() => onToggle(menu)}
+      className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium ring-1 transition-colors ${
+        active ? "bg-maroon text-cream ring-maroon" : expanded ? "bg-maroon/5 text-maroon ring-maroon/45" : "text-maroon ring-maroon/25 hover:bg-maroon/5"
+      }`}
+    >
+      {icon}
+      {name && <span className="sr-only">{name}: </span>}
+      {children}
+      <ChevronIcon className={`size-3.5 transition-transform ${expanded ? "-rotate-90" : "rotate-90"}`} />
+    </button>
+  );
+}
+
+/** The open dropdown's options, under the row of buttons. */
+function Panel({ menu, title, onDone, children }: { menu: Menu; title: string; onDone: () => void; children: React.ReactNode }) {
+  return (
+    <div id={`filter-${menu}`} className="rounded-[24px] bg-canvas p-3 sm:p-4">
+      <div className="mb-2.5 flex items-center justify-between gap-3 px-1">
+        <p className="font-display text-base font-semibold">{title}</p>
+        <button type="button" onClick={onDone} className="rounded-full px-2.5 py-0.5 text-sm font-semibold text-maroon underline-offset-2 hover:underline">
+          Done
+        </button>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+/** One choice of several (a day, a time window). */
+function Option({ checked, onClick, children }: { checked: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={checked}
+      onClick={onClick}
+      className={`rounded-full px-3 py-1 text-sm font-medium ring-1 transition-colors ${
+        checked ? "bg-maroon text-cream ring-maroon" : "bg-panel text-maroon ring-maroon/25 hover:bg-butter/70"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+/** An on/off filter with a line saying what it does. */
+function Toggle({ active, onClick, label, hint, hintId }: { active: boolean; onClick: () => void; label: string; hint: string; hintId: string }) {
+  return (
+    <div className="flex flex-col items-start gap-1">
+      <Chip active={active} onClick={onClick} describedBy={hintId}>
+        {label}
+      </Chip>
+      <p id={hintId} className="px-1 text-xs text-maroon/80">
+        {hint}
+      </p>
+    </div>
+  );
+}
 
 function Chip({
   active,
@@ -225,7 +377,7 @@ function Chip({
   children: React.ReactNode;
 }) {
   const on = food ? "bg-gold text-maroon ring-gold" : "bg-maroon text-cream ring-maroon";
-  const off = food ? "bg-gold/25 text-maroon ring-gold hover:bg-gold/40" : "text-maroon ring-maroon/25 hover:bg-maroon/5";
+  const off = food ? "bg-gold/25 text-maroon ring-gold hover:bg-gold/40" : "bg-panel text-maroon ring-maroon/25 hover:bg-maroon/5";
   return (
     <button
       type="button"
