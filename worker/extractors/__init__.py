@@ -34,7 +34,8 @@ def new_pipeline(check: bool = True) -> TwoStageExtractor:
     if check and settings.VERIFY_MODEL.lower() != "none":
         from .claude import ClaudeExtractor
 
-        verifier = ClaudeExtractor(settings.VERIFY_MODEL, cache=False)
+        # The check reads every post with events, usually several an hour, so its cache stays warm.
+        verifier = ClaudeExtractor(settings.VERIFY_MODEL)
         if settings.TIEBREAK_MODEL.lower() != "none":
             tiebreak = ClaudeExtractor(settings.TIEBREAK_MODEL, cache=False)
     return TwoStageExtractor(new_extractor(), verifier, tiebreak)

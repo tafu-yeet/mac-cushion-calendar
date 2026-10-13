@@ -24,8 +24,11 @@ from .base import (
 FALLBACK_BETA = "server-side-fallback-2026-07-01"
 MAX_TOKENS = 16000
 # The system prompt and output schema (~2,250 tokens) are identical on every
-# call, so they're cached. Posts trickle in a few per hour, which outlives the
-# default 5-minute cache, so use the 1-hour TTL (writes cost 2x, reads ~0.1x).
+# call (the calendar in it changes once a day), so they're cached. Posts trickle
+# in a few per hour, which outlives the default 5-minute cache, so use the
+# 1-hour TTL (writes cost 2x, reads 0.1x, or 0.05x on Sonnet and Opus 5.5).
+# A model only caches prompts above its minimum: 512 tokens for the 5.5 models,
+# but 4,096 for Haiku 4.5, so on Haiku 4.5 this marker does nothing.
 CACHE_CONTROL = {"type": "ephemeral", "ttl": "1h"}
 CACHE_WRITE_MULTIPLIER = 2.0
 

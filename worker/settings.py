@@ -63,7 +63,8 @@ MODEL_PRICES = {
     "claude-opus-5-5": (4.00, 20.00, 0.20),
     "claude-opus-5": (5.00, 25.00, 0.50),
     "claude-opus-4-8": (5.00, 25.00, 0.50),
-    "claude-sonnet-5-5": (2.00, 10.00, 0.20),
+    "claude-sonnet-5-5": (2.00, 10.00, 0.10),
+    "claude-haiku-5-5": (0.10, 0.50, 0.01),  # prompts up to 100k tokens
     "claude-haiku-4-5": (1.00, 5.00, 0.10),
     "gemini-3.8-flash": (0.0, 0.0, 0.0),
 }
