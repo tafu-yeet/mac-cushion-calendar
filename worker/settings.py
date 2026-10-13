@@ -34,14 +34,20 @@ FETCH_BACKEND = env("FETCH_BACKEND", "auto")
 # Which LLM reads posts: "claude" or "gemini".
 EXTRACTOR = env("EXTRACTOR", "claude")
 
-# First pass: reads every new post.
-CLAUDE_MODEL = env("CLAUDE_MODEL", "claude-haiku-4-5")
-CLAUDE_EFFORT = env("CLAUDE_EFFORT", "medium")  # ignored by Haiku 4.5
+# First pass: reads every new post. At xhigh effort Haiku 5.5 matched Haiku 4.5 on the
+# 73 Opus-checked posts for a seventh of the cost (2026-10-13).
+CLAUDE_MODEL = env("CLAUDE_MODEL", "claude-haiku-5-5")
+# How hard the first pass thinks (Haiku 4.5 ignores it). On the 73 Opus-checked posts Haiku 5.5
+# missed 3 of 11 free-food posts at medium and 1 at xhigh, for 0.02 cents more a post at xhigh.
+# Not read from CLAUDE_EFFORT: Claude Code sets that for itself, so runs started from it would differ.
+CLAUDE_EFFORT = env("EXTRACT_EFFORT", "xhigh")
 # Second pass: rechecks every post where the first pass found free food, and
 # its dates and times win. "none" turns the check off.
 VERIFY_MODEL = env("VERIFY_MODEL", "claude-sonnet-5-5")
 # Tie-breaker: reads a post again only when the first two readings disagree. "none" turns it off.
 TIEBREAK_MODEL = env("TIEBREAK_MODEL", "claude-opus-5-5")
+# How hard the check and the tie-breaker think.
+CHECK_EFFORT = env("CHECK_EFFORT", "medium")
 
 # Events at or above these confidences are published without review when the
 # check agreed and nothing similar is known (see auto_approve.py). Free food

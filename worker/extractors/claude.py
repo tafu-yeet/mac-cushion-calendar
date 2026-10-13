@@ -33,24 +33,29 @@ CACHE_CONTROL = {"type": "ephemeral", "ttl": "1h"}
 CACHE_WRITE_MULTIPLIER = 2.0
 
 
-def model_options(model: str) -> dict:
+def model_options(model: str, effort: str) -> dict:
     """Request options that differ by model."""
     if model.startswith("claude-haiku-4-5"):
         # Haiku 4.5 rejects the effort parameter and has no server-side
         # fallback; without a thinking config it answers without thinking.
         return {}
-    return {"betas": [FALLBACK_BETA], "fallbacks": "default", "output_config": {"effort": CLAUDE_EFFORT}}
+    if model.startswith("claude-haiku"):
+        # Haiku 5.5 takes effort but has no server-side fallback: a refusal stays a refusal.
+        return {"output_config": {"effort": effort}}
+    return {"betas": [FALLBACK_BETA], "fallbacks": "default", "output_config": {"effort": effort}}
 
 
 class ClaudeExtractor:
     name = "claude"
 
-    def __init__(self, model: str | None = None, cache: bool = True) -> None:
+    def __init__(self, model: str | None = None, cache: bool = True, effort: str | None = None) -> None:
         """`cache=False` for a model called only now and then: its cache would
-        expire between calls, so every call would pay the 2x write."""
+        expire between calls, so every call would pay the 2x write. `effort`
+        defaults to the first pass's."""
         self.client = anthropic.Anthropic()
         self.model = model or CLAUDE_MODEL
         self.cache = cache
+        self.effort = effort or CLAUDE_EFFORT
 
     def extract(
         self, *, club_name: str, username: str, posted_at: datetime, caption: str, image: bytes | None
@@ -68,7 +73,7 @@ class ClaudeExtractor:
             response = self.client.beta.messages.parse(
                 model=self.model,
                 max_tokens=MAX_TOKENS,
-                **model_options(self.model),
+                **model_options(self.model, self.effort),
                 system=[{"type": "text", "text": system_prompt(), **({"cache_control": CACHE_CONTROL} if self.cache else {})}],
                 messages=[{"role": "user", "content": content}],
                 output_format=PostExtraction,

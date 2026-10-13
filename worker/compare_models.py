@@ -7,7 +7,7 @@ stopped by a quota resumes where it left off.
 
 Usage (from worker/):
     python compare_models.py --pipeline                     # first pass + date check
-    python compare_models.py --extractor claude --model claude-haiku-4-5
+    python compare_models.py --extractor claude --model claude-haiku-5-5
     python compare_models.py --extractor gemini [--limit N]
 """
 
