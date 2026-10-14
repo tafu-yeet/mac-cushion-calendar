@@ -21,6 +21,7 @@ export function SiteNavLinks({ active }: { active?: string }) {
         <Link
           key={href}
           href={href}
+          data-tour={href === "/week" ? "calendar" : undefined}
           className={`whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm font-semibold transition-colors ${
             active && matches(active)
               ? "bg-maroon text-cream"

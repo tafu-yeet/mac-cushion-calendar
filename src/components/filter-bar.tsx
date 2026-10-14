@@ -94,7 +94,7 @@ export function FilterBar({
     <div ref={bar} className="flex flex-col gap-3" onKeyDown={(e) => {
         if (e.key === "Escape" && open) close();
       }}>
-      <label className="relative block">
+      <label className="relative block" data-tour="search">
         <span className="sr-only">Search events</span>
         <SearchIcon className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-maroon/50" />
         <input
@@ -117,7 +117,7 @@ export function FilterBar({
             </MenuButton>
           </>
         )}
-        <Chip active={filters.food} onClick={() => update({ food: !filters.food })} food>
+        <Chip active={filters.food} onClick={() => update({ food: !filters.food })} food tourId="food">
           <UtensilsIcon className="size-3.5" />
           Free food
         </Chip>
@@ -301,6 +301,7 @@ function MenuButton({
   return (
     <button
       id={`filter-${menu}-button`}
+      data-tour={menu}
       type="button"
       aria-expanded={expanded}
       aria-controls={`filter-${menu}`}
@@ -368,12 +369,14 @@ function Chip({
   onClick,
   food = false,
   describedBy,
+  tourId,
   children,
 }: {
   active: boolean;
   onClick: () => void;
   food?: boolean;
   describedBy?: string;
+  tourId?: string; // what the site tour points at
   children: React.ReactNode;
 }) {
   const on = food ? "bg-gold text-maroon ring-gold" : "bg-maroon text-cream ring-maroon";
@@ -383,6 +386,7 @@ function Chip({
       type="button"
       aria-pressed={active}
       aria-describedby={describedBy}
+      data-tour={tourId}
       onClick={onClick}
       className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium ring-1 transition-colors ${active ? on : off}`}
     >

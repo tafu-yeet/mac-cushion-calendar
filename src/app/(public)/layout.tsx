@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { SiteNav, SiteNavLinks } from "@/components/site-nav";
+import { TourButton } from "@/components/site-tour";
 import { campus } from "@/lib/campus";
 
 // The wordmark is lowercase, like the logo: "mac cushion" over "calendar" on phones.
@@ -31,8 +32,9 @@ export default function PublicLayout({ children }: LayoutProps<"/">) {
 
       <main className="flex-1">{children}</main>
 
-      <footer>
-        <p className="mx-auto max-w-5xl px-4 py-8 text-xs leading-relaxed text-maroon/65">
+      <footer className="mx-auto w-full max-w-5xl px-4 py-8">
+        <TourButton className="text-sm font-semibold text-maroon underline underline-offset-2 hover:text-plum" />
+        <p className="mt-3 text-xs leading-relaxed text-maroon/65">
           A student project, not affiliated with {campus.school}. Events are read from clubs&apos; public Instagram
           posts by AI and double-checked before they appear here. Plans change, so check the club&apos;s post before
           you go.

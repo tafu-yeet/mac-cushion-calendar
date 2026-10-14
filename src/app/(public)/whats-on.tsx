@@ -7,6 +7,7 @@ import type { DayCounts } from "@/components/day-picker";
 import { EventCard } from "@/components/event-card";
 import { FilterBar, useFilters } from "@/components/filter-bar";
 import { ChevronIcon } from "@/components/icons";
+import { SiteTour } from "@/components/site-tour";
 import { useNow } from "@/components/use-now";
 import { campus } from "@/lib/campus";
 import type { PublicEvent } from "@/lib/events";
@@ -73,7 +74,7 @@ export function WhatsOn({ events, today, now: serverNow, fromUrl }: { events: Pu
       </div>
       <p className="-mt-2 text-maroon/75">Every public {campus.schoolShortName} event in one place, from club posts.</p>
 
-      <section className="-mx-1 flex flex-col gap-5 rounded-[32px] bg-panel p-3 shadow-sm sm:mx-0 sm:p-6">
+      <section data-tour="events" className="-mx-1 flex flex-col gap-5 rounded-[32px] bg-panel p-3 shadow-sm sm:mx-0 sm:p-6">
         <div className="flex items-center justify-between gap-3">
           <h1 className="font-display text-xl font-semibold lowercase">
             What&apos;s on {week ? "this week" : dayName}
@@ -112,6 +113,8 @@ export function WhatsOn({ events, today, now: serverNow, fromUrl }: { events: Pu
           </Section>
         )}
       </section>
+
+      <SiteTour />
     </div>
   );
 }
