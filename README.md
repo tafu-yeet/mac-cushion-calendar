@@ -60,7 +60,7 @@ What that means for how it's built:
    disagreements become review notes (`worker/extractors/two_stage.py`).
 4. **Review:** an event publishes itself when Sonnet read it the same way as
    Haiku (or, where they disagreed, an Opus tie-breaker sided with Sonnet), it
-   has a start time, the confidence is 0.9+ with free food or 0.75+ without,
+   has a start time, the confidence is 0.85+ with free food or 0.75+ without,
    and it isn't another club's event or an off-campus collab. Copies sort
    themselves out (a copy of a published event, the less complete of two
    pending copies, a teaser once the dated post arrives, and a date a newer

@@ -54,7 +54,8 @@ CHECK_EFFORT = env("CHECK_EFFORT", "medium")
 # needs more: both models can wrongly assume food is free, while for other
 # events the risk is the date, which the check covers. "none" for the first
 # sends every event to the review queue.
-_auto = env("AUTO_APPROVE_MIN_CONFIDENCE", "0.9")
+# 0.85 since 2026-10-19: Haiku 5.5 rates clear free food 0.85 where Haiku 4.5 said 0.9.
+_auto = env("AUTO_APPROVE_MIN_CONFIDENCE", "0.85")
 AUTO_APPROVE_MIN_CONFIDENCE = None if _auto.lower() == "none" else float(_auto)
 AUTO_APPROVE_OTHER_MIN_CONFIDENCE = float(env("AUTO_APPROVE_OTHER_MIN_CONFIDENCE", "0.75"))
 
