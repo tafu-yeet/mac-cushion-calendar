@@ -75,7 +75,9 @@ What that means for how it's built:
    links wait at `/admin/clubs`). `worker/merge.py` then matches Rubric events
    to Instagram ones (same club, same day, starting within an hour) and takes
    each field from the more trustworthy source: Rubric for time, place, price
-   and tickets; Instagram for free food, description and image. Disagreements
+   and tickets; Instagram for free food, description and image. Rubric events
+   with no Instagram match publish on their own once they pass a duplicate
+   check and their club is on our list (otherwise they wait). Disagreements
    and unsure matches wait at `/admin` ("Needs a look"); a deleted post or an
    event gone from Rubric is flagged, never deleted. `RUBRIC_MERGE=apply`
    (the default) saves the merge; `RUBRIC_MERGE=report` only prints it

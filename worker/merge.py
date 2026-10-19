@@ -22,9 +22,14 @@ disagreement (start or end more than 15 minutes apart, different rooms, a
 different price) changes nothing: both values go to events.conflicts for a
 person. Small differences take Rubric's value.
 
-Rubric-only events are added as pending events (no post) when their club is
-mapped. A deleted Instagram post doesn't cancel an event, and neither does an
-event dropping off Rubric: both are flagged, never deleted.
+A Rubric event that matches nothing becomes an event of its own (no post) and
+is published straight away, unless: it may be a duplicate (a similar name the
+same day from any club, the same club within a few hours, an undecided possible
+match, or one a person rejected); or its club isn't on our list, or the link to
+it is unconfirmed; or it has started or left Rubric. Then it waits, the reason
+in its review notes. A person's approval or rejection always stands. A deleted
+Instagram post doesn't cancel an event, and neither does an event dropping off
+Rubric: both are flagged, never deleted.
 
 Matching from scratch each run gives the same answer, so running it again only
 writes what changed.
@@ -46,7 +51,7 @@ from datetime import date, datetime, timedelta, timezone
 
 from supabase import Client
 
-from auto_approve import name_similarity, word_overlap
+from auto_approve import name_similarity, similar_names, word_overlap
 from clean import clean_place
 from extractors.two_stage import GENERIC_PLACE_WORDS, same_place
 from rubric import acronyms, aliases_for, fetch_all
@@ -117,7 +122,8 @@ def day_bounds(start: date, end: date) -> tuple[str, str]:
 EVENT_COLUMNS = (
     "id, status, name, club_id, hosted_by, starts_at, ends_at, start_time_known, location, has_free_food, "
     "food_description, cost, price, open_to_all, confidence, reviewed_fields, reviewed_by, conflicts, flags, "
-    "rubric_eid, source, signup_required, food_source, ticket_url, image_url, description, post_id, "
+    "rubric_eid, source, signup_required, food_source, ticket_url, image_url, description, post_id, review_notes, "
+    "category, event_type, reason, auto_approved, "
     "posts(posted_at, caption, deleted_at, permalink), clubs(instagram_username, name)"
 )
 
@@ -358,6 +364,34 @@ def rubric_only_row(r: dict, club_id: int, society: Society) -> dict:
     }
 
 
+DUPLICATE_WINDOW_MIN = 180  # the same club's events this close on one day may be one event
+
+
+def rubric_duplicate(r: dict, events: list[dict], society: Society | None, match_waiting: bool) -> str | None:
+    """Why a Rubric event that matched nothing may still be an event we list, or None.
+
+    Checked before publishing it on its own: a similar name the same day from any
+    club (a hub's repost, a co-host's post), the same club the same day within a
+    few hours (Instagram may have the time wrong), or a possible match that a
+    person hasn't decided yet.
+    """
+    if match_waiting:
+        return "possible match with an Instagram event waiting for a person"
+    day, own = local_day(r["starts_at"]), set(society.clubs) if society else set()
+    title = strip_club_words(r["title"], society)
+    for e in events:
+        if not e["starts_at"] or local_day(e["starts_at"]) != day:
+            continue
+        same_club = e["club_id"] in own
+        close = not e["start_time_known"] or minutes_apart(r["starts_at"], e["starts_at"]) <= DUPLICATE_WINDOW_MIN
+        if similar_names(title, strip_club_words(e["name"], society)) or (same_club and close):
+            who = (e.get("clubs") or {}).get("instagram_username", "?")
+            if e["status"] == "rejected":
+                return f"looks like #{e['id']} “{e['name']}” (@{who}), which a person rejected"
+            return f"may be the same as #{e['id']} “{e['name']}” (@{who})"
+    return None
+
+
 # Planning --------------------------------------------------------------------------
 
 @dataclass
@@ -369,7 +403,8 @@ class Plan:
     societies: dict[int, Society]
     merged: list[tuple[dict, dict, float, dict, Change]] = field(default_factory=list)
     review: list[tuple[dict, dict, float, dict]] = field(default_factory=list)
-    rubric_only: list[tuple[dict, int | None, dict | None]] = field(default_factory=list)  # (rubric, club_id, existing row)
+    # (rubric, club_id, existing row, why it can't be published or None)
+    rubric_only: list[tuple[dict, int | None, dict | None, str | None]] = field(default_factory=list)
     instagram_only: list[dict] = field(default_factory=list)
     copies: list[tuple[dict, dict, float]] = field(default_factory=list)
     flags: dict[int, set] = field(default_factory=dict)  # event id -> flags for unmatched events
@@ -390,7 +425,15 @@ def plan(sb: Client, start: date, end: date) -> Plan:
     p = Plan(start, end, rubric, events, societies)
 
     instagram = [e for e in events.values() if e["source"] != "rubric"]
-    rubric_rows = {e["rubric_eid"]: e for e in events.values() if e["source"] == "rubric"}
+    # Every status: a Rubric-only event a person rejected must stay rejected, not come back.
+    rubric_rows = {
+        e["rubric_eid"]: e for e in fetch_all(lambda a, b: sb.table("events").select(EVENT_COLUMNS)
+            .eq("source", "rubric").gte("starts_at", lo).lt("starts_at", hi).range(a, b))
+    }
+    waiting = {m["rubric_eid"] for m in sb.table("event_matches").select("rubric_eid").eq("status", "review").execute().data}
+    # Events a person rejected: a Rubric listing of the same event mustn't publish around them.
+    rejected = fetch_all(lambda a, b: sb.table("events").select(EVENT_COLUMNS).eq("status", "rejected")
+        .not_.is_("reviewed_by", "null").gte("starts_at", lo).lt("starts_at", hi).range(a, b))
     pairs = []
     for r in rubric.values():
         for e in instagram:
@@ -430,7 +473,19 @@ def plan(sb: Client, start: date, end: date) -> Plan:
         # an unconfirmed one waits for a person on the Clubs page.
         society = societies.get(r["society_id"])
         confirmed = [cid for cid, w in (society.clubs if society else {}).items() if w == 1.0]
-        p.rubric_only.append((r, confirmed[0] if confirmed else None, rubric_rows.get(r["eid"])))
+        club_id = confirmed[0] if confirmed else None
+        others = [e for e in [*events.values(), *rejected] if e.get("rubric_eid") != r["eid"]]
+        hold = rubric_duplicate(r, others, society, r["eid"] in waiting)
+        if not hold:
+            if not society or not society.clubs:
+                hold = "club not on our list"
+            elif not club_id:
+                hold = "club link to confirm (admin Clubs page)"
+            elif r["missing_since"]:
+                hold = "no longer listed on Rubric"
+            elif datetime.fromisoformat(r["starts_at"]) <= datetime.now(timezone.utc):
+                hold = "already started"
+        p.rubric_only.append((r, club_id, rubric_rows.get(r["eid"]), hold))
 
     for e in instagram:
         if e["id"] in used_e:
@@ -471,19 +526,29 @@ def apply(sb: Client, p: Plan) -> dict[str, int]:
         sb.table("event_matches").upsert({"rubric_eid": r["eid"], "event_id": e["id"], "score": score, "reasons": why,
                                           "status": "review"}, on_conflict="rubric_eid,event_id").execute()
         done["to_review"] += 1
-    for r, club_id, existing in p.rubric_only:
+    now = datetime.now(timezone.utc).isoformat()
+    for r, club_id, existing, hold in p.rubric_only:
         if club_id is None:
-            continue
+            continue  # not one of our clubs (yet): nothing to file it under
         row = rubric_only_row(r, club_id, p.societies[r["society_id"]])
+        if hold:
+            row["review_notes"] = [*row["review_notes"], f"Not published automatically: {hold}."]
+        # Published straight away when nothing holds it back: Rubric is the MSU's own listing.
+        status = {"status": "pending" if hold else "approved", "auto_approved": not hold,
+                  "reviewed_at": None if hold else now}
         if existing is None:
-            sb.table("events").insert(row | {"status": "pending"}).execute()
-            done["added"] += 1
-        else:
-            reviewed = set(existing["reviewed_fields"] or [])
-            update = {k: v for k, v in row.items() if k not in reviewed and existing.get(k) != v and k in existing}
-            if update:
-                sb.table("events").update(update).eq("id", existing["id"]).execute()
-                done["updated"] += 1
+            sb.table("events").insert(row | status).execute()
+            done["published" if not hold else "added"] = done.get("published" if not hold else "added", 0) + 1
+            continue
+        reviewed = set(existing["reviewed_fields"] or [])
+        update = {k: v for k, v in row.items() if k not in reviewed and existing.get(k) != v and k in existing}
+        # A person's approval or rejection stands; the worker only moves what it decided itself.
+        if not existing["reviewed_by"] and existing["status"] != "rejected" and existing["status"] != status["status"]:
+            update |= status
+            done["published" if not hold else "unpublished"] = done.get("published" if not hold else "unpublished", 0) + 1
+        if update:
+            sb.table("events").update(update).eq("id", existing["id"]).execute()
+            done["updated"] += 1
     for event_id, flags in p.flags.items():
         e = p.events[event_id]
         if not flags <= set(e["flags"] or []):
@@ -517,7 +582,9 @@ def report(p: Plan) -> str:
         f"{sum(e['source'] != 'rubric' for e in p.events.values())}")
     out(f"  matched (both sources): {len(p.merged)}")
     out(f"  possible matches for a person: {len(p.review)}")
-    out(f"  Rubric only: {len(p.rubric_only)} ({len(mapped)} with a mapped club, {len(p.rubric_only) - len(mapped)} without)")
+    publish = sum(1 for x in p.rubric_only if not x[3])
+    out(f"  Rubric only: {len(p.rubric_only)} ({publish} to publish, {len(p.rubric_only) - publish} held; "
+        f"{len(p.rubric_only) - len(mapped)} from clubs not on our list or not confirmed)")
     out(f"  Instagram only: {len(p.instagram_only)}  (+{len(p.copies)} copies of matched events)")
     out(f"  conflicts: {len(conflicts)} field(s) on {len({e['id'] for _, e, _, _ in conflicts})} event(s)")
 
@@ -551,13 +618,13 @@ def report(p: Plan) -> str:
         out("  none")
 
     out("\nRUBRIC ONLY")
-    for r, club_id, existing in sorted(p.rubric_only, key=lambda x: x[0]["starts_at"]):
+    for r, club_id, existing, hold in sorted(p.rubric_only, key=lambda x: x[0]["starts_at"]):
         society = p.societies.get(r["society_id"])
-        club = f"club #{club_id}" if club_id else "club not mapped"
-        status = society.status if society else "?"
+        person = existing and existing["reviewed_by"]
+        verdict = f"you {existing['status']} it" if person else ("PUBLISH" if not hold else f"hold: {hold}")
         out(f"  {when(r['starts_at'])}  “{r['title']}” - {society.name if society else r['society_id']} "
-            f"({club}{', link to review' if status == 'review' else ''}) {rubric_cost(r)[1] or rubric_cost(r)[0]}"
-            + (f"  food: {rubric_food(r)}" if rubric_food(r) else "") + ("  [no longer on Rubric]" if r["missing_since"] else ""))
+            f"{rubric_cost(r)[1] or rubric_cost(r)[0]}" + (f"  food: {rubric_food(r)}" if rubric_food(r) else "")
+            + f"  -> {verdict}")
 
     out("\nINSTAGRAM ONLY")
     for e in sorted(p.instagram_only, key=lambda e: e["starts_at"]):
