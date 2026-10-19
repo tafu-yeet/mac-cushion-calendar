@@ -6,7 +6,8 @@ import { groupDuplicates, rejectableDuplicates } from "@/lib/duplicates";
 import { formatWhen, startOfTodayIso, toLocalInputs } from "@/lib/time";
 
 import { EventCard } from "./event-card";
-import type { QueueEvent, QueueGroup } from "./queue-types";
+import { PossibleMatches } from "./possible-matches";
+import type { Conflict, QueueEvent, QueueGroup } from "./queue-types";
 
 const STATUSES = ["pending", "approved", "rejected"] as const;
 type Status = (typeof STATUSES)[number];
@@ -14,7 +15,8 @@ const LIMIT = 200;
 
 // showUntimed: in the Pending tab, events with no start time are hidden unless asked for. They
 // need no decision: the dated post replaces them, or they expire (worker/auto_approve.py).
-type Filters = { status: Status; foodOnly: boolean; showPast: boolean; showUntimed: boolean };
+// attention: events of any status that Rubric and Instagram disagree on, or that are flagged.
+type Filters = { status: Status; foodOnly: boolean; showPast: boolean; showUntimed: boolean; attention: boolean };
 
 export default function QueuePage({ searchParams }: PageProps<"/admin">) {
   return (
@@ -35,8 +37,9 @@ async function Queue({ searchParams }: { searchParams: PageProps<"/admin">["sear
     foodOnly: params.food === "only",
     showPast: params.past === "1",
     showUntimed: params.untimed === "1",
+    attention: params.attention === "1",
   };
-  const hideUntimed = filters.status === "pending" && !filters.showUntimed;
+  const hideUntimed = filters.status === "pending" && !filters.showUntimed && !filters.attention;
   const today = startOfTodayIso();
 
   let query = supabase
@@ -44,9 +47,10 @@ async function Queue({ searchParams }: { searchParams: PageProps<"/admin">["sear
     .select(
       `id, status, name, event_type, category, cost, price, tags, has_free_food, food_description, starts_at, start_time_known,
        ends_at, location, hosted_by, open_to_all, confidence, reason, review_notes, model, auto_approved, club_id, post_id,
+       source, flags, conflicts, ticket_url, image_url, description,
        clubs (name, instagram_username), posts (caption, permalink, posted_at, image_path)`,
-    )
-    .eq("status", filters.status);
+    );
+  query = filters.attention ? query.or("flags.neq.{},conflicts.neq.{}") : query.eq("status", filters.status);
   if (filters.foodOnly) query = query.eq("has_free_food", true);
   if (hideUntimed) {
     query = query.eq("start_time_known", true).not("starts_at", "is", null);
@@ -85,6 +89,12 @@ async function Queue({ searchParams }: { searchParams: PageProps<"/admin">["sear
     return {
       id: r.id,
       postId: r.post_id,
+      source: r.source as QueueEvent["source"],
+      flags: r.flags,
+      conflicts: Object.entries((r.conflicts ?? {}) as Record<string, Omit<Conflict, "field">>).map(([field, c]) => ({ field, ...c })),
+      ticketUrl: r.ticket_url,
+      rubricImageUrl: r.image_url,
+      description: r.description,
       status: r.status,
       name: r.name,
       eventType: r.event_type,
@@ -118,7 +128,7 @@ async function Queue({ searchParams }: { searchParams: PageProps<"/admin">["sear
   });
 
   const groups: QueueGroup[] =
-    filters.status === "pending"
+    filters.status === "pending" && !filters.attention
       ? groupDuplicates(events)
           .map((members) => ({
             key: members.map((e) => e.id).join("-"),
@@ -128,12 +138,18 @@ async function Queue({ searchParams }: { searchParams: PageProps<"/admin">["sear
           .sort((a, b) => Number(b.events.some((e) => e.hasFreeFood)) - Number(a.events.some((e) => e.hasFreeFood)))
       : events.map((e) => ({ key: `${e.id}`, events: [e] }));
   const withNotes = events.filter((e) => e.reviewNotes.length > 0).length;
+  const { count: needsLook } = await supabase
+    .from("events")
+    .select("id", { count: "exact", head: true })
+    .or("flags.neq.{},conflicts.neq.{}")
+    .gte("starts_at", today);
 
   return (
     <div className="flex flex-col gap-5">
-      <FilterBar filters={filters} />
+      <FilterBar filters={filters} needsLook={needsLook ?? 0} />
+      {filters.status === "pending" && !filters.attention && <PossibleMatches />}
       <p className="text-sm text-stone-600">
-        {events.length === LIMIT ? `Showing the first ${LIMIT}` : `${events.length}`} {filters.status} event
+        {events.length === LIMIT ? `Showing the first ${LIMIT}` : `${events.length}`} {filters.attention ? "flagged" : filters.status} event
         {events.length === 1 ? "" : "s"}
         {filters.foodOnly ? " with free food" : ""}
         {filters.showPast ? "" : ", today onward"}
@@ -185,11 +201,12 @@ function filterHref(next: Filters): string {
   if (next.foodOnly) params.set("food", "only");
   if (next.showPast) params.set("past", "1");
   if (next.showUntimed) params.set("untimed", "1");
+  if (next.attention) params.set("attention", "1");
   const qs = params.toString();
   return qs ? `/admin?${qs}` : "/admin";
 }
 
-function FilterBar({ filters }: { filters: Filters }) {
+function FilterBar({ filters, needsLook }: { filters: Filters; needsLook: number }) {
   const href = (change: Partial<Filters>) => filterHref({ ...filters, ...change });
   const pill = (active: boolean) =>
     `rounded-full px-3 py-1 text-sm ${active ? "bg-stone-900 text-white" : "bg-white text-stone-700 ring-1 ring-stone-300 hover:bg-stone-100"}`;
@@ -197,10 +214,13 @@ function FilterBar({ filters }: { filters: Filters }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
       {STATUSES.map((s) => (
-        <Link key={s} href={href({ status: s })} className={pill(filters.status === s)}>
+        <Link key={s} href={href({ status: s, attention: false })} className={pill(filters.status === s && !filters.attention)}>
           {s[0].toUpperCase() + s.slice(1)}
         </Link>
       ))}
+      <Link href={href({ attention: true })} className={pill(filters.attention)}>
+        Needs a look{needsLook > 0 ? ` (${needsLook})` : ""}
+      </Link>
       <span className="mx-1 h-5 w-px bg-stone-300" />
       <Link href={href({ foodOnly: !filters.foodOnly })} className={pill(filters.foodOnly)}>
         Free food only

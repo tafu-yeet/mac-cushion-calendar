@@ -20,5 +20,11 @@
     "HSC": "Health Sciences Centre",
     "Mills": "Mills Memorial Library",
     "Thode": "H.G. Thode Library of Science and Engineering"
+  },
+  "rubric": {
+    "universityId": "187",
+    "countryCode": "CA",
+    "state": "Ontario",
+    "siteUrl": "https://campus.hellorubric.com"
   }
 }

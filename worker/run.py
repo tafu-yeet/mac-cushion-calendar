@@ -14,6 +14,9 @@ Usage (from worker/):
     python run.py --retry-failed   # also re-queue posts whose extraction failed
     python run.py --reread-upcoming  # re-read posts behind upcoming, unreviewed events
     python run.py --log-dir logs   # scheduled runs: append output to logs/YYYY-MM-DD.log
+
+Each full cycle also syncs Rubric (rubric.py, at most hourly) and merges it with
+the Instagram events (merge.py); RUBRIC_MERGE=apply saves the merge.
 """
 
 from __future__ import annotations
@@ -23,7 +26,7 @@ import random
 import sys
 import time
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from curl_cffi.requests.exceptions import RequestException
@@ -31,10 +34,14 @@ from storage3.exceptions import StorageException
 from supabase import Client
 
 import auto_approve
+import merge
+import rubric
 import store
 from extractors import ExtractionError, ExtractorUnavailable, TwoStageExtractor, Usage, new_pipeline
 from fetchers import Attempt, FetchError, fetch_posts, print_attempt
-from settings import MAX_EXTRACTIONS_PER_RUN, WORKER_DIR
+from settings import (
+    LOCAL_TZ, MAX_EXTRACTIONS_PER_RUN, RUBRIC_ENABLED, RUBRIC_EVERY_MINUTES, RUBRIC_MERGE, WORKER_DIR,
+)
 
 CLUB_DELAY_S = (5.0, 15.0)
 LOG_KEEP_DAYS = 14
@@ -66,6 +73,10 @@ def fetch_club(sb: Client, club: dict) -> None:
         return
 
     new_rows = store.insert_new_posts(sb, club["id"], result.posts, result.backend)
+    if result.backend == "primary":  # the profile page's fixed dozen; Apify returns a different set
+        gone, back = store.mark_missing_posts(sb, club["id"], result.posts)
+        if gone or back:
+            print(f"  @{username}: {len(gone)} post(s) gone from the profile, {len(back)} back")
     to_extract = [row for row in new_rows if row["extraction_status"] == "pending"]
     for row in to_extract:
         try:
@@ -231,7 +242,36 @@ def run(args: argparse.Namespace) -> int:
         if expired:
             print(f"{expired} stale pending event(s) expired")
         extract_pending(sb, MAX_EXTRACTIONS_PER_RUN)
+        sync_rubric(sb)
     return 0
+
+
+def sync_rubric(sb: Client) -> None:
+    """Rubric's listing, at most every RUBRIC_EVERY_MINUTES, then the merge with Instagram's
+    events (a report only, unless RUBRIC_MERGE is "apply")."""
+    if not RUBRIC_ENABLED:
+        return
+    last = sb.table("rubric_events").select("last_seen_at").order("last_seen_at", desc=True).limit(1).execute().data
+    if last and datetime.fromisoformat(last[0]["last_seen_at"]) > store.now() - timedelta(minutes=RUBRIC_EVERY_MINUTES):
+        return
+    try:
+        result = rubric.sync(sb)
+    except rubric.RubricBlocked as e:
+        print(f"Rubric refused a request ({e}); not working around it, skipping Rubric this run")
+        return
+    except (RequestException, RuntimeError) as e:
+        print(f"Rubric unavailable ({e}); skipping it this run")
+        return
+    rubric.map_societies(sb)
+    print(f"Rubric: {result.events} events, {len(result.new)} new, {len(result.changed)} changed, "
+          f"{len(result.missing)} no longer listed ({result.requests} request(s))")
+    today = datetime.now(LOCAL_TZ).date()
+    p = merge.plan(sb, today, today + timedelta(weeks=6))
+    if RUBRIC_MERGE == "apply":
+        print("  merged with Instagram:", merge.apply(sb, p))
+    else:
+        print(f"  merge not saved (RUBRIC_MERGE=report): {len(p.merged)} matched, {len(p.review)} to check, "
+              f"{len(p.rubric_only)} Rubric only")
 
 
 if __name__ == "__main__":

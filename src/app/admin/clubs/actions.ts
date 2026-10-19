@@ -42,6 +42,35 @@ export async function setClubActive(id: number, active: boolean) {
   refresh();
 }
 
+/**
+ * A person's answer on how a Rubric club maps to ours (worker/rubric.py keeps it):
+ * "yes" confirms the suggested club, "no" says it isn't one of ours, and a
+ * username links it to that club instead.
+ */
+export async function decideClubLink(formData: FormData): Promise<void> {
+  const { supabase } = await requireAdmin();
+  const societyId = Number(formData.get("society_id"));
+  const decision = String(formData.get("decision") ?? "");
+  if (!Number.isInteger(societyId)) return;
+  if (decision === "yes") {
+    await supabase.from("rubric_societies").update({ match_method: "person", match_status: "confirmed" }).eq("society_id", societyId);
+  } else if (decision === "no") {
+    await supabase
+      .from("rubric_societies")
+      .update({ match_method: "person", match_status: "rejected", club_id: null })
+      .eq("society_id", societyId);
+  } else if (decision === "other") {
+    const username = normalizeUsername(String(formData.get("username") ?? ""));
+    const { data: club } = await supabase.from("clubs").select("id").eq("instagram_username", username).maybeSingle();
+    if (!club) return;
+    await supabase
+      .from("rubric_societies")
+      .update({ match_method: "person", match_status: "confirmed", club_id: club.id, match_score: 1 })
+      .eq("society_id", societyId);
+  }
+  refresh();
+}
+
 /** Deletes the club and, through the foreign keys, its posts and events. */
 export async function deleteClub(id: number) {
   const { supabase } = await requireAdmin();

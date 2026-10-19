@@ -68,6 +68,18 @@ What that means for how it's built:
    date passes. Everything else waits as `pending` at `/admin`. See
    `worker/auto_approve.py`; `AUTO_APPROVE_MIN_CONFIDENCE=none` turns
    auto-approval off.
+5. **Rubric:** hourly, the worker also reads McMaster's listing on Rubric
+   (campus.hellorubric.com, the MSU's club platform; `worker/rubric.py`) at
+   most one request a second, and maps each Rubric club to our Instagram
+   account, by the Instagram link the club gave Rubric or by name (unsure
+   links wait at `/admin/clubs`). `worker/merge.py` then matches Rubric events
+   to Instagram ones (same club, same day, starting within an hour) and takes
+   each field from the more trustworthy source: Rubric for time, place, price
+   and tickets; Instagram for free food, description and image. Disagreements
+   and unsure matches wait at `/admin` ("Needs a look"); a deleted post or an
+   event gone from Rubric is flagged, never deleted. `RUBRIC_MERGE=apply`
+   saves the merge; the default, `report`, only prints it
+   (`python merge.py --from 2026-10-19 --to 2026-10-25` for a range).
 
 Every request is logged: `fetch_logs` (club, backend, status, bytes) and
 `llm_usage` (tokens and estimated cost; `python usage.py` for totals).

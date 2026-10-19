@@ -30,3 +30,6 @@ npm-debug.log*
 
 # Outreach spreadsheet (worker/club_scores.py): a working copy you fill in
 /club_outreach.xlsx
+
+# Rubric responses cached by the worker
+worker/cache/

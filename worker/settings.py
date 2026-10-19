@@ -58,6 +58,17 @@ _auto = env("AUTO_APPROVE_MIN_CONFIDENCE", "0.9")
 AUTO_APPROVE_MIN_CONFIDENCE = None if _auto.lower() == "none" else float(_auto)
 AUTO_APPROVE_OTHER_MIN_CONFIDENCE = float(env("AUTO_APPROVE_OTHER_MIN_CONFIDENCE", "0.75"))
 
+# Rubric (campus.hellorubric.com), the MSU's club platform, as a second event
+# source: rubric.py fetches it each run, merge.py combines it with Instagram.
+# RUBRIC_MERGE "report" only prints what merging would change; "apply" saves it.
+RUBRIC_ENABLED = env("RUBRIC_ENABLED", "true").lower() != "false"
+RUBRIC_MERGE = env("RUBRIC_MERGE", "report")
+RUBRIC_EVERY_MINUTES = int(env("RUBRIC_EVERY_MINUTES", "60"))  # the worker runs every 15; Rubric needn't
+RUBRIC_USER_AGENT = env(
+    "RUBRIC_USER_AGENT",
+    "MacCushionCalendar/1.0 (+https://mac-cushion-calendar.vercel.app; McMaster student events calendar)",
+)
+
 GEMINI_MODEL = env("GEMINI_MODEL", "gemini-3.8-flash")
 # Free-tier requests-per-minute limits are low; space calls out.
 GEMINI_MIN_INTERVAL_S = float(env("GEMINI_MIN_INTERVAL_S", "5"))

@@ -105,6 +105,36 @@ def insert_new_posts(sb: Client, club_id: int, posts: list[Post], backend: str) 
     return sb.table("posts").insert(rows).execute().data if rows else []
 
 
+PINNED_MAX = 3  # a profile can pin up to three posts, shown first whatever their age
+
+
+def mark_missing_posts(sb: Client, club_id: int, posts: list[Post]) -> tuple[list[str], list[str]]:
+    """Note stored posts that have gone from the club's profile (deleted or archived),
+    and clear the note on any that came back. Returns (gone, back) post ids.
+
+    The profile page shows the newest posts plus any pinned ones, unflagged, so
+    only stored posts newer than the fetched ones (leaving out the three oldest
+    fetched, which may be pinned) can be judged. The event a post announced is
+    kept either way: a deleted post doesn't mean a cancelled event.
+    """
+    if len(posts) <= PINNED_MAX + 1:
+        return [], []
+    times = sorted((p.posted_at for p in posts), reverse=True)
+    cutoff = times[len(times) - 1 - PINNED_MAX]
+    fetched = {p.id for p in posts}
+    stored = (
+        sb.table("posts").select("id, deleted_at").eq("club_id", club_id)
+        .gt("posted_at", cutoff.isoformat()).execute().data
+    )
+    gone = [r["id"] for r in stored if r["id"] not in fetched and not r["deleted_at"]]
+    back = [r["id"] for r in sb.table("posts").select("id").in_("id", list(fetched)).not_.is_("deleted_at", "null").execute().data]
+    if gone:
+        sb.table("posts").update({"deleted_at": now().isoformat()}).in_("id", gone).execute()
+    if back:
+        sb.table("posts").update({"deleted_at": None}).in_("id", back).execute()
+    return gone, back
+
+
 def save_image(sb: Client, post: dict) -> str | None:
     """Download the post image straight from the CDN (no proxy) into storage."""
     if not post["image_url"]:

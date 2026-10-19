@@ -36,6 +36,8 @@ export type Database = {
         Row: {
           active: boolean
           created_at: string
+          followers: number | null
+          followers_at: string | null
           id: number
           instagram_username: string
           last_checked_at: string | null
@@ -45,6 +47,8 @@ export type Database = {
         Insert: {
           active?: boolean
           created_at?: string
+          followers?: number | null
+          followers_at?: string | null
           id?: never
           instagram_username: string
           last_checked_at?: string | null
@@ -54,6 +58,8 @@ export type Database = {
         Update: {
           active?: boolean
           created_at?: string
+          followers?: number | null
+          followers_at?: string | null
           id?: never
           instagram_username?: string
           last_checked_at?: string | null
@@ -62,35 +68,93 @@ export type Database = {
         }
         Relationships: []
       }
+      event_matches: {
+        Row: {
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          event_id: number
+          reasons: Json
+          rubric_eid: number
+          score: number
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          event_id: number
+          reasons?: Json
+          rubric_eid: number
+          score: number
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          event_id?: number
+          reasons?: Json
+          rubric_eid?: number
+          score?: number
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_matches_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_matches_rubric_eid_fkey"
+            columns: ["rubric_eid"]
+            isOneToOne: false
+            referencedRelation: "rubric_events"
+            referencedColumns: ["eid"]
+          },
+        ]
+      }
       events: {
         Row: {
           auto_approved: boolean
           category: string
           club_id: number
           confidence: number | null
+          conflicts: Json
           cost: string
           created_at: string
+          description: string | null
           ends_at: string | null
           event_type: string
           extracted: Json | null
+          flags: string[]
           food_description: string | null
+          food_source: string | null
           has_free_food: boolean
           hosted_by: string | null
           id: number
+          image_url: string | null
           location: string | null
           model: string | null
           name: string
           open_to_all: boolean | null
-          post_id: string
+          post_id: string | null
           price: string | null
           reason: string | null
           review_notes: string[]
           reviewed_at: string | null
           reviewed_by: string | null
+          reviewed_fields: string[]
+          rubric_eid: number | null
+          signup_required: boolean | null
+          source: string
           start_time_known: boolean
           starts_at: string | null
           status: string
           tags: string[]
+          ticket_url: string | null
           updated_at: string
         }
         Insert: {
@@ -98,29 +162,39 @@ export type Database = {
           category?: string
           club_id: number
           confidence?: number | null
+          conflicts?: Json
           cost?: string
           created_at?: string
+          description?: string | null
           ends_at?: string | null
           event_type?: string
           extracted?: Json | null
+          flags?: string[]
           food_description?: string | null
+          food_source?: string | null
           has_free_food?: boolean
           hosted_by?: string | null
           id?: never
+          image_url?: string | null
           location?: string | null
           model?: string | null
           name: string
           open_to_all?: boolean | null
-          post_id: string
+          post_id?: string | null
           price?: string | null
           reason?: string | null
           review_notes?: string[]
           reviewed_at?: string | null
           reviewed_by?: string | null
+          reviewed_fields?: string[]
+          rubric_eid?: number | null
+          signup_required?: boolean | null
+          source?: string
           start_time_known?: boolean
           starts_at?: string | null
           status?: string
           tags?: string[]
+          ticket_url?: string | null
           updated_at?: string
         }
         Update: {
@@ -128,29 +202,39 @@ export type Database = {
           category?: string
           club_id?: number
           confidence?: number | null
+          conflicts?: Json
           cost?: string
           created_at?: string
+          description?: string | null
           ends_at?: string | null
           event_type?: string
           extracted?: Json | null
+          flags?: string[]
           food_description?: string | null
+          food_source?: string | null
           has_free_food?: boolean
           hosted_by?: string | null
           id?: never
+          image_url?: string | null
           location?: string | null
           model?: string | null
           name?: string
           open_to_all?: boolean | null
-          post_id?: string
+          post_id?: string | null
           price?: string | null
           reason?: string | null
           review_notes?: string[]
           reviewed_at?: string | null
           reviewed_by?: string | null
+          reviewed_fields?: string[]
+          rubric_eid?: number | null
+          signup_required?: boolean | null
+          source?: string
           start_time_known?: boolean
           starts_at?: string | null
           status?: string
           tags?: string[]
+          ticket_url?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -167,6 +251,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "posts"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "events_rubric_eid_fkey"
+            columns: ["rubric_eid"]
+            isOneToOne: true
+            referencedRelation: "rubric_events"
+            referencedColumns: ["eid"]
           },
         ]
       }
@@ -275,6 +366,7 @@ export type Database = {
           caption: string
           club_id: number
           created_at: string
+          deleted_at: string | null
           extracted_at: string | null
           extraction: Json | null
           extraction_error: string | null
@@ -294,6 +386,7 @@ export type Database = {
           caption?: string
           club_id: number
           created_at?: string
+          deleted_at?: string | null
           extracted_at?: string | null
           extraction?: Json | null
           extraction_error?: string | null
@@ -313,6 +406,7 @@ export type Database = {
           caption?: string
           club_id?: number
           created_at?: string
+          deleted_at?: string | null
           extracted_at?: string | null
           extraction?: Json | null
           extraction_error?: string | null
@@ -331,6 +425,145 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "posts_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rubric_events: {
+        Row: {
+          address: string | null
+          category: string | null
+          changed_at: string
+          collaborator_ids: number[]
+          content_hash: string
+          description: string | null
+          detail: Json | null
+          detail_fetched_at: string | null
+          eid: number
+          ends_at: string | null
+          first_seen_at: string
+          image_url: string | null
+          last_seen_at: string
+          location: string | null
+          missing_since: string | null
+          price_info: string | null
+          rubric_status: string | null
+          search: Json
+          society_id: number
+          starts_at: string
+          tickets: Json
+          title: string
+          url: string
+        }
+        Insert: {
+          address?: string | null
+          category?: string | null
+          changed_at?: string
+          collaborator_ids?: number[]
+          content_hash: string
+          description?: string | null
+          detail?: Json | null
+          detail_fetched_at?: string | null
+          eid: number
+          ends_at?: string | null
+          first_seen_at?: string
+          image_url?: string | null
+          last_seen_at?: string
+          location?: string | null
+          missing_since?: string | null
+          price_info?: string | null
+          rubric_status?: string | null
+          search: Json
+          society_id: number
+          starts_at: string
+          tickets?: Json
+          title: string
+          url: string
+        }
+        Update: {
+          address?: string | null
+          category?: string | null
+          changed_at?: string
+          collaborator_ids?: number[]
+          content_hash?: string
+          description?: string | null
+          detail?: Json | null
+          detail_fetched_at?: string | null
+          eid?: number
+          ends_at?: string | null
+          first_seen_at?: string
+          image_url?: string | null
+          last_seen_at?: string
+          location?: string | null
+          missing_since?: string | null
+          price_info?: string | null
+          rubric_status?: string | null
+          search?: Json
+          society_id?: number
+          starts_at?: string
+          tickets?: Json
+          title?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rubric_events_society_id_fkey"
+            columns: ["society_id"]
+            isOneToOne: false
+            referencedRelation: "rubric_societies"
+            referencedColumns: ["society_id"]
+          },
+        ]
+      }
+      rubric_societies: {
+        Row: {
+          aliases: string[]
+          club_id: number | null
+          extra_club_ids: number[]
+          first_seen_at: string
+          instagram_username: string | null
+          match_method: string | null
+          match_score: number | null
+          match_status: string
+          name: string
+          raw: Json | null
+          society_id: number
+          updated_at: string
+        }
+        Insert: {
+          aliases?: string[]
+          club_id?: number | null
+          extra_club_ids?: number[]
+          first_seen_at?: string
+          instagram_username?: string | null
+          match_method?: string | null
+          match_score?: number | null
+          match_status?: string
+          name: string
+          raw?: Json | null
+          society_id: number
+          updated_at?: string
+        }
+        Update: {
+          aliases?: string[]
+          club_id?: number | null
+          extra_club_ids?: number[]
+          first_seen_at?: string
+          instagram_username?: string | null
+          match_method?: string | null
+          match_score?: number | null
+          match_status?: string
+          name?: string
+          raw?: Json | null
+          society_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rubric_societies_club_id_fkey"
             columns: ["club_id"]
             isOneToOne: false
             referencedRelation: "clubs"

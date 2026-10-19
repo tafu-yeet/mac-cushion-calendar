@@ -6,7 +6,7 @@ import { CATEGORIES } from "@/lib/categories";
 import { formatWhen, weekdayOf } from "@/lib/time";
 
 import { reviewEvent } from "./actions";
-import type { QueueEvent } from "./queue-types";
+import type { Conflict, QueueEvent } from "./queue-types";
 
 const input =
   "w-full rounded-md border border-stone-300 bg-white px-2.5 py-1.5 text-sm focus:border-stone-500 focus:outline-none disabled:bg-stone-100 disabled:text-stone-400";
@@ -29,12 +29,20 @@ export function EventCard({ event, siblingIds }: { event: QueueEvent; siblingIds
           <input type="hidden" name="sibling_ids" value={siblingIds.join(",")} />
 
           <div className="flex flex-wrap items-center gap-2 text-xs">
+            <SourceBadge source={event.source} />
+            {event.flags.map((f) => (
+              <span key={f} className="rounded-full bg-orange-100 px-2 py-0.5 font-medium text-orange-900">
+                {FLAG_LABELS[f] ?? f}
+              </span>
+            ))}
             {event.autoApproved && (
               <span className="rounded-full bg-sky-100 px-2 py-0.5 font-medium text-sky-900">auto-approved</span>
             )}
             <ConfidenceBadge value={event.confidence} />
             {event.model && <span className="text-stone-500">read by {event.model}</span>}
           </div>
+
+          {event.conflicts.length > 0 && <Conflicts conflicts={event.conflicts} pending={pending} />}
 
           {event.reviewNotes.length > 0 && (
             <ul className="space-y-1 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950">
@@ -152,7 +160,60 @@ export function EventCard({ event, siblingIds }: { event: QueueEvent; siblingIds
   );
 }
 
+const FLAG_LABELS: Record<string, string> = {
+  instagram_post_deleted: "Instagram post deleted (event kept)",
+  rubric_missing: "No longer on Rubric (event kept)",
+  changed_on_instagram: "Instagram says it changed",
+};
+
+const FIELD_LABELS: Record<string, string> = {
+  starts_at: "Start", ends_at: "End", location: "Place", cost: "Cost", price: "Price", has_free_food: "Free food",
+};
+
+/** Where the event came from: Instagram, Rubric (the MSU's club platform), or both. */
+function SourceBadge({ source }: { source: QueueEvent["source"] }) {
+  const [label, tone] =
+    source === "both"
+      ? ["Both", "bg-violet-600 text-white"]
+      : source === "rubric"
+        ? ["Rubric", "bg-violet-100 text-violet-900"]
+        : ["IG", "bg-pink-100 text-pink-900"];
+  return <span className={`rounded-full px-2 py-0.5 font-semibold ${tone}`}>{label}</span>;
+}
+
+function showValue(field: string, value: Conflict["rubric"]): string {
+  if (value === null || value === "") return "none";
+  if (typeof value === "boolean") return value ? "yes" : "no";
+  if (field === "starts_at" || field === "ends_at") return formatWhen(value);
+  return value;
+}
+
+/** Rubric and Instagram disagree: both values side by side, and the person picks. */
+function Conflicts({ conflicts, pending }: { conflicts: Conflict[]; pending: boolean }) {
+  const button = "rounded-md px-2.5 py-1 text-xs font-medium disabled:opacity-50";
+  return (
+    <div className="flex flex-col gap-2 rounded-md border border-violet-300 bg-violet-50 px-3 py-2 text-sm">
+      <p className="font-medium text-violet-950">Rubric and Instagram disagree — nothing was changed:</p>
+      {conflicts.map((c) => (
+        <div key={c.field} className="grid gap-1 sm:grid-cols-[5rem_1fr_1fr] sm:items-center">
+          <span className="text-xs font-semibold text-violet-900">{FIELD_LABELS[c.field] ?? c.field}</span>
+          <button type="submit" name="intent" value={`use_rubric:${c.field}`} disabled={pending}
+            className={`${button} bg-white text-left ring-1 ring-violet-300 hover:bg-violet-100`}>
+            Use Rubric: <span className="font-normal">{showValue(c.field, c.rubric)}</span>
+          </button>
+          <button type="submit" name="intent" value={`keep_instagram:${c.field}`} disabled={pending}
+            className={`${button} bg-white text-left ring-1 ring-pink-300 hover:bg-pink-50`}>
+            Keep Instagram: <span className="font-normal">{showValue(c.field, c.instagram)}</span>
+          </button>
+          {c.why && <span className="text-xs text-violet-800 sm:col-span-3">{c.why}</span>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function PostColumn({ event }: { event: QueueEvent }) {
+  if (!event.postId) return <RubricColumn event={event} />;
   return (
     <div className="flex flex-col gap-2">
       <div>
@@ -188,7 +249,38 @@ function PostColumn({ event }: { event: QueueEvent }) {
             Open on Instagram ↗
           </a>
         )}
+        {event.ticketUrl && (
+          <a href={event.ticketUrl} target="_blank" rel="noreferrer" className="font-medium text-violet-800 hover:underline">
+            Rubric listing ↗
+          </a>
+        )}
       </div>
+    </div>
+  );
+}
+
+/** An event only Rubric lists: its image and description in place of a post. */
+function RubricColumn({ event }: { event: QueueEvent }) {
+  return (
+    <div className="flex flex-col gap-2">
+      <div>
+        <p className="font-semibold leading-tight">{event.clubName}</p>
+        <p className="text-xs text-stone-500">@{event.clubUsername} · listed on Rubric, no Instagram post</p>
+      </div>
+      {event.rubricImageUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={event.rubricImageUrl} alt="Rubric image" className="w-full rounded-lg border border-stone-200" />
+      ) : (
+        <div className="rounded-lg bg-stone-100 px-3 py-6 text-center text-xs text-stone-500">No image on Rubric</div>
+      )}
+      <p className="max-h-56 overflow-y-auto whitespace-pre-wrap rounded-md bg-violet-50 p-2 text-xs leading-relaxed text-stone-700">
+        {event.description || "(no description)"}
+      </p>
+      {event.ticketUrl && (
+        <a href={event.ticketUrl} target="_blank" rel="noreferrer" className="text-xs font-medium text-violet-800 hover:underline">
+          Open on Rubric ↗
+        </a>
+      )}
     </div>
   );
 }

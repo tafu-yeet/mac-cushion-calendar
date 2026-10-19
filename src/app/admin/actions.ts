@@ -31,11 +31,22 @@ export async function reviewEvent(_prev: ReviewState, formData: FormData): Promi
     const status = intent === "reject" ? "rejected" : "pending";
     const { error } = await supabase.from("events").update({ status, ...reviewed }).eq("id", id);
     if (error) return { error: error.message };
+  } else if (intent.startsWith("use_rubric:") || intent.startsWith("keep_instagram:")) {
+    const result = await settleConflict(supabase, id, intent);
+    if (result) return result;
   } else if (intent === "approve" || intent === "save" || intent === "approve_group") {
     const parsed = parseEventFields(formData);
     if ("error" in parsed) return parsed;
-    const update: EventUpdate =
-      intent === "save" ? parsed : { ...parsed, status: "approved", auto_approved: false, ...reviewed };
+    // Fields the person changed are theirs from now on: merging with Rubric won't overwrite them.
+    const { data: current, error: readError } = await supabase.from("events").select(EDITABLE.join(", ") + ", reviewed_fields").eq("id", id).single();
+    if (readError) return { error: readError.message };
+    const changed = changedFields(current as unknown as Record<string, unknown>, parsed);
+    const reviewedFields = [...new Set([...((current as unknown as { reviewed_fields: string[] }).reviewed_fields ?? []), ...changed])];
+    const update: EventUpdate = {
+      ...parsed,
+      reviewed_fields: reviewedFields,
+      ...(intent === "save" ? {} : { status: "approved", auto_approved: false, ...reviewed }),
+    };
     const { error } = await supabase.from("events").update(update).eq("id", id);
     if (error) return { error: error.message };
 
@@ -60,6 +71,75 @@ export async function reviewEvent(_prev: ReviewState, formData: FormData): Promi
   updateTag(EVENTS_TAG); // the public pages show the change on their next request
   refresh();
   return null;
+}
+
+// The fields the review form edits, as stored.
+const EDITABLE = [
+  "name", "starts_at", "start_time_known", "ends_at", "location", "hosted_by", "has_free_food", "food_description",
+  "open_to_all", "event_type", "category", "cost", "price", "tags",
+] as const;
+
+/** Which fields the form changed; a start time made known counts as a change to the start. */
+function changedFields(current: Record<string, unknown>, next: EventUpdate): string[] {
+  const same = (a: unknown, b: unknown) => {
+    if (typeof a === "string" && typeof b === "string" && !Number.isNaN(Date.parse(a)) && /T\d/.test(a)) {
+      return Date.parse(a) === Date.parse(b);
+    }
+    return JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+  };
+  const changed = EDITABLE.filter((f) => f in next && !same(current[f], (next as Record<string, unknown>)[f])).map(String);
+  return changed.includes("start_time_known") ? [...changed.filter((f) => f !== "start_time_known"), "starts_at"] : changed;
+}
+
+type Supabase = Awaited<ReturnType<typeof requireAdmin>>["supabase"];
+type StoredConflict = { rubric: string | boolean | null; instagram: string | boolean | null; why?: string };
+
+/**
+ * Settles one Rubric/Instagram disagreement (worker/merge.py): saves the chosen
+ * value, and marks the field as decided by a person so merging leaves it alone.
+ */
+async function settleConflict(supabase: Supabase, id: number, intent: string): Promise<ReviewState> {
+  const [choice, field] = intent.split(":");
+  const { data: event, error } = await supabase.from("events").select("conflicts, reviewed_fields, flags").eq("id", id).single();
+  if (error) return { error: error.message };
+  const conflicts = { ...((event.conflicts ?? {}) as Record<string, StoredConflict>) };
+  const conflict = conflicts[field];
+  if (!conflict) return { error: "That disagreement was already settled." };
+  delete conflicts[field];
+  const value = choice === "use_rubric" ? conflict.rubric : conflict.instagram;
+
+  const update: EventUpdate = {
+    conflicts,
+    reviewed_fields: [...new Set([...(event.reviewed_fields ?? []), field])],
+    // With nothing left to settle, the "changed on Instagram" warning has been dealt with.
+    ...(Object.keys(conflicts).length ? {} : { flags: (event.flags ?? []).filter((f) => f !== "changed_on_instagram") }),
+  };
+  if (field === "starts_at" && typeof value === "string") Object.assign(update, { starts_at: value, start_time_known: true });
+  else if (field === "ends_at") update.ends_at = typeof value === "string" ? value : null;
+  else if (field === "location") update.location = typeof value === "string" ? value : null;
+  else if (field === "price") update.price = typeof value === "string" ? value : null;
+  else if (field === "cost" && (value === "free" || value === "paid" || value === "unknown")) {
+    Object.assign(update, { cost: value, ...(value === "free" ? { price: null } : {}) });
+  } else if (field === "has_free_food" && typeof value === "boolean") update.has_free_food = value;
+  else return { error: `Can't settle "${field}" here; edit the field instead.` };
+
+  const { error: saveError } = await supabase.from("events").update(update).eq("id", id);
+  return saveError ? { error: saveError.message } : null;
+}
+
+/** A person's answer to "is this Rubric event the same as this Instagram event?" (worker/merge.py acts on it). */
+export async function decideMatch(formData: FormData): Promise<void> {
+  const { supabase, userId } = await requireAdmin();
+  const rubricEid = Number(formData.get("rubric_eid"));
+  const eventId = Number(formData.get("event_id"));
+  const decision = formData.get("decision");
+  if (!Number.isInteger(rubricEid) || !Number.isInteger(eventId) || (decision !== "same" && decision !== "different")) return;
+  await supabase
+    .from("event_matches")
+    .update({ status: decision === "same" ? "merged" : "separate", decided_by: userId, decided_at: new Date().toISOString() })
+    .eq("rubric_eid", rubricEid)
+    .eq("event_id", eventId);
+  refresh();
 }
 
 function parseEventFields(formData: FormData): EventUpdate | { error: string } {

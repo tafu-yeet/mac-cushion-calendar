@@ -15,7 +15,7 @@
 // series) is a series, not duplicates, so its dates never merge.
 
 export type DuplicateCandidate = {
-  postId: string;
+  postId: string | null; // null for an event only Rubric lists
   clubId: number;
   clubName: string;
   clubUsername: string;
@@ -97,7 +97,7 @@ const dayNumber = (date: string) => Date.parse(`${date}T00:00:00Z`) / 86_400_000
 /** Events that belong to a multi-date series: similar names on different dates in one post. */
 function seriesMembers<T extends DuplicateCandidate>(events: T[]): Set<T> {
   const byPost = new Map<string, T[]>();
-  events.forEach((e) => byPost.set(e.postId, [...(byPost.get(e.postId) ?? []), e]));
+  events.forEach((e) => e.postId && byPost.set(e.postId, [...(byPost.get(e.postId) ?? []), e]));
   const series = new Set<T>();
   for (const members of byPost.values()) {
     for (const a of members) {
@@ -119,7 +119,7 @@ export function compareEvents(
   b: DuplicateCandidate,
   inSeries: (e: DuplicateCandidate) => boolean = () => false,
 ): Match {
-  if (a.postId === b.postId) return null;
+  if (a.postId && a.postId === b.postId) return null;
   if (a.startDate && a.startDate === b.startDate) {
     if (a.clubId === b.clubId) return similarNames(a.name, b.name) ? "same" : null;
     if (namesClub(a.hostedBy, b) || namesClub(b.hostedBy, a)) return "same";

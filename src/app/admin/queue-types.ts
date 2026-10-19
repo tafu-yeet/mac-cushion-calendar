@@ -1,8 +1,17 @@
 // Data passed from the queue page (server) to event cards (client).
 
+/** Two readings of one field, Rubric's and Instagram's, waiting for a person (worker/merge.py). */
+export type Conflict = { field: string; rubric: string | boolean | null; instagram: string | boolean | null; why?: string };
+
 export type QueueEvent = {
   id: number;
-  postId: string;
+  postId: string | null; // null for an event only Rubric lists
+  source: "instagram" | "rubric" | "both";
+  flags: string[]; // instagram_post_deleted, rubric_missing, changed_on_instagram
+  conflicts: Conflict[];
+  ticketUrl: string | null; // the Rubric listing
+  rubricImageUrl: string | null;
+  description: string | null; // Rubric's, shown when there's no post
   status: string;
   name: string;
   eventType: string;

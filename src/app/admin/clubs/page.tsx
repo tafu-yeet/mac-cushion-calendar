@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { requireAdmin } from "@/lib/auth";
 
 import { ClubsTable, type ClubRow } from "./clubs-table";
+import { RubricLinks } from "./rubric-links";
 
 export const metadata: Metadata = { title: "Clubs" };
 
@@ -16,6 +17,9 @@ export default function ClubsPage() {
           Active clubs are fetched on schedule. Pausing keeps a club&apos;s history; deleting removes it and its events.
         </p>
       </div>
+      <Suspense fallback={null}>
+        <RubricLinks />
+      </Suspense>
       <Suspense fallback={<p className="text-sm text-stone-500">Loading clubs…</p>}>
         <Clubs />
       </Suspense>
