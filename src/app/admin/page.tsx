@@ -7,6 +7,7 @@ import { formatWhen, startOfTodayIso, toLocalInputs } from "@/lib/time";
 
 import { EventCard } from "./event-card";
 import { PossibleMatches } from "./possible-matches";
+import { WorkerHealth } from "./worker-health";
 import type { Conflict, QueueEvent, QueueGroup } from "./queue-types";
 
 const STATUSES = ["pending", "approved", "rejected"] as const;
@@ -22,6 +23,9 @@ export default function QueuePage({ searchParams }: PageProps<"/admin">) {
   return (
     <div className="flex flex-col gap-5">
       <h1 className="text-2xl font-semibold tracking-tight">Review queue</h1>
+      <Suspense fallback={null}>
+        <WorkerHealth />
+      </Suspense>
       <Suspense fallback={<p className="text-sm text-stone-500">Loading events…</p>}>
         <Queue searchParams={searchParams} />
       </Suspense>
