@@ -96,9 +96,9 @@ async function EventDetail({ id }: { id: number }) {
 
       <div className="mt-8">
         <p className="text-sm font-medium opacity-90">{formatDay(date, "long", today)}</p>
-        <div className="mt-2 flex items-end justify-between gap-3">
+        <div className="mt-2 flex items-end justify-between gap-2 min-[400px]:gap-3">
           <div>
-            <p className="font-display text-4xl font-medium leading-none whitespace-nowrap sm:text-5xl">
+            <p className="font-display text-[2rem] font-medium leading-none whitespace-nowrap min-[400px]:text-4xl sm:text-5xl">
               {event.startTimeKnown ? formatTime(event.startsAt) : "Time TBD"}
             </p>
             <p className="mt-1.5 text-xs opacity-90">Start</p>
@@ -106,7 +106,7 @@ async function EventDetail({ id }: { id: number }) {
           {duration && <span className={`mb-6 rounded-full px-3 py-1 text-xs font-medium ${category.tone.chip}`}>{duration}</span>}
           {event.startTimeKnown && event.endsAt && (
             <div className="text-right">
-              <p className="font-display text-4xl font-medium leading-none whitespace-nowrap sm:text-5xl">{formatTime(event.endsAt)}</p>
+              <p className="font-display text-[2rem] font-medium leading-none whitespace-nowrap min-[400px]:text-4xl sm:text-5xl">{formatTime(event.endsAt)}</p>
               <p className="mt-1.5 text-xs opacity-90">End</p>
             </div>
           )}
@@ -117,6 +117,12 @@ async function EventDetail({ id }: { id: number }) {
         <PinIcon className="mt-0.5 size-5 shrink-0 opacity-90" />
         {event.location ?? "Location not announced. Check the club's post."}
       </p>
+
+      {event.signupRequired && (
+        <p className="mt-4 rounded-2xl bg-current/10 px-4 py-2.5 text-sm">
+          Sign-up or ticket needed{event.rubricUrl ? ": get one through the Rubric listing below." : ". Check the club's post for how."}
+        </p>
+      )}
 
       {!event.openToAll && (
         <p className="mt-4 rounded-2xl bg-current/10 px-4 py-2.5 text-sm">
@@ -140,6 +146,17 @@ async function EventDetail({ id }: { id: number }) {
             className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold ring-1 ring-current/30 hover:bg-current/10"
           >
             Instagram post
+            <ExternalIcon className="size-3.5" />
+          </a>
+        )}
+        {event.rubricUrl && (
+          <a
+            href={event.rubricUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold ring-1 ring-current/30 hover:bg-current/10"
+          >
+            {event.cost === "paid" || event.signupRequired ? "Tickets on Rubric" : "Rubric listing"}
             <ExternalIcon className="size-3.5" />
           </a>
         )}

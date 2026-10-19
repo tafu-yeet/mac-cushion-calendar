@@ -134,6 +134,17 @@ export function EventCard({ event, now, showDate = false }: { event: PublicEvent
             <ExternalIcon className="size-3.5" />
           </a>
         )}
+        {event.rubricUrl && (
+          <a
+            href={event.rubricUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold ring-1 ring-current/40 hover:bg-current/10"
+          >
+            {event.cost === "paid" || event.signupRequired ? "Tickets" : "Rubric"}
+            <ExternalIcon className="size-3.5" />
+          </a>
+        )}
       </div>
     </article>
   );

@@ -27,7 +27,9 @@ export type PublicEvent = {
   clubId: number;
   clubName: string;
   clubUsername: string;
-  permalink: string | null;
+  permalink: string | null; // the Instagram post; null when there's none, or it was deleted
+  rubricUrl: string | null; // the event's listing on Rubric, the MSU's club platform (tickets, sign-up)
+  signupRequired: boolean;
 };
 
 // The admin's review actions call updateTag(EVENTS_TAG), so approvals show up
@@ -35,7 +37,7 @@ export type PublicEvent = {
 export const EVENTS_TAG = "events";
 
 const COLUMNS = `id, club_id, name, category, event_type, tags, has_free_food, food_description, cost, price, starts_at, ends_at, start_time_known, location, hosted_by, open_to_all,
-  clubs (name, instagram_username), posts (permalink)`;
+  ticket_url, signup_required, clubs (name, instagram_username), posts (permalink, deleted_at)`;
 
 type Row = {
   id: number;
@@ -54,8 +56,10 @@ type Row = {
   location: string | null;
   hosted_by: string | null;
   open_to_all: boolean | null;
+  ticket_url: string | null;
+  signup_required: boolean | null;
   clubs: { name: string; instagram_username: string } | null;
-  posts: { permalink: string } | null;
+  posts: { permalink: string; deleted_at: string | null } | null;
 };
 
 function toPublicEvent(r: Row): PublicEvent {
@@ -78,7 +82,10 @@ function toPublicEvent(r: Row): PublicEvent {
     clubId: r.club_id,
     clubName: r.clubs?.name ?? "A McMaster club",
     clubUsername: r.clubs?.instagram_username ?? "",
-    permalink: r.posts?.permalink ?? null,
+    // A deleted post would be a dead link; the event itself still stands.
+    permalink: r.posts && !r.posts.deleted_at ? r.posts.permalink : null,
+    rubricUrl: r.ticket_url,
+    signupRequired: !!r.signup_required,
   };
 }
 

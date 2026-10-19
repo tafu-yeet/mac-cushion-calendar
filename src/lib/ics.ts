@@ -53,6 +53,7 @@ export function eventToIcs(event: PublicEvent, eventUrl: string, now = new Date(
     `Posted by ${event.clubName}${event.hostedBy ? `, hosted by ${event.hostedBy}` : ""}`,
     !event.startTimeKnown && "Start time not announced yet.",
     event.permalink && `Instagram post: ${event.permalink}`,
+    event.rubricUrl && `Rubric listing: ${event.rubricUrl}`,
     `More: ${eventUrl}`,
   ]
     .filter(Boolean)
