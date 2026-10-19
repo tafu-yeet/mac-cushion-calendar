@@ -54,6 +54,11 @@ def fetch_posts(
     try:
         return _result(profile_page.fetch(username, since, on_attempt), profile_page.NAME)
     except BlockedError:
+        # Without an Apify token there's no fallback: the club just fails this time.
+        # (Asking for the token anyway raised SystemExit and ended the whole run,
+        # which from Oct 12 stopped every run before posts were read.)
+        if not settings.env("APIFY_TOKEN"):
+            raise
         return _result(apify.fetch(username, since, on_attempt), apify.NAME)
 
 

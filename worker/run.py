@@ -235,7 +235,12 @@ def run(args: argparse.Namespace) -> int:
         for i, club in enumerate(clubs):
             if i:
                 time.sleep(random.uniform(*CLUB_DELAY_S))
-            fetch_club(sb, club)
+            # One club's trouble mustn't stop the rest of the run, or the reading after it.
+            try:
+                fetch_club(sb, club)
+            except (Exception, SystemExit) as e:
+                print(f"  @{club['instagram_username']}: unexpected error ({type(e).__name__}: {e}); skipping it this run")
+                store.mark_checked(sb, club["id"])
 
     if not args.no_extract:
         expired = auto_approve.expire_stale(sb)
