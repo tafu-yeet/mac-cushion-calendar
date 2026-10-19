@@ -78,7 +78,7 @@ What that means for how it's built:
    and tickets; Instagram for free food, description and image. Disagreements
    and unsure matches wait at `/admin` ("Needs a look"); a deleted post or an
    event gone from Rubric is flagged, never deleted. `RUBRIC_MERGE=apply`
-   saves the merge; the default, `report`, only prints it
+   (the default) saves the merge; `RUBRIC_MERGE=report` only prints it
    (`python merge.py --from 2026-10-19 --to 2026-10-25` for a range).
 
 Every request is logged: `fetch_logs` (club, backend, status, bytes) and

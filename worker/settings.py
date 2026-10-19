@@ -62,7 +62,7 @@ AUTO_APPROVE_OTHER_MIN_CONFIDENCE = float(env("AUTO_APPROVE_OTHER_MIN_CONFIDENCE
 # source: rubric.py fetches it each run, merge.py combines it with Instagram.
 # RUBRIC_MERGE "report" only prints what merging would change; "apply" saves it.
 RUBRIC_ENABLED = env("RUBRIC_ENABLED", "true").lower() != "false"
-RUBRIC_MERGE = env("RUBRIC_MERGE", "report")
+RUBRIC_MERGE = env("RUBRIC_MERGE", "apply")  # approved 2026-10-19 after the Oct 19-25 report
 RUBRIC_EVERY_MINUTES = int(env("RUBRIC_EVERY_MINUTES", "60"))  # the worker runs every 15; Rubric needn't
 RUBRIC_USER_AGENT = env(
     "RUBRIC_USER_AGENT",
