@@ -77,6 +77,10 @@ SIGNUP = re.compile(
     r"|register (by|at|here|now|through|using|before)|tickets? (are )?required|rsvp (is )?required)\b",
     re.I,
 )
+STATED_LIMIT = re.compile(
+    r"\b(members?|sisters?|brothers?|girls?|women|ladies|men|guys)[ -]only\b|\bonly (for|open to)\b|\bexclusive(ly)? (to|for)\b",
+    re.I,
+)
 CHANGE = re.compile(
     r"\b(moved to|new (time|location|room|date|venue)|postponed|cancell?ed|rescheduled|change of (venue|location|time|room|date))\b",
     re.I,
@@ -346,7 +350,10 @@ def rubric_only_row(r: dict, club_id: int, society: Society) -> dict:
     cost, price = rubric_cost(r)
     food = rubric_food(r)
     tickets = r["tickets"] or []
+    # Limited only when Rubric says so (extractors.base.OPEN_TO_ALL_RULE): member-only tickets,
+    # or "members only", "sisters only", "only for grad students" in the listing.
     members_only = bool(tickets) and all(re.search(r"\bmember", t["name"] or "", re.I) for t in tickets)
+    stated_limit = bool(STATED_LIMIT.search(" ".join(filter(None, [r["title"], r["description"]]))))
     notes = [] if society.status == "confirmed" else [
         f"Club link unconfirmed: Rubric's “{society.name}” may not be this club."]
     return {
@@ -357,7 +364,7 @@ def rubric_only_row(r: dict, club_id: int, society: Society) -> dict:
         "location": clean_place(r["location"]), "cost": cost, "price": price, "ticket_url": r["url"],
         "image_url": r["image_url"], "description": r["description"],
         "has_free_food": bool(food), "food_description": food, "food_source": "rubric" if food else None,
-        "signup_required": rubric_signup(r), "open_to_all": not members_only,
+        "signup_required": rubric_signup(r), "open_to_all": not (members_only or stated_limit),
         "confidence": RUBRIC_ONLY_CONFIDENCE, "reason": "Listed on Rubric.", "review_notes": notes,
         "model": "rubric", "extracted": {"source": "rubric", "eid": r["eid"]},
         "flags": ["rubric_missing"] if r["missing_since"] else [],
@@ -541,7 +548,9 @@ def apply(sb: Client, p: Plan) -> dict[str, int]:
             done["published" if not hold else "added"] = done.get("published" if not hold else "added", 0) + 1
             continue
         reviewed = set(existing["reviewed_fields"] or [])
-        update = {k: v for k, v in row.items() if k not in reviewed and existing.get(k) != v and k in existing}
+        # Who can come is decided once, on adding (a person or a re-check may refine it later).
+        update = {k: v for k, v in row.items()
+                  if k not in reviewed and k != "open_to_all" and existing.get(k) != v and k in existing}
         # A person's approval or rejection stands; the worker only moves what it decided itself.
         if not existing["reviewed_by"] and existing["status"] != "rejected" and existing["status"] != status["status"]:
             update |= status

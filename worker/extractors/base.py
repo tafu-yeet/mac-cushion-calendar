@@ -106,6 +106,19 @@ class Extractor(Protocol):
     ) -> tuple[PostExtraction, Usage]: ...
 
 
+# Who may come. Events limited to a group are hidden on the site unless a student
+# asks to see them, so only a stated limit counts, not who the post is aimed at.
+OPEN_TO_ALL_RULE = (
+    "- open_to_all is true if any student can come: free, free sign-up, or a ticket anyone can buy. It is false only "
+    "when the post says some students can't come: members only; one program, year, or level of study only (\"for "
+    "3rd-year nursing students only\", \"grad students only\"); one gender (\"sisters only\", \"girls' night\", "
+    "\"brothers' halaqah\"); or one faith, culture, or community only (\"for Muslim students only\"). Who a post is "
+    "aimed at doesn't limit it: \"calling all upper-years\", \"first-years welcome\", or \"for anyone interested in "
+    "medicine\" is open to everyone. Neither does who runs it: an event by a cultural, religious, or identity-based "
+    "club is open unless the post says others can't come."
+)
+
+
 def system_prompt() -> str:
     locations = "\n".join(f"- {abbr}: {name}" for abbr, name in CAMPUS["campusLocations"].items())
     return f"""You read Instagram posts from student clubs at {CAMPUS['school']} in {CAMPUS['city']} and pull out the events they announce. The results feed a campus calendar where students look for something to do, filtered by kind of event, cost, and free food. Each event is published only after a second reading or a person agrees with yours, so a wrong date or time does more harm than a missing detail.
@@ -138,7 +151,7 @@ Categories
 
 Other fields
 - cost is "paid" when attending needs a ticket, entry fee, or registration fee (put the price in price as written, e.g. "$15" or "$10 members, $15 others"); "free" when the post says it's free or nothing suggests a cost; "unknown" when it mentions tickets or registration without saying whether they cost money.
-- open_to_all is true if any student can come: free, free sign-up, or a ticket anyone can buy. It is false if the event is limited to members or a specific group, such as one program, year, or level of study.
+{OPEN_TO_ALL_RULE}
 - location is the place as stated, with campus abbreviations expanded from the list below, e.g. "MUSC 230 (McMaster University Student Centre)". Use null if no place is given, including "link in bio". Give only the place: never notes about the flyer, the caption, or a changed room. If the post disagrees with itself, use the latest or most specific place and explain in reason.
 - hosted_by lists the clubs or groups other than the posting account that run or co-run the event: the club whose event a hub or events page is sharing, or the partner in a collaboration ("x", "teaming up with", "partnering with"). Name them as the post does, with the @handle if shown, e.g. "McMaster Geeks (@mcmastergeeks)". Sponsors, venues, and shops are not hosts. Use null when the posting account runs the event alone.
 
