@@ -5,15 +5,18 @@ import type { PublicEvent } from "@/lib/events";
 import { eventStatus, startsInLabel } from "@/lib/status";
 import { campusDate, formatDay, formatDuration, formatTime, toLocalInputs } from "@/lib/time";
 
-import { CalendarPlusIcon, ExternalIcon, PinIcon, TicketIcon, UtensilsIcon } from "./icons";
+import { AddToCalendar } from "./add-to-calendar";
+import { ExternalIcon, PinIcon, TicketIcon, UtensilsIcon } from "./icons";
 
 // Words that don't help tell clubs apart in their initials.
 const NAME_FILLER = new Set(["mcmaster", "mac", "the", "of", "and", "at", "for", "university", "&"]);
 
 /** "ML" for "McMaster Linguistics Society": a stand-in for the club's avatar. */
 export function clubInitials(name: string): string {
-  const words = name.split(/[\s@()\-]+/).filter((w) => w && !NAME_FILLER.has(w.toLowerCase()));
-  return (words.length ? words : [name]).slice(0, 2).map((w) => w[0].toUpperCase()).join("");
+  // The first letter or digit of a word: w[0] of "🦜" is half an emoji, which renders as garbage.
+  const initial = (w: string) => w.match(/[\p{L}\p{N}]/u)?.[0].toUpperCase();
+  const words = name.split(/[\s@()\-]+/).filter((w) => w && !NAME_FILLER.has(w.toLowerCase()) && initial(w));
+  return (words.length ? words : [name]).slice(0, 2).map((w) => initial(w) ?? "").join("");
 }
 
 /** "On now" or "Starts in 25 min" from the current time; nothing otherwise (the start time says it). */
@@ -119,13 +122,7 @@ export function EventCard({ event, now, showDate = false }: { event: PublicEvent
       </div>
 
       <div className="mt-5 flex flex-wrap gap-2">
-        <a
-          href={`/events/${event.id}/calendar.ics`}
-          className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold ${category.tone.button}`}
-        >
-          <CalendarPlusIcon className="size-4" />
-          Add to calendar
-        </a>
+        <AddToCalendar eventId={event.id} className={category.tone.button} />
         {event.permalink && (
           <a
             href={event.permalink}

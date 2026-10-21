@@ -1,5 +1,6 @@
-// Builds an .ics calendar file (RFC 5545) for one event, so "Add to calendar"
-// works with Google Calendar, Apple Calendar, and Outlook.
+// Builds an .ics calendar file (RFC 5545) for one event, for Apple Calendar and
+// any other calendar app. Google Calendar and Outlook get links instead
+// (calendar-links.ts), so adding an event there doesn't download a file.
 
 import { campus } from "@/lib/campus";
 import { freeFoodPhrase } from "@/lib/clean";
@@ -13,8 +14,8 @@ function text(value: string): string {
   return value.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
 }
 
-/** UTC timestamp in iCalendar form: 20261007T220000Z. */
-function utc(instant: Date): string {
+/** UTC timestamp in iCalendar form: 20261007T220000Z. Google Calendar links use it too. */
+export function utc(instant: Date): string {
   return instant.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
 }
 
@@ -35,19 +36,22 @@ function fold(line: string): string {
   return parts.join("\r\n ");
 }
 
-export function eventToIcs(event: PublicEvent, eventUrl: string, now = new Date()): string {
-  const start = new Date(event.startsAt);
-  const when: string[] = [];
-  if (event.startTimeKnown) {
-    const end = event.endsAt ? new Date(event.endsAt) : new Date(start.getTime() + ASSUMED_LENGTH_MINUTES * 60_000);
-    when.push(`DTSTART:${utc(start)}`, `DTEND:${utc(end)}`);
-  } else {
-    // No start time: an all-day event on its campus-local date.
-    const day = toLocalInputs(event.startsAt).date;
-    when.push(`DTSTART;VALUE=DATE:${day.replace(/-/g, "")}`, `DTEND;VALUE=DATE:${addDays(day, 1).replace(/-/g, "")}`);
-  }
+/** When an event goes in a calendar: its start and end, or, with no start time, all day on its campus-local date. */
+export type CalendarSpan = { allDay: false; start: Date; end: Date } | { allDay: true; day: string; nextDay: string };
 
-  const description = [
+export function calendarSpan(event: PublicEvent): CalendarSpan {
+  if (!event.startTimeKnown) {
+    const day = toLocalInputs(event.startsAt).date;
+    return { allDay: true, day, nextDay: addDays(day, 1) };
+  }
+  const start = new Date(event.startsAt);
+  const end = event.endsAt ? new Date(event.endsAt) : new Date(start.getTime() + ASSUMED_LENGTH_MINUTES * 60_000);
+  return { allDay: false, start, end };
+}
+
+/** The notes a calendar entry carries: food, price, who's posting it, and links back. */
+export function calendarDescription(event: PublicEvent, eventUrl: string): string {
+  return [
     event.hasFreeFood && freeFoodPhrase(event.foodDescription),
     event.cost === "paid" && `Entry: ${event.price ?? "paid"}`,
     `Posted by ${event.clubName}${event.hostedBy ? `, hosted by ${event.hostedBy}` : ""}`,
@@ -58,6 +62,13 @@ export function eventToIcs(event: PublicEvent, eventUrl: string, now = new Date(
   ]
     .filter(Boolean)
     .join("\n");
+}
+
+export function eventToIcs(event: PublicEvent, eventUrl: string, now = new Date()): string {
+  const span = calendarSpan(event);
+  const when = span.allDay
+    ? [`DTSTART;VALUE=DATE:${span.day.replace(/-/g, "")}`, `DTEND;VALUE=DATE:${span.nextDay.replace(/-/g, "")}`]
+    : [`DTSTART:${utc(span.start)}`, `DTEND:${utc(span.end)}`];
 
   const lines = [
     "BEGIN:VCALENDAR",
@@ -70,7 +81,7 @@ export function eventToIcs(event: PublicEvent, eventUrl: string, now = new Date(
     `DTSTAMP:${utc(now)}`,
     ...when,
     `SUMMARY:${text(event.name)}`,
-    `DESCRIPTION:${text(description)}`,
+    `DESCRIPTION:${text(calendarDescription(event, eventUrl))}`,
     ...(event.location ? [`LOCATION:${text(event.location)}`] : []),
     `URL:${eventUrl}`,
     "END:VEVENT",

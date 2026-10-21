@@ -1,7 +1,8 @@
 import { getEvent } from "@/lib/events";
 import { eventToIcs } from "@/lib/ics";
 
-// GET /events/123/calendar.ics: the event as a calendar file.
+// GET /events/123/calendar.ics: the event as a calendar file. "inline" lets an iPhone open
+// it straight in Calendar; browsers that can't show it still save it under this name.
 export async function GET(request: Request, { params }: RouteContext<"/events/[id]/calendar.ics">) {
   const { id } = await params;
   const event = await getEvent(Number(id));
@@ -13,7 +14,7 @@ export async function GET(request: Request, { params }: RouteContext<"/events/[i
   return new Response(eventToIcs(event, eventUrl), {
     headers: {
       "Content-Type": "text/calendar; charset=utf-8",
-      "Content-Disposition": `attachment; filename="${filename}"`,
+      "Content-Disposition": `inline; filename="${filename}"`,
     },
   });
 }

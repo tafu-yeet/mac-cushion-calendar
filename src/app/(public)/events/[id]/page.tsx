@@ -5,7 +5,8 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 
 import { clubInitials } from "@/components/event-card";
-import { CalendarPlusIcon, ChevronIcon, ExternalIcon, PinIcon, TicketIcon, UtensilsIcon } from "@/components/icons";
+import { AddToCalendar } from "@/components/add-to-calendar";
+import { ChevronIcon, ExternalIcon, PinIcon, TicketIcon, UtensilsIcon } from "@/components/icons";
 import { ShareButton } from "@/components/share-button";
 import { categoryOf } from "@/lib/categories";
 import { freeFoodPhrase } from "@/lib/clean";
@@ -131,13 +132,7 @@ async function EventDetail({ id }: { id: number }) {
       )}
 
       <div className="mt-6 flex flex-wrap gap-2">
-        <a
-          href={`/events/${event.id}/calendar.ics`}
-          className={`inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-semibold ${category.tone.button}`}
-        >
-          <CalendarPlusIcon className="size-4" />
-          Add to calendar
-        </a>
+        <AddToCalendar eventId={event.id} className={category.tone.button} />
         {event.permalink && (
           <a
             href={event.permalink}
