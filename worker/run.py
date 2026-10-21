@@ -11,6 +11,7 @@ Usage (from worker/):
     python run.py --club USERNAME  # fetch this club now, even if it isn't due
     python run.py --no-extract     # fetch and store only
     python run.py --extract-only   # only process posts waiting for extraction
+    python run.py --read-now       # read waiting posts with direct calls, not in a batch (catching up)
     python run.py --retry-failed   # also re-queue posts whose extraction failed
     python run.py --reread-upcoming  # re-read posts behind upcoming, unreviewed events
     python run.py --log-dir logs   # scheduled runs: append output to logs/YYYY-MM-DD.log
@@ -34,13 +35,14 @@ from storage3.exceptions import StorageException
 from supabase import Client
 
 import auto_approve
+import batch_reader
 import merge
 import rubric
 import store
 from extractors import ExtractionError, ExtractorUnavailable, TwoStageExtractor, Usage, new_pipeline
 from fetchers import Attempt, FetchError, fetch_posts, print_attempt
 from settings import (
-    LOCAL_TZ, MAX_EXTRACTIONS_PER_RUN, RUBRIC_ENABLED, RUBRIC_EVERY_MINUTES, RUBRIC_MERGE, WORKER_DIR,
+    EXTRACTOR, LOCAL_TZ, MAX_EXTRACTIONS_PER_RUN, READ_MODE, RUBRIC_ENABLED, RUBRIC_EVERY_MINUTES, RUBRIC_MERGE, WORKER_DIR,
 )
 
 CLUB_DELAY_S = (5.0, 15.0)
@@ -201,6 +203,7 @@ def main() -> int:
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--no-extract", action="store_true", help="fetch and store only")
     group.add_argument("--extract-only", action="store_true", help="only extract waiting posts")
+    parser.add_argument("--read-now", action="store_true", help="read waiting posts with direct calls now, not in a batch")
     group.add_argument(
         "--reread-upcoming", action="store_true",
         help="only re-read posts whose events are all unreviewed and include one from today on (after a prompt change)",
@@ -246,7 +249,13 @@ def run(args: argparse.Namespace) -> int:
         expired = auto_approve.expire_stale(sb)
         if expired:
             print(f"{expired} stale pending event(s) expired")
-        extract_pending(sb, MAX_EXTRACTIONS_PER_RUN)
+        if READ_MODE == "batch" and EXTRACTOR == "claude" and not args.read_now:
+            batch_reader.run(sb)  # half price; posts come back over the next runs
+        else:
+            extract_pending(sb, MAX_EXTRACTIONS_PER_RUN)
+        pruned = store.prune_images(sb)
+        if pruned:
+            print(f"{pruned} old post image(s) deleted")
         sync_rubric(sb)
     return 0
 

@@ -58,25 +58,40 @@ class TwoStageExtractor:
     def extract(self, **post) -> PostResult:
         """Errors from the first pass propagate; a failed check only adds a note."""
         first, first_usage = self.first.extract(**post)
-        usages = [("extract", first_usage)]
-        result = PostResult(
-            first.is_event, first.reason, [FinalEvent(e, first_usage.model) for e in first.events],
-            first, first_usage.model, None, usages,
-        )
-        if self.check is None or not first.events:
+        result = self.begin(first, first_usage)
+        if not self.needs_check(result):
             return result
-
         try:
             second, check_usage = self.check.extract(**post)
         except (ExtractionError, ExtractorUnavailable) as e:
-            if isinstance(e, ExtractionError) and e.usage:
-                usages.append(("verify", e.usage))
-            for fe in result.events:
-                fe.notes.append(f"Date check didn't run ({e}); dates are unverified.")
-            return result
+            return self.check_failed(result, e)
+        return self.with_check(result, second, check_usage, **post)
 
+    # The steps of extract(), for reading in batches (batch_reader.py), where the
+    # first reading and the check come back in separate batches.
+
+    def begin(self, first: PostExtraction, first_usage: Usage) -> PostResult:
+        """The result after the first reading alone."""
+        return PostResult(
+            first.is_event, first.reason, [FinalEvent(e, first_usage.model) for e in first.events],
+            first, first_usage.model, None, [("extract", first_usage)],
+        )
+
+    def needs_check(self, result: PostResult) -> bool:
+        return self.check is not None and bool(result.first_pass.events)
+
+    def check_failed(self, result: PostResult, e: Exception) -> PostResult:
+        if isinstance(e, ExtractionError) and e.usage:
+            result.usages.append(("verify", e.usage))
+        for fe in result.events:
+            fe.notes.append(f"Date check didn't run ({e}); dates are unverified.")
+        return result
+
+    def with_check(self, result: PostResult, second: PostExtraction, check_usage: Usage, **post) -> PostResult:
+        """Merges the check into the result; when they disagree, the tie-breaker reads the post (now, not batched)."""
+        first, usages = result.first_pass, result.usages
         usages.append(("verify", check_usage))
-        result.events = merge(first.events, first_usage.model, second.events, check_usage.model)
+        result.events = merge(first.events, result.first_model, second.events, check_usage.model)
         result.is_event = second.is_event or first.is_event
         result.reason = second.reason
         result.verified_by = check_usage.model

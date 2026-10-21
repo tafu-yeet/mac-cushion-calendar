@@ -6,6 +6,8 @@ import base64
 from datetime import datetime
 
 import anthropic
+from anthropic.lib._parse._transform import transform_schema  # what messages.parse uses for output_format
+from pydantic import TypeAdapter, ValidationError
 
 from settings import CLAUDE_EFFORT, CLAUDE_MODEL
 
@@ -31,6 +33,8 @@ MAX_TOKENS = 16000
 # but 4,096 for Haiku 4.5, so on Haiku 4.5 this marker does nothing.
 CACHE_CONTROL = {"type": "ephemeral", "ttl": "1h"}
 CACHE_WRITE_MULTIPLIER = 2.0
+# The structured-output format for requests built by hand (batches).
+OUTPUT_FORMAT = {"type": "json_schema", "schema": transform_schema(TypeAdapter(PostExtraction).json_schema())}
 
 
 def model_options(model: str, effort: str) -> dict:
@@ -57,9 +61,7 @@ class ClaudeExtractor:
         self.cache = cache
         self.effort = effort or CLAUDE_EFFORT
 
-    def extract(
-        self, *, club_name: str, username: str, posted_at: datetime, caption: str, image: bytes | None
-    ) -> tuple[PostExtraction, Usage]:
+    def _content(self, *, club_name: str, username: str, posted_at: datetime, caption: str, image: bytes | None) -> list[dict]:
         content = []
         media_type = image_media_type(image) if image else None
         if media_type:
@@ -68,13 +70,67 @@ class ClaudeExtractor:
                 "source": {"type": "base64", "media_type": media_type, "data": base64.standard_b64encode(image).decode()},
             })
         content.append({"type": "text", "text": post_text(club_name, username, posted_at, caption, bool(media_type))})
+        return content
 
+    def _system(self) -> list[dict]:
+        return [{"type": "text", "text": system_prompt(), **({"cache_control": CACHE_CONTROL} if self.cache else {})}]
+
+    def batch_params(self, **post) -> dict:
+        """The request extract() makes, as Message Batches params. Without the
+        server-side fallback, which the Batches API doesn't take, and with the
+        output schema written out, as messages.parse would send it."""
+        effort = {} if self.model.startswith("claude-haiku-4-5") else {"effort": self.effort}
+        return {
+            "model": self.model,
+            "max_tokens": MAX_TOKENS,
+            "system": self._system(),
+            "messages": [{"role": "user", "content": self._content(**post)}],
+            "output_config": {**effort, "format": OUTPUT_FORMAT},
+        }
+
+    def read_batch_message(self, message) -> tuple[PostExtraction, Usage]:
+        """A batch result's message as extract() would return it; raises ExtractionError the same way."""
+        usage = self._usage(message, batch=True)
+        self._check_stop(message, usage)
+        text = next((block.text for block in message.content if block.type == "text"), None)
+        if not text:
+            raise ExtractionError(f"no output (stop_reason: {message.stop_reason})", usage)
+        try:
+            return PostExtraction.model_validate_json(text), usage
+        except ValidationError as e:
+            raise ExtractionError(f"output didn't fit the schema: {e}", usage) from e
+
+    @staticmethod
+    def _usage(response, batch: bool = False) -> Usage:
+        return Usage(
+            model=response.model,
+            stop_reason=response.stop_reason,
+            input_tokens=response.usage.input_tokens,
+            output_tokens=response.usage.output_tokens,
+            cache_creation_input_tokens=response.usage.cache_creation_input_tokens or 0,
+            cache_read_input_tokens=response.usage.cache_read_input_tokens or 0,
+            cache_write_multiplier=CACHE_WRITE_MULTIPLIER,
+            batch=batch,
+        )
+
+    @staticmethod
+    def _check_stop(response, usage: Usage) -> None:
+        if response.stop_reason == "refusal":
+            details = getattr(response, "stop_details", None)
+            raise ExtractionError(f"refused (category: {details.category if details else None})", usage)
+        if response.stop_reason == "max_tokens":
+            raise ExtractionError("output hit max_tokens", usage)
+
+    def extract(
+        self, *, club_name: str, username: str, posted_at: datetime, caption: str, image: bytes | None
+    ) -> tuple[PostExtraction, Usage]:
+        content = self._content(club_name=club_name, username=username, posted_at=posted_at, caption=caption, image=image)
         try:
             response = self.client.beta.messages.parse(
                 model=self.model,
                 max_tokens=MAX_TOKENS,
                 **model_options(self.model, self.effort),
-                system=[{"type": "text", "text": system_prompt(), **({"cache_control": CACHE_CONTROL} if self.cache else {})}],
+                system=self._system(),
                 messages=[{"role": "user", "content": content}],
                 output_format=PostExtraction,
             )
@@ -91,20 +147,8 @@ class ClaudeExtractor:
                 raise ExtractorUnavailable(f"Claude API busy (HTTP {e.status_code})") from e
             raise ExtractionError(str(e)) from e
 
-        usage = Usage(
-            model=response.model,
-            stop_reason=response.stop_reason,
-            input_tokens=response.usage.input_tokens,
-            output_tokens=response.usage.output_tokens,
-            cache_creation_input_tokens=response.usage.cache_creation_input_tokens or 0,
-            cache_read_input_tokens=response.usage.cache_read_input_tokens or 0,
-            cache_write_multiplier=CACHE_WRITE_MULTIPLIER,
-        )
-        if response.stop_reason == "refusal":
-            category = response.stop_details.category if response.stop_details else None
-            raise ExtractionError(f"refused (category: {category})", usage)
-        if response.stop_reason == "max_tokens":
-            raise ExtractionError("output hit max_tokens", usage)
+        usage = self._usage(response)
+        self._check_stop(response, usage)
         if response.parsed_output is None:
             raise ExtractionError(f"no parsed output (stop_reason: {response.stop_reason})", usage)
         return response.parsed_output, usage

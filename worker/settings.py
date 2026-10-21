@@ -59,6 +59,21 @@ _auto = env("AUTO_APPROVE_MIN_CONFIDENCE", "0.85")
 AUTO_APPROVE_MIN_CONFIDENCE = None if _auto.lower() == "none" else float(_auto)
 AUTO_APPROVE_OTHER_MIN_CONFIDENCE = float(env("AUTO_APPROVE_OTHER_MIN_CONFIDENCE", "0.75"))
 
+# How posts are read: "batch" sends them through the Message Batches API (half
+# price, answers within minutes to an hour; batch_reader.py), "now" calls the
+# API for each post as it comes (run.extract_post). Claude only.
+READ_MODE = env("READ_MODE", "now")  # "batch" once the round trip is confirmed
+BATCH_MAX_POSTS = int(env("BATCH_MAX_POSTS", "300"))  # posts per batch
+
+# Clubs that post rarely are checked less often, saving proxy traffic: none in
+# the last 30 days, every QUIET hours; 1-3, every SLOW hours; more, at the
+# club's own interval (12 hours by default).
+QUIET_POLL_HOURS = int(env("QUIET_POLL_HOURS", "72"))
+SLOW_POLL_HOURS = int(env("SLOW_POLL_HOURS", "24"))
+# Post images are only needed to read posts and review events: they're deleted
+# once a post's events ended this many days ago (Supabase's free storage is 1 GB).
+KEEP_IMAGES_DAYS = int(env("KEEP_IMAGES_DAYS", "30"))
+
 # Rubric (campus.hellorubric.com), the MSU's club platform, as a second event
 # source: rubric.py fetches it each run, merge.py combines it with Instagram.
 # RUBRIC_MERGE "report" only prints what merging would change; "apply" saves it.

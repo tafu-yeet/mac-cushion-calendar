@@ -34,6 +34,7 @@ class ExtractedEvent(BaseModel):
     )
     end: datetime | None = Field(description="ISO 8601 with the campus timezone's UTC offset.")
     location: str | None
+    off_campus: bool = Field(default=False, description="True when it happens away from campus; see Other fields.")
     hosted_by: str | None = Field(
         description="Clubs or groups other than the posting account that run or co-run the event, "
         "with @handle if shown; null when the posting account runs it alone."
@@ -65,6 +66,7 @@ class Usage:
     cache_creation_input_tokens: int = 0
     cache_read_input_tokens: int = 0
     cache_write_multiplier: float = 1.25  # 1.25 for 5-minute cache writes, 2.0 for 1-hour
+    batch: bool = False  # sent through the Message Batches API, which bills half
 
     @property
     def cost_usd(self) -> float | None:
@@ -74,12 +76,13 @@ class Usage:
         if prices is None:
             return None
         input_price, output_price, cache_read_price = prices
-        return (
+        full = (
             self.input_tokens * input_price
             + self.cache_creation_input_tokens * input_price * self.cache_write_multiplier
             + self.cache_read_input_tokens * cache_read_price
             + self.output_tokens * output_price
         ) / 1_000_000
+        return full / 2 if self.batch else full
 
 
 class ExtractionError(Exception):
@@ -152,6 +155,7 @@ Categories
 Other fields
 - cost is "paid" when attending needs a ticket, entry fee, or registration fee (put the price in price as written, e.g. "$15" or "$10 members, $15 others"); "free" when the post says it's free or nothing suggests a cost; "unknown" when it mentions tickets or registration without saying whether they cost money.
 {OPEN_TO_ALL_RULE}
+- off_campus is true when the event happens away from {CAMPUS['school']}'s campus: a restaurant, café, bar, arena, park, trail, someone's venue in the city or another city, or another school. It is false on campus (any building, room, lounge, field, or residence, including ones not in the list below, and the campus address, 1280 Main St W), online, or when the post names no particular place (a city name alone isn't one).
 - location is the place as stated, with campus abbreviations expanded from the list below, e.g. "MUSC 230 (McMaster University Student Centre)". Use null if no place is given, including "link in bio". Give only the place: never notes about the flyer, the caption, or a changed room. If the post disagrees with itself, use the latest or most specific place and explain in reason.
 - hosted_by lists the clubs or groups other than the posting account that run or co-run the event: the club whose event a hub or events page is sharing, or the partner in a collaboration ("x", "teaming up with", "partnering with"). Name them as the post does, with the @handle if shown, e.g. "McMaster Geeks (@mcmastergeeks)". Sponsors, venues, and shops are not hosts. Use null when the posting account runs the event alone.
 

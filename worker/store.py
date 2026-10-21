@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import Counter
 from datetime import datetime, timedelta, timezone
 
 from curl_cffi import requests
@@ -11,7 +12,10 @@ import auto_approve
 from clean import clean_food, clean_place
 from extractors import FinalEvent, PostResult, Usage
 from fetchers import Attempt, Post
-from settings import LOCAL_TZ, MAX_POST_AGE_DAYS, POST_IMAGE_BUCKET, SKIP_REELS, require
+from settings import (
+    KEEP_IMAGES_DAYS, LOCAL_TZ, MAX_POST_AGE_DAYS, POST_IMAGE_BUCKET, QUIET_POLL_HOURS, SKIP_REELS, SLOW_POLL_HOURS,
+    require,
+)
 
 IMAGE_TIMEOUT_S = 30
 # Ask the CDN for formats Claude accepts (no AVIF/HEIC).
@@ -30,14 +34,33 @@ def now() -> datetime:
 # Clubs -------------------------------------------------------------------------
 
 def due_clubs(sb: Client, username: str | None = None) -> list[dict]:
-    """Active clubs whose polling interval has passed, or one club by username regardless."""
+    """Active clubs whose polling interval has passed, or one club by username regardless.
+
+    A club that hasn't posted in 30 days is checked every QUIET_POLL_HOURS, one
+    that posted 1-3 times every SLOW_POLL_HOURS, the rest at their own interval.
+    """
     if username:
         return sb.table("clubs").select("*").eq("instagram_username", username.lower()).execute().data
     clubs = sb.table("clubs").select("*").eq("active", True).execute().data
+    since = (now() - timedelta(days=30)).isoformat()
+    recent: Counter[int] = Counter()
+    start = 0
+    while True:
+        page = sb.table("posts").select("club_id").gte("posted_at", since).range(start, start + 999).execute().data
+        recent.update(p["club_id"] for p in page)
+        if len(page) < 1000:
+            break
+        start += 1000
+
+    def interval(club: dict) -> int:
+        n = recent[club["id"]]
+        floor = QUIET_POLL_HOURS * 60 if n == 0 else SLOW_POLL_HOURS * 60 if n <= 3 else 0
+        return max(club["poll_interval_minutes"], floor)
+
     return [
         c for c in clubs
         if c["last_checked_at"] is None
-        or datetime.fromisoformat(c["last_checked_at"]) + timedelta(minutes=c["poll_interval_minutes"]) <= now()
+        or datetime.fromisoformat(c["last_checked_at"]) + timedelta(minutes=interval(c)) <= now()
     ]
 
 
@@ -156,11 +179,33 @@ def load_image(sb: Client, path: str) -> bytes:
     return sb.storage.from_(POST_IMAGE_BUCKET).download(path)
 
 
+def prune_images(sb: Client, limit: int = 500) -> int:
+    """Delete the images of read posts whose events all ended over KEEP_IMAGES_DAYS ago
+    (or that announced none); they're only needed for reading and review. Returns the count."""
+    cutoff = (now() - timedelta(days=KEEP_IMAGES_DAYS)).isoformat()
+    rows = (
+        sb.table("posts").select("id, image_path, events(starts_at, ends_at, status)")
+        .not_.is_("image_path", "null").neq("extraction_status", "pending").lt("posted_at", cutoff)
+        .limit(limit).execute().data
+    )
+    done = [
+        r for r in rows
+        if all(e["status"] != "pending" and (e["ends_at"] or e["starts_at"] or "") < cutoff for e in r["events"])
+    ]
+    for i in range(0, len(done), 100):
+        chunk = done[i : i + 100]
+        sb.storage.from_(POST_IMAGE_BUCKET).remove([r["image_path"] for r in chunk])
+        sb.table("posts").update({"image_path": None}).in_("id", [r["id"] for r in chunk]).execute()
+    return len(done)
+
+
 # Extraction --------------------------------------------------------------------
 
 def pending_posts(sb: Client, limit: int) -> list[dict]:
+    """Posts waiting to be read one call at a time: not out in a batch, nor waiting for a batch check."""
     return (
         sb.table("posts").select("*, clubs(name)").eq("extraction_status", "pending")
+        .is_("read_batch", "null").is_("first_pass", "null")
         .order("posted_at").limit(limit).execute().data
     )
 
@@ -266,6 +311,7 @@ def _event_row(post: dict, fe: FinalEvent) -> dict:
         "start_time_known": e.start_time_known,
         "ends_at": _localized(e.end),
         "location": clean_place(e.location),
+        "off_campus": e.off_campus,
         "hosted_by": e.hosted_by,
         "open_to_all": e.open_to_all,
         "confidence": min(max(e.confidence, 0.0), 1.0),
