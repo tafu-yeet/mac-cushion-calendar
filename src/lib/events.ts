@@ -22,6 +22,7 @@ export type PublicEvent = {
   endsAt: string | null;
   startTimeKnown: boolean;
   location: string | null;
+  offCampus: boolean; // away from campus: listed in its own section
   hostedBy: string | null;
   openToAll: boolean;
   clubId: number;
@@ -36,7 +37,7 @@ export type PublicEvent = {
 // on the next request instead of after the cache lifetime.
 export const EVENTS_TAG = "events";
 
-const COLUMNS = `id, club_id, name, category, event_type, tags, has_free_food, food_description, cost, price, starts_at, ends_at, start_time_known, location, hosted_by, open_to_all,
+const COLUMNS = `id, club_id, name, category, event_type, tags, has_free_food, food_description, cost, price, starts_at, ends_at, start_time_known, location, off_campus, hosted_by, open_to_all,
   ticket_url, signup_required, clubs (name, instagram_username), posts (permalink, deleted_at)`;
 
 type Row = {
@@ -54,6 +55,7 @@ type Row = {
   ends_at: string | null;
   start_time_known: boolean;
   location: string | null;
+  off_campus: boolean;
   hosted_by: string | null;
   open_to_all: boolean | null;
   ticket_url: string | null;
@@ -77,6 +79,7 @@ function toPublicEvent(r: Row): PublicEvent {
     endsAt: r.ends_at,
     startTimeKnown: r.start_time_known,
     location: cleanPlace(r.location),
+    offCampus: r.off_campus,
     hostedBy: r.hosted_by,
     openToAll: r.open_to_all ?? true,
     clubId: r.club_id,

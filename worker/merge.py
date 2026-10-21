@@ -345,6 +345,17 @@ def rubric_signup(r: dict) -> bool:
     return any(t["amount"] > 0 for t in r["tickets"] or []) or bool(SIGNUP.search(r["description"] or ""))
 
 
+def rubric_off_campus(r: dict) -> bool:
+    """Away from campus, judged from Rubric's address: on campus when it names McMaster,
+    the campus address, a campus building, or somewhere online."""
+    place = (r.get("address") or r.get("location") or "").lower()
+    if not place.strip():
+        return False
+    if "mcmaster" in place or "1280 main" in place or re.search(r"\b(online|zoom|virtual|teams)\b", place):
+        return False
+    return not any(re.search(rf"\b{re.escape(code)}\b", place) for code in CODES)
+
+
 def rubric_only_row(r: dict, club_id: int, society: Society) -> dict:
     """An events row for a Rubric event with no Instagram post."""
     cost, price = rubric_cost(r)
@@ -361,7 +372,8 @@ def rubric_only_row(r: dict, club_id: int, society: Society) -> dict:
         "name": r["title"], "event_type": (r["category"] or "other").lower(),
         "category": CATEGORIES.get(r["category"] or "", "other"),
         "starts_at": r["starts_at"], "ends_at": r["ends_at"], "start_time_known": True,
-        "location": clean_place(r["location"]), "cost": cost, "price": price, "ticket_url": r["url"],
+        "location": clean_place(r["location"]), "off_campus": rubric_off_campus(r), "cost": cost, "price": price,
+        "ticket_url": r["url"],
         "image_url": r["image_url"], "description": r["description"],
         "has_free_food": bool(food), "food_description": food, "food_source": "rubric" if food else None,
         "signup_required": rubric_signup(r), "open_to_all": not (members_only or stated_limit),
@@ -420,7 +432,7 @@ class Plan:
 def plan(sb: Client, start: date, end: date) -> Plan:
     lo, hi = day_bounds(start, end)
     rubric = {r["eid"]: r for r in fetch_all(lambda a, b: sb.table("rubric_events").select(
-        "eid, society_id, title, category, price_info, starts_at, ends_at, location, description, tickets, "
+        "eid, society_id, title, category, price_info, starts_at, ends_at, location, address, description, tickets, "
         "collaborator_ids, image_url, url, changed_at, missing_since").gte("starts_at", lo).lt("starts_at", hi).range(a, b))}
     events = {e["id"]: e for e in fetch_all(lambda a, b: sb.table("events").select(EVENT_COLUMNS)
         .in_("status", ["pending", "approved"]).gte("starts_at", lo).lt("starts_at", hi).range(a, b))}
@@ -548,9 +560,9 @@ def apply(sb: Client, p: Plan) -> dict[str, int]:
             done["published" if not hold else "added"] = done.get("published" if not hold else "added", 0) + 1
             continue
         reviewed = set(existing["reviewed_fields"] or [])
-        # Who can come is decided once, on adding (a person or a re-check may refine it later).
+        # Who can come, and whether it's off campus, are decided once, on adding (a person may change them).
         update = {k: v for k, v in row.items()
-                  if k not in reviewed and k != "open_to_all" and existing.get(k) != v and k in existing}
+                  if k not in reviewed and k not in ("open_to_all", "off_campus") and existing.get(k) != v and k in existing}
         # A person's approval or rejection stands; the worker only moves what it decided itself.
         if not existing["reviewed_by"] and existing["status"] != "rejected" and existing["status"] != status["status"]:
             update |= status

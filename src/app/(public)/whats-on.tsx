@@ -6,7 +6,7 @@ import { BigDate, DateStats } from "@/components/big-date";
 import type { DayCounts } from "@/components/day-picker";
 import { EventCard } from "@/components/event-card";
 import { FilterBar, useFilters } from "@/components/filter-bar";
-import { ChevronIcon } from "@/components/icons";
+import { ChevronIcon, PinIcon } from "@/components/icons";
 import { SiteTour } from "@/components/site-tour";
 import { useNow } from "@/components/use-now";
 import { campus } from "@/lib/campus";
@@ -17,7 +17,8 @@ import { addDays, formatDay, toLocalInputs } from "@/lib/time";
 
 const COMING_UP_COUNT = 6;
 
-type DayGroup = { date: string; fits: PublicEvent[]; timeUnknown: PublicEvent[] };
+// fits and timeUnknown are on campus; offCampus is listed in its own section.
+type DayGroup = { date: string; fits: PublicEvent[]; timeUnknown: PublicEvent[]; offCampus: PublicEvent[] };
 
 /** Everything on today, tomorrow, this week, or a picked day that matches the filters. */
 export function WhatsOn({ events, today, now: serverNow, fromUrl }: { events: PublicEvent[]; today: string; now: number; fromUrl: Filters }) {
@@ -37,14 +38,16 @@ export function WhatsOn({ events, today, now: serverNow, fromUrl }: { events: Pu
   const dates = picked ? [picked] : Array.from({ length: filters.day === "week" ? 7 : 1 }, (_, i) => addDays(today, first + i));
   const groups: DayGroup[] = dates.map((date) => {
     const onDay = matching.filter((e) => dateOf(e) === date);
+    const near = onDay.filter((e) => !e.offCampus);
     return {
       date,
-      fits: onDay.filter((e) => inWindow(e, slot) === true),
-      timeUnknown: onDay.filter((e) => inWindow(e, slot) === "unknown"),
+      fits: near.filter((e) => inWindow(e, slot) === true),
+      timeUnknown: near.filter((e) => inWindow(e, slot) === "unknown"),
+      offCampus: onDay.filter((e) => e.offCampus && inWindow(e, slot) !== false),
     };
   });
-  const total = groups.reduce((n, g) => n + g.fits.length, 0);
-  const withFood = groups.reduce((n, g) => n + g.fits.filter((e) => e.hasFreeFood).length, 0);
+  const total = groups.reduce((n, g) => n + g.fits.length + g.offCampus.length, 0);
+  const withFood = groups.reduce((n, g) => n + [...g.fits, ...g.offCampus].filter((e) => e.hasFreeFood).length, 0);
   const lastShown = groups[groups.length - 1].date;
   const comingUp = matching.filter((e) => dateOf(e) > lastShown && inWindow(e, slot) !== false).slice(0, COMING_UP_COUNT);
 
@@ -120,7 +123,7 @@ export function WhatsOn({ events, today, now: serverNow, fromUrl }: { events: Pu
 }
 
 function DaySection({ group, today, now, showHeading }: { group: DayGroup; today: string; now: number; showHeading: boolean }) {
-  if (!group.fits.length && !group.timeUnknown.length) return null;
+  if (!group.fits.length && !group.timeUnknown.length && !group.offCampus.length) return null;
   return (
     <section className="flex flex-col gap-3">
       {showHeading && (
@@ -143,6 +146,17 @@ function DaySection({ group, today, now, showHeading }: { group: DayGroup; today
             ))}
           </div>
         </details>
+      )}
+      {group.offCampus.length > 0 && (
+        <>
+          <h3 className="mt-2 flex items-center gap-1.5 px-1 text-sm font-bold uppercase tracking-wider text-maroon/85">
+            <PinIcon className="size-4" />
+            Off campus
+          </h3>
+          {group.offCampus.map((e) => (
+            <EventCard key={e.id} event={e} now={now} />
+          ))}
+        </>
       )}
     </section>
   );

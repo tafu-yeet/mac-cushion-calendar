@@ -137,6 +137,7 @@ export type Database = {
           id: number
           image_url: string | null
           location: string | null
+          off_campus: boolean
           model: string | null
           name: string
           open_to_all: boolean | null
@@ -177,6 +178,7 @@ export type Database = {
           id?: never
           image_url?: string | null
           location?: string | null
+          off_campus?: boolean
           model?: string | null
           name: string
           open_to_all?: boolean | null
@@ -217,6 +219,7 @@ export type Database = {
           id?: never
           image_url?: string | null
           location?: string | null
+          off_campus?: boolean
           model?: string | null
           name?: string
           open_to_all?: boolean | null
@@ -372,6 +375,7 @@ export type Database = {
           extraction_error: string | null
           extraction_status: string
           fetched_via: string
+          first_pass: Json | null
           id: string
           image_path: string | null
           image_url: string | null
@@ -379,6 +383,7 @@ export type Database = {
           permalink: string
           posted_at: string
           raw: Json | null
+          read_batch: string | null
           shortcode: string
           username: string
         }
@@ -392,6 +397,7 @@ export type Database = {
           extraction_error?: string | null
           extraction_status?: string
           fetched_via: string
+          first_pass?: Json | null
           id: string
           image_path?: string | null
           image_url?: string | null
@@ -399,6 +405,7 @@ export type Database = {
           permalink: string
           posted_at: string
           raw?: Json | null
+          read_batch?: string | null
           shortcode: string
           username: string
         }
@@ -412,6 +419,7 @@ export type Database = {
           extraction_error?: string | null
           extraction_status?: string
           fetched_via?: string
+          first_pass?: Json | null
           id?: string
           image_path?: string | null
           image_url?: string | null
@@ -419,6 +427,7 @@ export type Database = {
           permalink?: string
           posted_at?: string
           raw?: Json | null
+          read_batch?: string | null
           shortcode?: string
           username?: string
         }

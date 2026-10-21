@@ -96,7 +96,10 @@ export function EventCard({ event, now, showDate = false }: { event: PublicEvent
 
       <p className="mt-3 flex items-start gap-1.5 text-sm opacity-90">
         <PinIcon className="mt-0.5 size-4 shrink-0" />
-        {event.location ?? "Location not announced"}
+        <span>
+          {event.location ?? "Location not announced"}
+          {event.offCampus && <span className="ml-2 rounded-full px-2 py-px text-xs font-semibold ring-1 ring-current/40">Off campus</span>}
+        </span>
       </p>
 
       <div className="mt-5 flex items-end justify-between gap-3">
