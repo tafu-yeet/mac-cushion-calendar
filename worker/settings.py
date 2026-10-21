@@ -62,7 +62,7 @@ AUTO_APPROVE_OTHER_MIN_CONFIDENCE = float(env("AUTO_APPROVE_OTHER_MIN_CONFIDENCE
 # How posts are read: "batch" sends them through the Message Batches API (half
 # price, answers within minutes to an hour; batch_reader.py), "now" calls the
 # API for each post as it comes (run.extract_post). Claude only.
-READ_MODE = env("READ_MODE", "now")  # "batch" once the round trip is confirmed
+READ_MODE = env("READ_MODE", "batch")
 BATCH_MAX_POSTS = int(env("BATCH_MAX_POSTS", "300"))  # posts per batch
 
 # Clubs that post rarely are checked less often, saving proxy traffic: none in
