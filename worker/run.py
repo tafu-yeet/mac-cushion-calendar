@@ -271,12 +271,19 @@ def run(args: argparse.Namespace) -> int:
             print(f"{pruned} old post image(s) deleted")
         sync_rubric(sb)
         # Once a day: is each event in the next two weeks still on? (flags; never cancels)
-        for event_id, note in recheck.daily(sb, fetch_club):
-            print(f"  flagged #{event_id}: {note}")
+        # Either step failing leaves its work for the next cycle; it mustn't end this one.
+        try:
+            for event_id, note in recheck.daily(sb, fetch_club):
+                print(f"  flagged #{event_id}: {note}")
+        except Exception as e:  # noqa: BLE001
+            print(f"Daily recheck stopped ({type(e).__name__}: {e}); it runs again next cycle")
         if EXTRACTOR == "claude":
-            judged = registration.run(sb)
-            if judged:
-                print(f"Registration judged for {len(judged)} event(s)")
+            try:
+                judged = registration.run(sb)
+                if judged:
+                    print(f"Registration judged for {len(judged)} event(s)")
+            except Exception as e:  # noqa: BLE001
+                print(f"Registration stopped ({type(e).__name__}: {e}); it runs again next cycle")
     return 0
 
 

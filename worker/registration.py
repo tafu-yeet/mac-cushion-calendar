@@ -33,6 +33,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Literal
 
 import anthropic
+import httpx
 from pydantic import BaseModel, Field
 from supabase import Client
 
@@ -273,18 +274,22 @@ def run(sb: Client, everything: bool = False, apply: bool = True, verbose: bool 
     out = []
     for i in range(0, len(todo), PER_CALL):
         chunk = todo[i:i + PER_CALL]
-        judgments, usage = read(client, chunk, copies)
-        if apply:
-            log_usage(sb, None, usage, "registration")
-        for e in chunk:
-            j = judgments.get(e["id"]) or Judgment(id=e["id"])
-            d = decide(e, j.instagram, j.copies, rubric.get(e["rubric_eid"]))
-            out.append((e, d))
-            if verbose:
-                print(f"  #{e['id']} {d.registration:<11} {d.where or '':<11} {e['name'][:45]}"
-                      + (f"  [{d.note}]" if d.note else "") + (f"  CONFLICT: {d.conflict}" if d.conflict else ""))
+        # A dropped connection skips this batch; it stays unjudged, so the next run takes it.
+        try:
+            judgments, usage = read(client, chunk, copies)
             if apply:
-                save(sb, e, d)
+                log_usage(sb, None, usage, "registration")
+            for e in chunk:
+                j = judgments.get(e["id"]) or Judgment(id=e["id"])
+                d = decide(e, j.instagram, j.copies, rubric.get(e["rubric_eid"]))
+                out.append((e, d))
+                if verbose:
+                    print(f"  #{e['id']} {d.registration:<11} {d.where or '':<11} {e['name'][:45]}"
+                          + (f"  [{d.note}]" if d.note else "") + (f"  CONFLICT: {d.conflict}" if d.conflict else ""))
+                if apply:
+                    save(sb, e, d)
+        except (anthropic.APIError, httpx.HTTPError, RuntimeError) as err:
+            print(f"  registration: skipped {len(chunk)} event(s) for now ({type(err).__name__}: {err})")
     return out
 
 
