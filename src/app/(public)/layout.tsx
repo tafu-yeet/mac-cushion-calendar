@@ -1,4 +1,6 @@
-import { Analytics } from "@vercel/analytics/next";
+// The plain React version: the Next.js one waits on useSearchParams inside a Suspense
+// boundary that never resolves on these partly prerendered pages, so it never loaded.
+import { Analytics } from "@vercel/analytics/react";
 import Image from "next/image";
 import Link from "next/link";
 import { Suspense } from "react";
