@@ -13,6 +13,8 @@ import { freeFoodPhrase } from "@/lib/clean";
 import { getEvent, type PublicEvent } from "@/lib/events";
 import { formatDay, formatDuration, formatTime, formatTimeRange, toLocalInputs, todayInCampus } from "@/lib/time";
 
+import { FeedbackLink } from "../../feedback";
+
 /** "Free pizza · Friday, October 9, 6:00 PM · MUSC 230", for share text and link previews. */
 function summary(e: PublicEvent, today: string): string {
   const when = `${formatDay(toLocalInputs(e.startsAt).date, "long", today)}, ${formatTimeRange(e.startsAt, e.endsAt, e.startTimeKnown)}`;
@@ -157,6 +159,13 @@ async function EventDetail({ id }: { id: number }) {
         )}
         <ShareButton title={event.name} text={summary(event, today)} />
       </div>
+      <FeedbackLink
+        type="wrong_info"
+        event={{ id: event.id, name: event.name }}
+        className="mt-5 block text-sm font-medium underline underline-offset-2 opacity-90 hover:opacity-100"
+      >
+        Something wrong with this event?
+      </FeedbackLink>
     </article>
   );
 }

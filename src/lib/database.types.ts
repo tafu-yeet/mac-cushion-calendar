@@ -264,6 +264,50 @@ export type Database = {
           },
         ]
       }
+      feedback: {
+        Row: {
+          contact: string | null
+          created_at: string
+          done: boolean
+          event_id: number | null
+          id: number
+          message: string
+          page_url: string | null
+          type: string
+          user_agent: string | null
+        }
+        Insert: {
+          contact?: string | null
+          created_at?: string
+          done?: boolean
+          event_id?: number | null
+          id?: never
+          message: string
+          page_url?: string | null
+          type: string
+          user_agent?: string | null
+        }
+        Update: {
+          contact?: string | null
+          created_at?: string
+          done?: boolean
+          event_id?: number | null
+          id?: never
+          message?: string
+          page_url?: string | null
+          type?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feedback_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fetch_logs: {
         Row: {
           attempt: number
@@ -580,51 +624,12 @@ export type Database = {
           },
         ]
       }
-      waitlist: {
-        Row: {
-          consent: string
-          created_at: string
-          email: string
-          id: number
-          newsletter: boolean
-          newsletter_consent_at: string | null
-          source: string | null
-        }
-        Insert: {
-          consent: string
-          created_at?: string
-          email: string
-          id?: never
-          newsletter?: boolean
-          newsletter_consent_at?: string | null
-          source?: string | null
-        }
-        Update: {
-          consent?: string
-          created_at?: string
-          email?: string
-          id?: never
-          newsletter?: boolean
-          newsletter_consent_at?: string | null
-          source?: string | null
-        }
-        Relationships: []
-      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      join_waitlist: {
-        Args: {
-          p_consent: string
-          p_email: string
-          p_newsletter: boolean
-          p_source: string
-        }
-        Returns: boolean
-      }
-      waitlist_count: { Args: never; Returns: number }
+      [_ in never]: never
     }
     Enums: {
       [_ in never]: never

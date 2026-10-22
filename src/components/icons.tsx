@@ -78,3 +78,9 @@ export const TodayIcon = (p: IconProps) => (
     <circle cx="12" cy="15.5" r="1.5" fill="currentColor" />
   </Icon>
 );
+
+export const CloseIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M6 6l12 12M18 6L6 18" />
+  </Icon>
+);

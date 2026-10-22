@@ -15,6 +15,8 @@ import { DEFAULT_FILTERS, byStart, inWindow, isNarrowed, matchesFilters, timeWin
 import { endMs } from "@/lib/status";
 import { addDays, formatDay, toLocalInputs } from "@/lib/time";
 
+import { MissingEventLink } from "./feedback";
+
 const COMING_UP_COUNT = 6;
 
 // fits and timeUnknown are on campus; offCampus is listed in its own section.
@@ -115,6 +117,8 @@ export function WhatsOn({ events, today, now: serverNow, fromUrl }: { events: Pu
             ))}
           </Section>
         )}
+
+        <MissingEventLink />
       </section>
 
       <SiteTour />

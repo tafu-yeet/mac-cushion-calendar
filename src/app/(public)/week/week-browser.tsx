@@ -5,6 +5,8 @@ import { byStart, matchesFilters, type Filters } from "@/lib/filters";
 import { addDays } from "@/lib/time";
 
 import { CalendarHeader, calendarHref, monthDay, weekRange } from "../calendar-header";
+import { MissingEventLink } from "../feedback";
+
 import { DayCard } from "./day-card";
 import type { WeekDay } from "./types";
 
@@ -64,6 +66,8 @@ export function WeekBrowser({
           <DayCard key={d.date} day={d} dayHref={day(d.date)} today={today} />
         ))}
       </div>
+
+      <MissingEventLink />
     </div>
   );
 }

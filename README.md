@@ -120,14 +120,18 @@ npm install
 npm run dev        # http://localhost:3000/admin
 ```
 
-### Waitlist
 
-`/waitlist` is a stand-alone sign-up page for Instagram (no site menu). Add
-`?from=story`, `?from=post` or `?from=bio` to the link so the admin page at
-`/admin/waitlist` shows which one brings people in; it also has the totals,
-sign-ups per day, and a CSV download. People join through the
-`join_waitlist()` database function and never see the list. The newsletter is
-a separate, unticked box, and each row keeps the wording the person agreed to
-(Canada's anti-spam law asks senders to keep a record of consent). The count
-appears on the page once 25 people have joined (`SHOW_COUNT_FROM` in
-`src/lib/waitlist.ts`).
+### Feedback and visitor stats
+
+Public pages have three ways to send feedback, all opening the same form (a
+bottom sheet on phones, a small dialog on desktop; it never opens by itself):
+"Something wrong with this event?" on event pages, "Missing an event? Tell
+us." under the lists on `/` and `/week`, and "Send feedback" in the footer.
+Messages land in the `feedback` table, which visitors can add to but never
+read, and are listed at `/admin/feedback` with a type filter and a Done box.
+Spam guards: a hidden honeypot field, and at most 3 messages per browser per
+hour (a cookie only the server reads).
+
+Visitor counts come from Vercel Web Analytics (`<Analytics />` in the public
+layout: no cookies, nothing personal). Turn it on once under the project's
+Analytics tab in Vercel.
