@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Fredoka, Geist, Geist_Mono, Nunito } from "next/font/google";
 
 import { campus } from "@/lib/campus";
+import { SITE_URL } from "@/lib/site-url";
 
 import "./globals.css";
 
@@ -27,13 +28,9 @@ const nunito = Nunito({
   subsets: ["latin"],
 });
 
-// Absolute URLs for share previews: the production domain on Vercel, localhost in development.
-const siteUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL
-  ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-  : "http://localhost:3000";
-
 export const metadata: Metadata = {
-  metadataBase: new URL(siteUrl),
+  // Share previews need absolute URLs.
+  metadataBase: new URL(SITE_URL),
   title: { default: campus.siteName, template: `%s · ${campus.siteName}` },
   description: `Every public ${campus.schoolShortName} campus event in one place, from club Instagram posts: free food, socials, sports, talks, and more.`,
 };

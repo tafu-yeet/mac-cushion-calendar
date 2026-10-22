@@ -2,8 +2,10 @@
   "siteName": "Mac Cushion Calendar",
   "school": "McMaster University",
   "schoolShortName": "McMaster",
+  "schoolNickname": "Mac",
   "city": "Hamilton, Ontario, Canada",
   "timezone": "America/Toronto",
+  "instagram": "mac.cushioncalendar",
   "campusLocations": {
     "MUSC": "McMaster University Student Centre",
     "JHE": "John Hodgins Engineering Building",

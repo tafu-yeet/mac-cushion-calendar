@@ -119,3 +119,15 @@ Needs Node 20+ and `.env.local` (copy `.env.example`).
 npm install
 npm run dev        # http://localhost:3000/admin
 ```
+
+### Waitlist
+
+`/waitlist` is a stand-alone sign-up page for Instagram (no site menu). Add
+`?from=story`, `?from=post` or `?from=bio` to the link so the admin page at
+`/admin/waitlist` shows which one brings people in; it also has the totals,
+sign-ups per day, and a CSV download. People join through the
+`join_waitlist()` database function and never see the list. The newsletter is
+a separate, unticked box, and each row keeps the wording the person agreed to
+(Canada's anti-spam law asks senders to keep a record of consent). The count
+appears on the page once 25 people have joined (`SHOW_COUNT_FROM` in
+`src/lib/waitlist.ts`).

@@ -580,12 +580,51 @@ export type Database = {
           },
         ]
       }
+      waitlist: {
+        Row: {
+          consent: string
+          created_at: string
+          email: string
+          id: number
+          newsletter: boolean
+          newsletter_consent_at: string | null
+          source: string | null
+        }
+        Insert: {
+          consent: string
+          created_at?: string
+          email: string
+          id?: never
+          newsletter?: boolean
+          newsletter_consent_at?: string | null
+          source?: string | null
+        }
+        Update: {
+          consent?: string
+          created_at?: string
+          email?: string
+          id?: never
+          newsletter?: boolean
+          newsletter_consent_at?: string | null
+          source?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      join_waitlist: {
+        Args: {
+          p_consent: string
+          p_email: string
+          p_newsletter: boolean
+          p_source: string
+        }
+        Returns: boolean
+      }
+      waitlist_count: { Args: never; Returns: number }
     }
     Enums: {
       [_ in never]: never
