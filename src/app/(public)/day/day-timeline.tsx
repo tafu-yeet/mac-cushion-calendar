@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { StatusBadge } from "@/components/event-card";
+import { ScheduleBadge, StatusBadge } from "@/components/event-card";
 import { UtensilsIcon } from "@/components/icons";
 import { categoryOf } from "@/lib/categories";
 import { freeFoodPhrase } from "@/lib/clean";
@@ -118,12 +118,20 @@ function EventBlock({ event, now, style }: { event: PublicEvent; now: number | n
       className={`absolute z-10 flex flex-col gap-1 overflow-hidden rounded-2xl px-3 py-2 text-xs leading-tight transition-shadow hover:z-20 hover:shadow-md ${tone.card}`}
       style={style}
     >
-      {now !== null && (
+      {event.scheduleStatus !== "scheduled" ? (
         <span className="text-[10px] leading-none">
-          <StatusBadge event={event} now={now} className={tone.accent} />
+          <ScheduleBadge status={event.scheduleStatus} />
         </span>
+      ) : (
+        now !== null && (
+          <span className="text-[10px] leading-none">
+            <StatusBadge event={event} now={now} className={tone.accent} />
+          </span>
+        )
       )}
-      <span className="font-display text-sm font-semibold leading-tight">{event.name}</span>
+      <span className={`font-display text-sm font-semibold leading-tight ${event.scheduleStatus === "cancelled" ? "line-through" : ""}`}>
+        {event.name}
+      </span>
       <span className="opacity-90">{formatTimeRange(event.startsAt, event.endsAt, true)}</span>
       {event.hasFreeFood && (
         <span className={`inline-flex items-center gap-1 self-start rounded-full px-2 py-0.5 font-semibold ${tone.accent}`}>
@@ -151,7 +159,7 @@ function BusyBlock({ cluster, style }: { cluster: Cluster; style: React.CSSPrope
           className={`flex items-center gap-2 rounded-xl px-2 py-1.5 hover:opacity-90 ${categoryOf(event.category).tone.card}`}
         >
           <span className="shrink-0 font-medium opacity-90">{formatTime(event.startsAt)}</span>
-          <span className="truncate font-semibold">{event.name}</span>
+          <span className={`truncate font-semibold ${event.scheduleStatus === "cancelled" ? "line-through" : ""}`}>{event.name}</span>
           {event.hasFreeFood && <UtensilsIcon className="ml-auto size-3 shrink-0" />}
         </Link>
       ))}

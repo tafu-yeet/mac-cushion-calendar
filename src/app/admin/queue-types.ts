@@ -7,7 +7,7 @@ export type QueueEvent = {
   id: number;
   postId: string | null; // null for an event only Rubric lists
   source: "instagram" | "rubric" | "both";
-  flags: string[]; // instagram_post_deleted, rubric_missing, changed_on_instagram
+  flags: string[]; // see FLAG_LABELS in event-card.tsx
   conflicts: Conflict[];
   ticketUrl: string | null; // the Rubric listing
   rubricImageUrl: string | null;
@@ -29,6 +29,11 @@ export type QueueEvent = {
   location: string | null;
   hostedBy: string | null; // who runs it, when not the posting account
   openToAll: boolean;
+  scheduleStatus: string; // scheduled | cancelled | postponed
+  registration: string; // required | recommended | drop_in | unknown
+  registrationWhere: string | null;
+  registrationUrl: string | null;
+  registrationNote: string | null; // the words it was decided from
   confidence: number | null;
   reason: string | null;
   reviewNotes: string[];

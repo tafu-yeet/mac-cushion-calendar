@@ -157,3 +157,13 @@ export function minutesIntoDay(iso: string, timeZone = TIMEZONE): number {
   const [h, m] = time.split(":").map(Number);
   return h * 60 + m;
 }
+
+/** "just now", "3 hours ago", "2 days ago" since an instant, as of nowMs. */
+export function timeAgo(iso: string, nowMs: number): string {
+  const minutes = Math.max(0, Math.round((nowMs - Date.parse(iso)) / 60_000));
+  if (minutes < 60) return minutes < 5 ? "just now" : `${minutes} minutes ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+  const days = Math.round(hours / 24);
+  return `${days} day${days === 1 ? "" : "s"} ago`;
+}

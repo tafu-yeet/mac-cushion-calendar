@@ -15,7 +15,8 @@ export default async function Image({ params }: { params: Promise<{ id: string }
   const { id } = await params;
   const event = await getEvent(Number(id));
 
-  const title = event?.name ?? campus.siteName;
+  const off = event?.scheduleStatus === "cancelled" ? "Cancelled: " : event?.scheduleStatus === "postponed" ? "Postponed: " : "";
+  const title = event ? off + event.name : campus.siteName;
   // Free food leads when there is some; otherwise the kind of event.
   const description = !event
     ? "Things to do on campus"

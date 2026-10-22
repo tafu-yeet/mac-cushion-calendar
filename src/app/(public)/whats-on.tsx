@@ -48,15 +48,17 @@ export function WhatsOn({ events, today, now: serverNow, fromUrl }: { events: Pu
       offCampus: onDay.filter((e) => e.offCampus && inWindow(e, slot) !== false),
     };
   });
-  const total = groups.reduce((n, g) => n + g.fits.length + g.offCampus.length, 0);
-  const withFood = groups.reduce((n, g) => n + [...g.fits, ...g.offCampus].filter((e) => e.hasFreeFood).length, 0);
+  // Cancelled events stay listed, marked, but don't count as things to do.
+  const on = (e: PublicEvent) => e.scheduleStatus !== "cancelled";
+  const total = groups.reduce((n, g) => n + [...g.fits, ...g.offCampus].filter(on).length, 0);
+  const withFood = groups.reduce((n, g) => n + [...g.fits, ...g.offCampus].filter((e) => on(e) && e.hasFreeFood).length, 0);
   const lastShown = groups[groups.length - 1].date;
   const comingUp = matching.filter((e) => dateOf(e) > lastShown && inWindow(e, slot) !== false).slice(0, COMING_UP_COUNT);
 
   // What the calendar picker marks: per day, what you could go to with these filters.
   const counts: DayCounts = new Map();
   for (const e of matching) {
-    if (inWindow(e, slot) === false) continue;
+    if (inWindow(e, slot) === false || !on(e)) continue;
     const day = counts.get(dateOf(e)) ?? { events: 0, food: 0 };
     counts.set(dateOf(e), { events: day.events + 1, food: day.food + (e.hasFreeFood ? 1 : 0) });
   }

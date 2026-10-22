@@ -40,6 +40,9 @@ class ExtractedEvent(BaseModel):
         "with @handle if shown; null when the posting account runs it alone."
     )
     open_to_all: bool
+    schedule_status: Literal["scheduled", "cancelled", "postponed"] = Field(
+        default="scheduled", description="Whether the event is still on; see Other fields."
+    )
     confidence: float = Field(
         description="0 to 1: how sure you are that the details, especially date, time, "
         "and free food, are correct."
@@ -157,6 +160,7 @@ Other fields
 {OPEN_TO_ALL_RULE}
 - off_campus is true when the event happens away from {CAMPUS['school']}'s campus: a restaurant, café, bar, arena, park, trail, someone's venue in the city or another city, or another school. It is false on campus (any building, room, lounge, field, or residence, including ones not in the list below, and the campus address, 1280 Main St W), online, or when the post names no particular place (a city name alone isn't one).
 - location is the place as stated, with campus abbreviations expanded from the list below, e.g. "MUSC 230 (McMaster University Student Centre)". Use null if no place is given, including "link in bio". Give only the place: never notes about the flyer, the caption, or a changed room. If the post disagrees with itself, use the latest or most specific place and explain in reason.
+- schedule_status is "cancelled" when the post says this event is cancelled, canceled, or no longer happening; "postponed" when it's postponed or rescheduled without a new date given (with a new date, give the new date and "scheduled"); otherwise "scheduled".
 - hosted_by lists the clubs or groups other than the posting account that run or co-run the event: the club whose event a hub or events page is sharing, or the partner in a collaboration ("x", "teaming up with", "partnering with"). Name them as the post does, with the @handle if shown, e.g. "McMaster Geeks (@mcmastergeeks)". Sponsors, venues, and shops are not hosts. Use null when the posting account runs the event alone.
 
 Known campus locations

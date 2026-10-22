@@ -3,7 +3,7 @@
 import { createContext, useActionState, useCallback, useContext, useEffect, useId, useRef, useState } from "react";
 
 import { CloseIcon } from "@/components/icons";
-import { FEEDBACK_TYPES, MAX_CONTACT, MAX_MESSAGE, type FeedbackType } from "@/lib/feedback";
+import { CANCELLED_MESSAGE, FEEDBACK_TYPES, MAX_CONTACT, MAX_MESSAGE, type FeedbackType } from "@/lib/feedback";
 
 import { sendFeedback } from "./feedback-actions";
 
@@ -197,5 +197,55 @@ export function MissingEventLink() {
     <FeedbackLink type="missing_event" className="mx-auto mt-1 px-3 py-2 text-sm text-maroon/80 hover:text-maroon">
       Missing an event? <span className="font-semibold text-maroon underline underline-offset-2">Tell us.</span>
     </FeedbackLink>
+  );
+}
+
+/** "This got cancelled" on an event page: a tap, then a confirm; two reports for one event flag it for review. */
+export function CancelledReport({ eventId, className }: { eventId: number; className?: string }) {
+  const [state, action, pending] = useActionState(sendFeedback, null);
+  const [asking, setAsking] = useState(false);
+
+  if (state?.status === "sent") {
+    return (
+      <p role="status" className="text-sm font-medium">
+        Thanks! We&apos;ll check with the club.
+      </p>
+    );
+  }
+  if (!asking) {
+    return (
+      <button type="button" onClick={() => setAsking(true)} className={className}>
+        This got cancelled
+      </button>
+    );
+  }
+  return (
+    <form
+      action={(formData) => {
+        formData.set("page_url", window.location.href);
+        action(formData);
+      }}
+      className="flex flex-wrap items-center gap-2 text-sm"
+    >
+      <input type="hidden" name="type" value="cancelled" />
+      <input type="hidden" name="event_id" value={eventId} />
+      <input type="hidden" name="message" value={CANCELLED_MESSAGE} />
+      <span className="font-medium">Did the club cancel it?</span>
+      <button
+        type="submit"
+        disabled={pending}
+        className="rounded-full bg-red-600 px-3 py-1 font-semibold text-white ring-1 ring-white/50 hover:bg-red-700 disabled:opacity-70"
+      >
+        {pending ? "Sending…" : "Yes, it's cancelled"}
+      </button>
+      <button type="button" onClick={() => setAsking(false)} className="rounded-full px-3 py-1 font-semibold ring-1 ring-current/40 hover:bg-current/10">
+        No
+      </button>
+      {state?.status === "error" && (
+        <p role="alert" className="w-full font-medium">
+          {state.message}
+        </p>
+      )}
+    </form>
   );
 }

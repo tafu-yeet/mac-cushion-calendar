@@ -158,6 +158,66 @@ def mark_missing_posts(sb: Client, club_id: int, posts: list[Post]) -> tuple[lis
     return gone, back
 
 
+def _same_caption(a: str | None, b: str | None) -> bool:
+    """Captions equal apart from spacing (the page sometimes re-wraps lines)."""
+    return " ".join((a or "").split()) == " ".join((b or "").split())
+
+
+def update_captions(sb: Client, posts: list[Post]) -> list[dict]:
+    """Save captions a club edited since we stored the post, keeping the old one.
+    Returns the changed posts (id, club_id, caption, previous_caption, permalink)."""
+    if not posts:
+        return []
+    fetched = {p.id: p for p in posts}
+    stored = sb.table("posts").select("id, club_id, caption, permalink").in_("id", list(fetched)).execute().data
+    changed = []
+    for row in stored:
+        new = fetched[row["id"]].caption
+        if new is None or _same_caption(new, row["caption"]):
+            continue
+        sb.table("posts").update({
+            "caption": new, "previous_caption": row["caption"], "caption_changed_at": now().isoformat(),
+        }).eq("id", row["id"]).execute()
+        changed.append(row | {"caption": new, "previous_caption": row["caption"]})
+    return changed
+
+
+def mark_seen(sb: Client, post_ids: list[str]) -> None:
+    """The events of posts just seen on Instagram were checked now ("Last checked" on the event page)."""
+    if post_ids:
+        sb.table("events").update({"checked_at": now().isoformat()}).in_("post_id", post_ids) \
+            .gte("starts_at", (now() - timedelta(days=1)).isoformat()).execute()
+
+
+def mark_rubric_seen(sb: Client) -> None:
+    """Events listed on Rubric in the sync just done were checked now."""
+    from rubric import fetch_all  # rubric imports store's neighbours; keep the import local
+
+    recent = (now() - timedelta(hours=2)).isoformat()
+    eids = [r["eid"] for r in fetch_all(lambda a, b: sb.table("rubric_events").select("eid").is_("missing_since", "null")
+                                        .gte("last_seen_at", recent).range(a, b))]
+    for i in range(0, len(eids), 200):
+        sb.table("events").update({"checked_at": now().isoformat()}).in_("rubric_eid", eids[i:i + 200]) \
+            .gte("starts_at", (now() - timedelta(days=1)).isoformat()).execute()
+
+
+def flag_event(sb: Client, event_id: int, flag: str, note: str | None = None) -> bool:
+    """Flags an event for review (admin "Needs a look"), with a note; returns whether it was flagged.
+    A flag a person dismissed for this event ("flag:<name>" in reviewed_fields) isn't raised again."""
+    e = sb.table("events").select("flags, review_notes, reviewed_fields").eq("id", event_id).single().execute().data
+    if f"flag:{flag}" in (e["reviewed_fields"] or []):
+        return False
+    flags, notes = e["flags"] or [], e["review_notes"] or []
+    update = {}
+    if flag not in flags:
+        update["flags"] = sorted({*flags, flag})
+    if note and note not in notes:
+        update["review_notes"] = [*notes, note]
+    if update:
+        sb.table("events").update(update).eq("id", event_id).execute()
+    return "flags" in update
+
+
 def save_image(sb: Client, post: dict) -> str | None:
     """Download the post image straight from the CDN (no proxy) into storage."""
     if not post["image_url"]:
@@ -314,6 +374,7 @@ def _event_row(post: dict, fe: FinalEvent) -> dict:
         "off_campus": e.off_campus,
         "hosted_by": e.hosted_by,
         "open_to_all": e.open_to_all,
+        "schedule_status": e.schedule_status,
         "confidence": min(max(e.confidence, 0.0), 1.0),
         "reason": e.reason,
         "review_notes": fe.notes,

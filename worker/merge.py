@@ -85,6 +85,27 @@ CHANGE = re.compile(
     r"\b(moved to|new (time|location|room|date|venue)|postponed|cancell?ed|rescheduled|change of (venue|location|time|room|date))\b",
     re.I,
 )
+RUBRIC_CANCELLED = re.compile(r"\b(cancell?ed|postponed|no longer happening)\b", re.I)
+RUBRIC_SAYS_OFF = re.compile(r"\b(event|it) (has been|is|was|will be) (cancell?ed|postponed)\b|\bno longer happening\b", re.I)
+# The flags the merge sets and clears itself; others (a recheck's, visitors' reports) it leaves alone.
+MERGE_FLAGS = {"instagram_post_deleted", "rubric_missing", "changed_on_instagram", "rubric_cancelled"}
+
+
+def merged_flags(current: list[str] | None, mine: set[str], reviewed: list[str] | None) -> list[str]:
+    """An event's flags after a merge: its other flags kept, the merge's own replaced,
+    minus any a person dismissed for this event ("flag:<name>" in reviewed_fields)."""
+    dismissed = {f.removeprefix("flag:") for f in reviewed or [] if f.startswith("flag:")}
+    return sorted((set(current or []) - MERGE_FLAGS) | (mine - dismissed))
+
+
+def rubric_says_cancelled(r: dict) -> bool:
+    """Rubric has no cancelled status: clubs retitle the listing ("CANCELLED - Movie Night") or say so in it."""
+    if RUBRIC_CANCELLED.search(r.get("title") or ""):
+        return True
+    text = r.get("description") or ""
+    # "If the event is cancelled due to weather..." is a plan, not news.
+    return any(not re.search(r"\b(if|in case|should|whether)\b", text[max(0, m.start() - 25):m.start()], re.I)
+               for m in RUBRIC_SAYS_OFF.finditer(text))
 
 
 # Loading -------------------------------------------------------------------------
@@ -338,6 +359,8 @@ def merge_fields(r: dict, e: dict) -> Change:
         ch.flags.add("instagram_post_deleted")
     if r["missing_since"]:
         ch.flags.add("rubric_missing")
+    if rubric_says_cancelled(r):
+        ch.flags.add("rubric_cancelled")
     return ch
 
 
@@ -379,7 +402,7 @@ def rubric_only_row(r: dict, club_id: int, society: Society) -> dict:
         "signup_required": rubric_signup(r), "open_to_all": not (members_only or stated_limit),
         "confidence": RUBRIC_ONLY_CONFIDENCE, "reason": "Listed on Rubric.", "review_notes": notes,
         "model": "rubric", "extracted": {"source": "rubric", "eid": r["eid"]},
-        "flags": ["rubric_missing"] if r["missing_since"] else [],
+        "flags": [f for f, on in (("rubric_cancelled", rubric_says_cancelled(r)), ("rubric_missing", bool(r["missing_since"]))) if on],
     }
 
 
@@ -522,7 +545,7 @@ def apply(sb: Client, p: Plan) -> dict[str, int]:
     done = {"merged": 0, "added": 0, "updated": 0, "to_review": 0, "flagged": 0}
     for r, e, score, why, ch in p.merged:
         update = dict(ch.update)
-        flags = sorted((set(e["flags"] or []) - {"instagram_post_deleted", "rubric_missing", "changed_on_instagram"}) | ch.flags)
+        flags = merged_flags(e["flags"], ch.flags, e["reviewed_fields"])
         if flags != sorted(e["flags"] or []):
             update["flags"] = flags
         if ch.conflicts != (e["conflicts"] or {}):
@@ -560,6 +583,7 @@ def apply(sb: Client, p: Plan) -> dict[str, int]:
             done["published" if not hold else "added"] = done.get("published" if not hold else "added", 0) + 1
             continue
         reviewed = set(existing["reviewed_fields"] or [])
+        row["flags"] = merged_flags(existing["flags"], set(row["flags"]), existing["reviewed_fields"])
         # Who can come, and whether it's off campus, are decided once, on adding (a person may change them).
         update = {k: v for k, v in row.items()
                   if k not in reviewed and k not in ("open_to_all", "off_campus") and existing.get(k) != v and k in existing}
@@ -572,8 +596,9 @@ def apply(sb: Client, p: Plan) -> dict[str, int]:
             done["updated"] += 1
     for event_id, flags in p.flags.items():
         e = p.events[event_id]
-        if not flags <= set(e["flags"] or []):
-            sb.table("events").update({"flags": sorted(set(e["flags"] or []) | flags)}).eq("id", event_id).execute()
+        new = sorted(set(e["flags"] or []) | set(merged_flags([], flags, e["reviewed_fields"])))
+        if new != sorted(e["flags"] or []):
+            sb.table("events").update({"flags": new}).eq("id", event_id).execute()
             done["flagged"] += 1
     return done
 

@@ -30,7 +30,13 @@ export type PublicEvent = {
   clubUsername: string;
   permalink: string | null; // the Instagram post; null when there's none, or it was deleted
   rubricUrl: string | null; // the event's listing on Rubric, the MSU's club platform (tickets, sign-up)
-  signupRequired: boolean;
+  // Still on? Cancelled and postponed events stay listed, marked, until their date has passed.
+  scheduleStatus: "scheduled" | "cancelled" | "postponed";
+  // From the caption first, then Rubric (worker/registration.py); unknown shows nothing.
+  registration: "required" | "recommended" | "drop_in" | "unknown";
+  registrationWhere: "rubric" | "link_in_bio" | "form" | "qr_code" | "at_the_door" | "other" | null;
+  registrationUrl: string | null;
+  checkedAt: string | null; // when its post or Rubric listing was last seen still there
 };
 
 // The admin's review actions call updateTag(EVENTS_TAG), so approvals show up
@@ -38,7 +44,8 @@ export type PublicEvent = {
 export const EVENTS_TAG = "events";
 
 const COLUMNS = `id, club_id, name, category, event_type, tags, has_free_food, food_description, cost, price, starts_at, ends_at, start_time_known, location, off_campus, hosted_by, open_to_all,
-  ticket_url, signup_required, clubs (name, instagram_username), posts (permalink, deleted_at)`;
+  ticket_url, schedule_status, registration, registration_where, registration_url, checked_at,
+  clubs (name, instagram_username), posts (permalink, deleted_at)`;
 
 type Row = {
   id: number;
@@ -59,7 +66,11 @@ type Row = {
   hosted_by: string | null;
   open_to_all: boolean | null;
   ticket_url: string | null;
-  signup_required: boolean | null;
+  schedule_status: string;
+  registration: string;
+  registration_where: string | null;
+  registration_url: string | null;
+  checked_at: string | null;
   clubs: { name: string; instagram_username: string } | null;
   posts: { permalink: string; deleted_at: string | null } | null;
 };
@@ -88,7 +99,11 @@ function toPublicEvent(r: Row): PublicEvent {
     // A deleted post would be a dead link; the event itself still stands.
     permalink: r.posts && !r.posts.deleted_at ? r.posts.permalink : null,
     rubricUrl: r.ticket_url,
-    signupRequired: !!r.signup_required,
+    scheduleStatus: r.schedule_status as PublicEvent["scheduleStatus"],
+    registration: r.registration as PublicEvent["registration"],
+    registrationWhere: r.registration_where as PublicEvent["registrationWhere"],
+    registrationUrl: r.registration_url,
+    checkedAt: r.checked_at,
   };
 }
 

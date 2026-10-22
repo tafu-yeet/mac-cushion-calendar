@@ -18,6 +18,8 @@ export function EventCard({ event, siblingIds }: { event: QueueEvent; siblingIds
   const [timeUnknown, setTimeUnknown] = useState(!event.startTimeKnown);
   const [hasFood, setHasFood] = useState(event.hasFreeFood);
   const [cost, setCost] = useState(event.cost);
+  const [registration, setRegistration] = useState(event.registration);
+  const asksToRegister = registration === "required" || registration === "recommended";
 
   return (
     <article className="overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
@@ -132,6 +134,44 @@ export function EventCard({ event, siblingIds }: { event: QueueEvent; siblingIds
             </label>
           </div>
 
+          <div className="grid gap-3 sm:grid-cols-3">
+            <label className={label}>
+              Still on?
+              <select name="schedule_status" defaultValue={event.scheduleStatus} className={input}>
+                <option value="scheduled">Scheduled</option>
+                <option value="cancelled">Cancelled (stays listed, marked)</option>
+                <option value="postponed">Postponed</option>
+              </select>
+            </label>
+            <label className={label}>
+              Registration
+              <select name="registration" value={registration} onChange={(e) => setRegistration(e.target.value)} className={input}>
+                <option value="unknown">Not stated (shows nothing)</option>
+                <option value="required">Required (RSVP badge)</option>
+                <option value="recommended">Appreciated</option>
+                <option value="drop_in">Drop in (badge)</option>
+              </select>
+            </label>
+            <label className={label}>
+              Where to register
+              <select name="registration_where" defaultValue={event.registrationWhere ?? ""} disabled={!asksToRegister} className={input}>
+                <option value="">Not said</option>
+                <option value="rubric">Rubric</option>
+                <option value="link_in_bio">Link in bio</option>
+                <option value="form">Form</option>
+                <option value="qr_code">QR code on the poster</option>
+                <option value="at_the_door">At the door</option>
+                <option value="other">Other</option>
+              </select>
+            </label>
+          </div>
+          <label className={label}>
+            <span>
+              Registration link {event.registrationNote && <span className="font-normal text-stone-500">· from {event.registrationNote}</span>}
+            </span>
+            <input name="registration_url" type="url" defaultValue={event.registrationUrl ?? ""} disabled={!asksToRegister} placeholder="https://…" className={input} />
+          </label>
+
           <div className="grid gap-3 sm:grid-cols-2">
             <input type="hidden" name="event_type" value={event.eventType} />
             <label className={label}>
@@ -153,7 +193,7 @@ export function EventCard({ event, siblingIds }: { event: QueueEvent; siblingIds
           {event.reason && <p className="text-xs text-stone-500">Model&apos;s reasoning: {event.reason}</p>}
           {state?.error && <p className="text-sm text-red-700">{state.error}</p>}
 
-          <Buttons status={event.status} pending={pending} duplicates={siblingIds.length} />
+          <Buttons status={event.status} pending={pending} duplicates={siblingIds.length} flagged={event.flags.length > 0} />
         </form>
       </div>
     </article>
@@ -161,9 +201,14 @@ export function EventCard({ event, siblingIds }: { event: QueueEvent; siblingIds
 }
 
 const FLAG_LABELS: Record<string, string> = {
-  instagram_post_deleted: "Instagram post deleted (event kept)",
+  instagram_post_deleted: "Instagram post deleted: cancelled?",
   rubric_missing: "No longer on Rubric (event kept)",
+  rubric_cancelled: "Rubric says cancelled",
   changed_on_instagram: "Instagram says it changed",
+  caption_changed: "Caption edited: details moved",
+  possibly_cancelled: "A post says it's off",
+  reported_cancelled: "Visitors report it cancelled",
+  registration_conflict: "Registration: post and Rubric disagree",
 };
 
 const FIELD_LABELS: Record<string, string> = {
@@ -292,7 +337,7 @@ function ConfidenceBadge({ value }: { value: number | null }) {
   return <span className={`rounded-full px-2 py-0.5 font-medium ${tone}`}>confidence {Math.round(value * 100)}%</span>;
 }
 
-function Buttons({ status, pending, duplicates }: { status: string; pending: boolean; duplicates: number }) {
+function Buttons({ status, pending, duplicates, flagged }: { status: string; pending: boolean; duplicates: number; flagged: boolean }) {
   const base = "rounded-md px-3 py-1.5 text-sm font-medium disabled:opacity-50";
   const approve = `${base} bg-emerald-600 text-white hover:bg-emerald-700`;
   const neutral = `${base} border border-stone-300 bg-white text-stone-800 hover:bg-stone-100`;
@@ -313,6 +358,11 @@ function Buttons({ status, pending, duplicates }: { status: string; pending: boo
       <button type="submit" name="intent" value="save" disabled={pending} className={neutral}>
         Save edits
       </button>
+      {flagged && (
+        <button type="submit" name="intent" value="clear_flags" disabled={pending} className={neutral} title="Saves the edits and clears the flags; the worker won't raise them again for this event">
+          Save &amp; clear flags
+        </button>
+      )}
       {status !== "pending" && (
         <button type="submit" name="intent" value="pending" disabled={pending} className={neutral}>
           Back to queue

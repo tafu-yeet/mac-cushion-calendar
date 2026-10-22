@@ -36,6 +36,31 @@ export function StatusBadge({ event, now, className }: { event: PublicEvent; now
   return null;
 }
 
+/** "Cancelled" in red, or "Postponed" in amber: the event stays listed so people who saw it learn it's off. */
+export function ScheduleBadge({ status, size = "sm" }: { status: PublicEvent["scheduleStatus"]; size?: "sm" | "lg" }) {
+  if (status === "scheduled") return null;
+  const tone = status === "cancelled" ? "bg-red-600 text-white" : "bg-amber-300 text-amber-950";
+  const box = size === "lg" ? "px-3 py-1 text-sm" : "px-2 py-0.5 text-xs";
+  return (
+    <span className={`inline-flex items-center rounded-full font-bold uppercase tracking-wide ring-1 ring-white/50 ${tone} ${box}`}>
+      {status === "cancelled" ? "Cancelled" : "Postponed"}
+    </span>
+  );
+}
+
+/** Whether a card shows a registration badge: "RSVP" when it's required, "Drop in" when the club said so. */
+export const hasRegistrationBadge = (event: PublicEvent) => event.registration === "required" || event.registration === "drop_in";
+
+export function RegistrationBadge({ event, className }: { event: PublicEvent; className: string }) {
+  if (event.registration === "required") {
+    return <span className={`rounded-full bg-current/15 font-bold ${className}`} title="Registration required">RSVP</span>;
+  }
+  if (event.registration === "drop_in") {
+    return <span className={`rounded-full ring-1 ring-current/40 ${className}`}>Drop in</span>;
+  }
+  return null;
+}
+
 /**
  * A card in the event's category colour: big title, then the start, how long
  * it runs, and the end. `now` drives the "On now" / "Starts in" badge.
@@ -46,15 +71,17 @@ export function EventCard({ event, now, showDate = false }: { event: PublicEvent
   const date = formatDay(toLocalInputs(event.startsAt).date, "short", campusDate(now));
   const host = event.hostedBy ?? event.clubName;
 
+  const off = event.scheduleStatus !== "scheduled";
+
   return (
     <article className={`rounded-[28px] p-5 ${category.tone.card}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-medium">
-            <StatusBadge event={event} now={now} className={category.tone.accent} />
+            {off ? <ScheduleBadge status={event.scheduleStatus} /> : <StatusBadge event={event} now={now} className={category.tone.accent} />}
             <span className="opacity-90">{category.label}</span>
           </p>
-          <h3 className="mt-1.5 font-display text-2xl font-semibold leading-[1.1]">
+          <h3 className={`mt-1.5 font-display text-2xl font-semibold leading-[1.1] ${event.scheduleStatus === "cancelled" ? "line-through decoration-2" : ""}`}>
             <Link href={`/events/${event.id}`} className="hover:underline">
               {event.name}
             </Link>
@@ -79,7 +106,7 @@ export function EventCard({ event, now, showDate = false }: { event: PublicEvent
         )}
       </p>
 
-      {(event.hasFreeFood || event.cost === "paid" || !event.openToAll) && (
+      {(event.hasFreeFood || event.cost === "paid" || !event.openToAll || hasRegistrationBadge(event)) && (
         <div className="mt-3 flex flex-wrap gap-2 text-sm font-medium">
           {event.hasFreeFood && (
             <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 ${category.tone.accent}`}>
@@ -93,6 +120,7 @@ export function EventCard({ event, now, showDate = false }: { event: PublicEvent
               {event.price ?? "Paid entry"}
             </span>
           )}
+          <RegistrationBadge event={event} className="px-3 py-1" />
           {!event.openToAll && <span className="rounded-full px-3 py-1 ring-1 ring-current/40">Members or group only</span>}
         </div>
       )}
@@ -122,7 +150,7 @@ export function EventCard({ event, now, showDate = false }: { event: PublicEvent
       </div>
 
       <div className="mt-5 flex flex-wrap gap-2">
-        <AddToCalendar eventId={event.id} className={category.tone.button} />
+        {event.scheduleStatus !== "cancelled" && <AddToCalendar eventId={event.id} className={category.tone.button} />}
         {event.permalink && (
           <a
             href={event.permalink}
@@ -141,7 +169,7 @@ export function EventCard({ event, now, showDate = false }: { event: PublicEvent
             rel="noreferrer"
             className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold ring-1 ring-current/40 hover:bg-current/10"
           >
-            {event.cost === "paid" || event.signupRequired ? "Tickets" : "Rubric"}
+            {event.cost === "paid" || (event.registration === "required" && event.registrationWhere === "rubric") ? "Tickets" : "Rubric"}
             <ExternalIcon className="size-3.5" />
           </a>
         )}

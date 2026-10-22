@@ -18,7 +18,8 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 /**
  * One action for every button on an event card; the clicked button's
  * `intent` says what to do: approve, save, reject, pending (back to the
- * queue), or approve_group (approve this one and reject its duplicates).
+ * queue), approve_group (approve this one and reject its duplicates), or
+ * clear_flags (save, and dismiss its flags so the worker doesn't raise them again).
  */
 export async function reviewEvent(_prev: ReviewState, formData: FormData): Promise<ReviewState> {
   const { supabase, userId } = await requireAdmin();
@@ -34,18 +35,22 @@ export async function reviewEvent(_prev: ReviewState, formData: FormData): Promi
   } else if (intent.startsWith("use_rubric:") || intent.startsWith("keep_instagram:")) {
     const result = await settleConflict(supabase, id, intent);
     if (result) return result;
-  } else if (intent === "approve" || intent === "save" || intent === "approve_group") {
+  } else if (intent === "approve" || intent === "save" || intent === "approve_group" || intent === "clear_flags") {
     const parsed = parseEventFields(formData);
     if ("error" in parsed) return parsed;
     // Fields the person changed are theirs from now on: merging with Rubric won't overwrite them.
-    const { data: current, error: readError } = await supabase.from("events").select(EDITABLE.join(", ") + ", reviewed_fields").eq("id", id).single();
+    const { data: current, error: readError } = await supabase.from("events").select(EDITABLE.join(", ") + ", reviewed_fields, flags").eq("id", id).single();
     if (readError) return { error: readError.message };
     const changed = changedFields(current as unknown as Record<string, unknown>, parsed);
-    const reviewedFields = [...new Set([...((current as unknown as { reviewed_fields: string[] }).reviewed_fields ?? []), ...changed])];
+    const { reviewed_fields: before, flags } = current as unknown as { reviewed_fields: string[] | null; flags: string[] | null };
+    // Dismissed flags are remembered as "flag:<name>", so the worker won't raise them again for this event.
+    const dismissed = intent === "clear_flags" ? (flags ?? []).map((f) => `flag:${f}`) : [];
+    const reviewedFields = [...new Set([...(before ?? []), ...changed, ...dismissed])];
     const update: EventUpdate = {
       ...parsed,
       reviewed_fields: reviewedFields,
-      ...(intent === "save" ? {} : { status: "approved", auto_approved: false, ...reviewed }),
+      ...(intent === "clear_flags" ? { flags: [] } : {}),
+      ...(intent === "save" || intent === "clear_flags" ? {} : { status: "approved", auto_approved: false, ...reviewed }),
     };
     const { error } = await supabase.from("events").update(update).eq("id", id);
     if (error) return { error: error.message };
@@ -76,7 +81,8 @@ export async function reviewEvent(_prev: ReviewState, formData: FormData): Promi
 // The fields the review form edits, as stored.
 const EDITABLE = [
   "name", "starts_at", "start_time_known", "ends_at", "location", "hosted_by", "has_free_food", "food_description",
-  "open_to_all", "event_type", "category", "cost", "price", "tags",
+  "open_to_all", "event_type", "category", "cost", "price", "tags", "schedule_status", "registration", "registration_where",
+  "registration_url",
 ] as const;
 
 /** Which fields the form changed; a start time made known counts as a change to the start. */
@@ -162,6 +168,18 @@ function parseEventFields(formData: FormData): EventUpdate | { error: string } {
   const cost = text("cost");
   if (cost !== "free" && cost !== "paid" && cost !== "unknown") return { error: "Pick a cost." };
 
+  const scheduleStatus = text("schedule_status") || "scheduled";
+  if (!SCHEDULE.includes(scheduleStatus)) return { error: "Pick whether it's still on." };
+  const registration = text("registration") || "unknown";
+  if (!REGISTRATION.includes(registration)) return { error: "Pick a registration." };
+  const asks = registration === "required" || registration === "recommended";
+  const where = asks ? text("registration_where") || null : null;
+  if (where && !WHERE.includes(where)) return { error: "Pick where to register." };
+  const registrationUrl = asks ? text("registration_url") || null : null;
+  if (registrationUrl && (!/^https?:\/\//.test(registrationUrl) || registrationUrl.length > 500)) {
+    return { error: "The registration link should start with https://." };
+  }
+
   const startsAt = date ? fromLocalInputs(date, timeUnknown ? "00:00" : time) : null;
   let endsAt: string | null = null;
   if (date && endTime) {
@@ -190,5 +208,13 @@ function parseEventFields(formData: FormData): EventUpdate | { error: string } {
       .split(",")
       .map((t) => t.trim().toLowerCase())
       .filter(Boolean),
+    schedule_status: scheduleStatus,
+    registration,
+    registration_where: where,
+    registration_url: registrationUrl,
   };
 }
+
+const SCHEDULE = ["scheduled", "cancelled", "postponed"];
+const REGISTRATION = ["required", "recommended", "drop_in", "unknown"];
+const WHERE = ["rubric", "link_in_bio", "form", "qr_code", "at_the_door", "other"];

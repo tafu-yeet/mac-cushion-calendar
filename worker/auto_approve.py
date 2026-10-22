@@ -151,6 +151,8 @@ def blocker(sb: Client, row: dict, verified_by: str | None, today: date) -> str 
         return "not rechecked"
     if row["review_notes"]:
         return "has review notes"
+    if row.get("schedule_status", "scheduled") != "scheduled":
+        return f"the post says it's {row['schedule_status']}"
     if row["hosted_by"] and not _known_host(sb, row["hosted_by"]) and not CAMPUS_PLACE.search(row["location"] or ""):
         return "collab off campus"
     return None

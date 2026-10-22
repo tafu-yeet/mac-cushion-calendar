@@ -26,8 +26,10 @@ export function WeekBrowser({
 }) {
   const [filters, update] = useFilters(fromUrl);
   const shown = days.map((d) => ({ ...d, events: d.events.filter((e) => matchesFilters(e, filters)).sort(byStart) }));
-  const count = shown.reduce((n, d) => n + d.events.length, 0);
-  const withFood = shown.reduce((n, d) => n + d.events.filter((e) => e.hasFreeFood).length, 0);
+  // Cancelled events stay listed, marked, but don't count.
+  const live = shown.flatMap((d) => d.events).filter((e) => e.scheduleStatus !== "cancelled");
+  const count = live.length;
+  const withFood = live.filter((e) => e.hasFreeFood).length;
 
   const week = (start: string) => calendarHref("week", start === thisMonday ? null : start, filters);
   const day = (date: string) => calendarHref("day", date === today ? null : date, filters);

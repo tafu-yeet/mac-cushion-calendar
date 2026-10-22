@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { hasRegistrationBadge, RegistrationBadge } from "@/components/event-card";
 import { ChevronIcon, PinIcon, UtensilsIcon } from "@/components/icons";
 import { categoryOf, dayTone, type Tone } from "@/lib/categories";
 import { freeFoodPhrase } from "@/lib/clean";
@@ -38,12 +39,18 @@ function shortPrice(price: string | null): string {
   return low === high ? money(low) : `${money(low)}–${money(high)}`;
 }
 
-/** Free food and price, as small badges. */
+/** Cancelled or postponed, free food, price, and RSVP or drop in, as small badges. */
 function Badges({ event, tone, size }: { event: PublicEvent; tone: Tone; size: "chip" | "row" }) {
-  if (!event.hasFreeFood && event.cost !== "paid") return null;
+  const off = event.scheduleStatus !== "scheduled";
+  if (!off && !event.hasFreeFood && event.cost !== "paid" && !hasRegistrationBadge(event)) return null;
   const text = size === "chip" ? "text-[10px]" : "text-[11px]";
   return (
     <span className={`flex flex-wrap gap-1 ${size === "chip" ? "pl-3" : ""}`}>
+      {off && (
+        <span className={`rounded-full px-1.5 py-px font-bold uppercase ${text} ${event.scheduleStatus === "cancelled" ? "bg-red-600 text-white" : "bg-amber-300 text-amber-950"}`}>
+          {event.scheduleStatus === "cancelled" ? "Cancelled" : "Postponed"}
+        </span>
+      )}
       {event.hasFreeFood && (
         <span
           className={`inline-flex items-center gap-0.5 rounded-full px-1.5 py-px font-bold ${text} ${tone.chipBadge}`}
@@ -58,9 +65,15 @@ function Badges({ event, tone, size }: { event: PublicEvent; tone: Tone; size: "
           {shortPrice(event.price)}
         </span>
       )}
+      <RegistrationBadge event={event} className={`px-1.5 py-px ${text}`} />
     </span>
   );
 }
+
+/** Events still on: cancelled ones are listed, marked, but not counted. */
+const liveCount = (events: PublicEvent[]) => events.filter((e) => e.scheduleStatus !== "cancelled").length;
+
+const struck = (e: PublicEvent) => (e.scheduleStatus === "cancelled" ? "line-through" : "");
 
 /** One day of the week view: a list on phones, the big date and hour columns on wider screens. */
 export function DayCard({ day, dayHref, today }: { day: WeekDay; dayHref: string; today: string }) {
@@ -82,10 +95,10 @@ type DayProps = { day: WeekDay; dayHref: string; today: string; tone: Tone };
 /** Phones: a one-line header, then the events as a list with their start times; the rest on the day view. */
 function PhoneDay({ day, dayHref, today, tone, onCampus, offCampus }: DayProps & { onCampus: PublicEvent[]; offCampus: PublicEvent[] }) {
   const { weekday, day: dayOfMonth, month } = dateParts(day.date);
-  const count = day.events.length;
+  const count = liveCount(day.events);
   const shownOn = onCampus.slice(0, PHONE_LIMIT);
   const shownOff = offCampus.slice(0, Math.max(PHONE_LIMIT - shownOn.length, Math.min(offCampus.length, 2)));
-  const hidden = count - shownOn.length - shownOff.length;
+  const hidden = day.events.length - shownOn.length - shownOff.length;
 
   return (
     <div className="sm:hidden">
@@ -140,7 +153,7 @@ function EventList({ events, tone }: { events: PublicEvent[]; tone: Tone }) {
             <span className="flex min-w-0 flex-1 flex-col gap-1">
               <span className="flex items-start gap-1.5 text-sm font-semibold leading-snug">
                 <span className={`mt-1.5 size-1.5 shrink-0 rounded-full ${categoryOf(e.category).tone.swatch}`} />
-                <span className="line-clamp-2">{e.name}</span>
+                <span className={`line-clamp-2 ${struck(e)}`}>{e.name}</span>
               </span>
               <Badges event={e} tone={tone} size="row" />
             </span>
@@ -154,7 +167,7 @@ function EventList({ events, tone }: { events: PublicEvent[]; tone: Tone }) {
 /** Wider screens: the big date on the left, the events as chips in hour columns. */
 function WideDay({ day, dayHref, today, tone, columns }: DayProps & { columns: Column[] }) {
   const { weekday, day: dayOfMonth, month } = dateParts(day.date);
-  const count = day.events.length;
+  const count = liveCount(day.events);
   return (
     <div className="hidden gap-6 sm:flex">
       <Link href={dayHref} className="group w-28 shrink-0" aria-label={`${day.label}: open the day`}>
@@ -195,7 +208,7 @@ function WideDay({ day, dayHref, today, tone, columns }: DayProps & { columns: C
                       <span className={`mt-[3px] size-1.5 shrink-0 rounded-full ${categoryOf(e.category).tone.swatch}`} />
                       <span className="line-clamp-2">
                         {column.label === "Off campus" && e.startTimeKnown && <span className="opacity-90">{formatTime(e.startsAt)} · </span>}
-                        {e.name}
+                        <span className={struck(e)}>{e.name}</span>
                       </span>
                     </span>
                     <Badges event={e} tone={tone} size="chip" />

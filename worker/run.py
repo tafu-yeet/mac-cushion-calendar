@@ -18,6 +18,11 @@ Usage (from worker/):
 
 Each full cycle also syncs Rubric (rubric.py, at most hourly) and merges it with
 the Instagram events (merge.py); RUBRIC_MERGE=apply saves the merge.
+
+Each fetch also saves captions a club edited and flags events a new post says
+are off; once a day every event in the next two weeks has its post checked
+again (recheck.py). Registration (required, recommended, drop in) is judged for
+new and changed events (registration.py).
 """
 
 from __future__ import annotations
@@ -37,6 +42,8 @@ from supabase import Client
 import auto_approve
 import batch_reader
 import merge
+import recheck
+import registration
 import rubric
 import store
 from extractors import ExtractionError, ExtractorUnavailable, TwoStageExtractor, Usage, new_pipeline
@@ -75,6 +82,12 @@ def fetch_club(sb: Client, club: dict) -> None:
         return
 
     new_rows = store.insert_new_posts(sb, club["id"], result.posts, result.backend)
+    edited = store.update_captions(sb, result.posts)
+    store.mark_seen(sb, [p.id for p in result.posts])
+    if edited:
+        print(f"  @{username}: {len(edited)} caption(s) edited since we stored them")
+    for event_id, note in recheck.scan(sb, club, new_rows + edited):
+        print(f"  flagged #{event_id}: {note}")
     if result.backend == "primary":  # the profile page's fixed dozen; Apify returns a different set
         gone, back = store.mark_missing_posts(sb, club["id"], result.posts)
         if gone or back:
@@ -257,6 +270,13 @@ def run(args: argparse.Namespace) -> int:
         if pruned:
             print(f"{pruned} old post image(s) deleted")
         sync_rubric(sb)
+        # Once a day: is each event in the next two weeks still on? (flags; never cancels)
+        for event_id, note in recheck.daily(sb, fetch_club):
+            print(f"  flagged #{event_id}: {note}")
+        if EXTRACTOR == "claude":
+            judged = registration.run(sb)
+            if judged:
+                print(f"Registration judged for {len(judged)} event(s)")
     return 0
 
 
@@ -277,6 +297,7 @@ def sync_rubric(sb: Client) -> None:
         print(f"Rubric unavailable ({e}); skipping it this run")
         return
     rubric.map_societies(sb)
+    store.mark_rubric_seen(sb)
     print(f"Rubric: {result.events} events, {len(result.new)} new, {len(result.changed)} changed, "
           f"{len(result.missing)} no longer listed ({result.requests} request(s))")
     today = datetime.now(LOCAL_TZ).date()

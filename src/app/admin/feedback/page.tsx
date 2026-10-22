@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { requireAdmin } from "@/lib/auth";
-import { FEEDBACK_TYPES, feedbackLabel, isFeedbackType, type FeedbackType } from "@/lib/feedback";
+import { ALL_FEEDBACK_TYPES, feedbackLabel, isFeedbackType, type FeedbackType } from "@/lib/feedback";
 import { formatWhen } from "@/lib/time";
 
 import { DoneToggle } from "./done-toggle";
@@ -66,7 +66,7 @@ async function FeedbackList({ searchParams }: { searchParams: PageProps<"/admin/
 
   // How many of each type still need a look.
   const open = (key: FeedbackType | null) => (all ?? []).filter((r) => !r.done && (!key || r.type === key)).length;
-  const tabs = [{ key: null, label: "All" }, ...FEEDBACK_TYPES];
+  const tabs = [{ key: null, label: "All" }, ...ALL_FEEDBACK_TYPES];
 
   return (
     <div className="flex flex-col gap-4">

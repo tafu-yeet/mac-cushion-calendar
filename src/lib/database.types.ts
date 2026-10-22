@@ -120,6 +120,7 @@ export type Database = {
         Row: {
           auto_approved: boolean
           category: string
+          checked_at: string | null
           club_id: number
           confidence: number | null
           conflicts: Json
@@ -144,11 +145,17 @@ export type Database = {
           post_id: string | null
           price: string | null
           reason: string | null
+          registration: string
+          registration_checked_at: string | null
+          registration_note: string | null
+          registration_url: string | null
+          registration_where: string | null
           review_notes: string[]
           reviewed_at: string | null
           reviewed_by: string | null
           reviewed_fields: string[]
           rubric_eid: number | null
+          schedule_status: string
           signup_required: boolean | null
           source: string
           start_time_known: boolean
@@ -161,6 +168,7 @@ export type Database = {
         Insert: {
           auto_approved?: boolean
           category?: string
+          checked_at?: string | null
           club_id: number
           confidence?: number | null
           conflicts?: Json
@@ -185,11 +193,17 @@ export type Database = {
           post_id?: string | null
           price?: string | null
           reason?: string | null
+          registration?: string
+          registration_checked_at?: string | null
+          registration_note?: string | null
+          registration_url?: string | null
+          registration_where?: string | null
           review_notes?: string[]
           reviewed_at?: string | null
           reviewed_by?: string | null
           reviewed_fields?: string[]
           rubric_eid?: number | null
+          schedule_status?: string
           signup_required?: boolean | null
           source?: string
           start_time_known?: boolean
@@ -202,6 +216,7 @@ export type Database = {
         Update: {
           auto_approved?: boolean
           category?: string
+          checked_at?: string | null
           club_id?: number
           confidence?: number | null
           conflicts?: Json
@@ -226,11 +241,17 @@ export type Database = {
           post_id?: string | null
           price?: string | null
           reason?: string | null
+          registration?: string
+          registration_checked_at?: string | null
+          registration_note?: string | null
+          registration_url?: string | null
+          registration_where?: string | null
           review_notes?: string[]
           reviewed_at?: string | null
           reviewed_by?: string | null
           reviewed_fields?: string[]
           rubric_eid?: number | null
+          schedule_status?: string
           signup_required?: boolean | null
           source?: string
           start_time_known?: boolean
@@ -411,6 +432,7 @@ export type Database = {
       posts: {
         Row: {
           caption: string
+          caption_changed_at: string | null
           club_id: number
           created_at: string
           deleted_at: string | null
@@ -426,13 +448,16 @@ export type Database = {
           media_type: string | null
           permalink: string
           posted_at: string
+          previous_caption: string | null
           raw: Json | null
           read_batch: string | null
+          rechecked_at: string | null
           shortcode: string
           username: string
         }
         Insert: {
           caption?: string
+          caption_changed_at?: string | null
           club_id: number
           created_at?: string
           deleted_at?: string | null
@@ -448,13 +473,16 @@ export type Database = {
           media_type?: string | null
           permalink: string
           posted_at: string
+          previous_caption?: string | null
           raw?: Json | null
           read_batch?: string | null
+          rechecked_at?: string | null
           shortcode: string
           username: string
         }
         Update: {
           caption?: string
+          caption_changed_at?: string | null
           club_id?: number
           created_at?: string
           deleted_at?: string | null
@@ -470,8 +498,10 @@ export type Database = {
           media_type?: string | null
           permalink?: string
           posted_at?: string
+          previous_caption?: string | null
           raw?: Json | null
           read_batch?: string | null
+          rechecked_at?: string | null
           shortcode?: string
           username?: string
         }

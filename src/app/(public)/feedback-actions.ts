@@ -12,6 +12,9 @@ export type FeedbackState = { status: "sent" } | { status: "error"; message: str
 const COOKIE = "cushion-feedback";
 const LIMIT = 3;
 const HOUR_MS = 60 * 60 * 1000;
+// The events this browser has reported cancelled (newest MAX_REPORTED kept for 60 days).
+const REPORTED_COOKIE = "cushion-reported";
+const MAX_REPORTED = 50;
 
 function recentTimes(value: string | undefined, now: number): number[] {
   try {
@@ -44,6 +47,13 @@ export async function sendFeedback(_prev: FeedbackState, formData: FormData): Pr
     return { status: "error", message: `That's ${LIMIT} in the last hour, thanks! Try again a bit later.` };
   }
 
+  // A "This got cancelled" report counts once per browser per event: two reports flag the event.
+  const reported = reportedEvents(store.get(REPORTED_COOKIE)?.value);
+  if (type === "cancelled") {
+    if (!Number.isInteger(eventId) || eventId <= 0) return { status: "error", message: "Which event? Try again from its page." };
+    if (reported.includes(eventId)) return { status: "sent" };
+  }
+
   const { error } = await createPublicClient()
     .from("feedback")
     .insert({
@@ -59,12 +69,19 @@ export async function sendFeedback(_prev: FeedbackState, formData: FormData): Pr
     return { status: "error", message: "Something went wrong on our end. Try again in a minute." };
   }
 
-  store.set(COOKIE, JSON.stringify([...recent, now]), {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    maxAge: HOUR_MS / 1000,
-    path: "/",
-  });
+  const cookie = { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/" } as const;
+  store.set(COOKIE, JSON.stringify([...recent, now]), { ...cookie, maxAge: HOUR_MS / 1000 });
+  if (type === "cancelled") {
+    store.set(REPORTED_COOKIE, JSON.stringify([...reported, eventId].slice(-MAX_REPORTED)), { ...cookie, maxAge: 60 * 24 * 60 * 60 });
+  }
   return { status: "sent" };
+}
+
+function reportedEvents(value: string | undefined): number[] {
+  try {
+    const ids: unknown = JSON.parse(value ?? "[]");
+    return Array.isArray(ids) ? ids.filter((id): id is number => Number.isInteger(id)) : [];
+  } catch {
+    return [];
+  }
 }

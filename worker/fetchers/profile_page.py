@@ -12,6 +12,7 @@ IP). Each attempt uses a different port, so a retry comes from a different IP.
 
 from __future__ import annotations
 
+import html
 import json
 import random
 import re
@@ -175,3 +176,51 @@ def to_post(node: dict, username: str) -> Post:
         media_type=node.get("product_type") or "",
         raw=node,
     )
+
+
+POST_URL = "https://www.instagram.com/p/{shortcode}/"
+POST_NAME = "post_page"
+POST_CAPTION = re.compile(r'<meta property="og:description" content="([^"]*)"')
+
+
+def fetch_post_page(username: str, shortcode: str, on_attempt: AttemptLogger) -> str | None:
+    """A single post's caption from its own page, or None when the post is gone.
+
+    A live post's page carries its caption in og:description ("19 likes, 0
+    comments - club on October 7, 2026: "caption""); a deleted or hidden post's
+    page has none. Because a blocked request can look the same, a page without
+    a caption is tried once more through another proxy before it counts as gone.
+    """
+    proxies = proxy_pool()
+    if not proxies:
+        raise SystemExit("Proxy settings missing: set PROXY_HOST, PROXY_LOGIN, PROXY_PASSWORD, PROXY_PORTS.")
+    misses = 0
+    for attempt, proxy in enumerate(random.sample(proxies, min(MAX_ATTEMPTS, len(proxies))), 1):
+        if attempt > 1:
+            time.sleep(random.uniform(*RETRY_DELAY_S))
+        status, size = None, 0
+        try:
+            with requests.Session(impersonate=IMPERSONATE) as session:
+                resp = session.get(POST_URL.format(shortcode=shortcode), proxy=proxy, timeout=TIMEOUT_S, allow_redirects=False)
+            status, size = resp.status_code, resp.response_size
+        except RequestException as e:
+            on_attempt(Attempt(username, POST_NAME, attempt, status, "retry", size, proxy_label(proxy), str(e)))
+            continue
+        if status == 404:
+            on_attempt(Attempt(username, POST_NAME, attempt, status, "failed", size, proxy_label(proxy), "post not found"))
+            return None
+        if status != 200:
+            on_attempt(Attempt(username, POST_NAME, attempt, status, "retry", size, proxy_label(proxy), f"HTTP {status}"))
+            continue
+        if m := POST_CAPTION.search(resp.text):
+            on_attempt(Attempt(username, POST_NAME, attempt, status, "ok", size, proxy_label(proxy)))
+            text = html.unescape(m.group(1))
+            # Everything after 'club on Month D, YYYY: "', without the closing quote.
+            caption = text.split(': "', 1)[1] if ': "' in text else text
+            return caption[:-1] if caption.endswith('"') else caption
+        misses += 1
+        on_attempt(Attempt(username, POST_NAME, attempt, status, "retry" if misses < 2 else "failed", size,
+                           proxy_label(proxy), "no caption on the page"))
+        if misses >= 2:
+            return None
+    raise BlockedError(f"all {MAX_ATTEMPTS} attempts to open post {shortcode} failed")

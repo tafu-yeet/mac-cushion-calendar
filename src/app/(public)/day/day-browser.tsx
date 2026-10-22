@@ -33,7 +33,9 @@ export function DayBrowser({
   const selected = shown.find((d) => d.date === date) ?? shown[0];
   const timed = selected.events.filter((e) => e.startTimeKnown);
   const untimed = selected.events.filter((e) => !e.startTimeKnown);
-  const withFood = selected.events.filter((e) => e.hasFreeFood).length;
+  // Cancelled events stay listed, marked, but don't count.
+  const live = selected.events.filter((e) => e.scheduleStatus !== "cancelled");
+  const withFood = live.filter((e) => e.hasFreeFood).length;
 
   const day = (d: string) => calendarHref("day", d === today ? null : d, filters);
   const monday = mondayOf(date);
@@ -56,7 +58,7 @@ export function DayBrowser({
         <BigDate date={date} today={today} label={isToday ? `${dateParts(date).weekday} · Today` : undefined} />
         <DateStats
           stats={[
-            { value: selected.events.length, label: `event${selected.events.length === 1 ? "" : "s"}` },
+            { value: live.length, label: `event${live.length === 1 ? "" : "s"}` },
             { value: withFood, label: "with free food" },
           ]}
         />

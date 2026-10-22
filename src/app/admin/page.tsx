@@ -50,7 +50,8 @@ async function Queue({ searchParams }: { searchParams: PageProps<"/admin">["sear
     .from("events")
     .select(
       `id, status, name, event_type, category, cost, price, tags, has_free_food, food_description, starts_at, start_time_known,
-       ends_at, location, hosted_by, open_to_all, confidence, reason, review_notes, model, auto_approved, club_id, post_id,
+       ends_at, location, hosted_by, open_to_all, schedule_status, registration, registration_where, registration_url,
+       registration_note, confidence, reason, review_notes, model, auto_approved, club_id, post_id,
        source, flags, conflicts, ticket_url, image_url, description,
        clubs (name, instagram_username), posts (caption, permalink, posted_at, image_path)`,
     );
@@ -108,6 +109,11 @@ async function Queue({ searchParams }: { searchParams: PageProps<"/admin">["sear
       tags: r.tags,
       hasFreeFood: r.has_free_food,
       foodDescription: r.food_description,
+      scheduleStatus: r.schedule_status,
+      registration: r.registration,
+      registrationWhere: r.registration_where,
+      registrationUrl: r.registration_url,
+      registrationNote: r.registration_note,
       startsAt: r.starts_at,
       startTimeKnown: r.start_time_known,
       startDate: start.date,

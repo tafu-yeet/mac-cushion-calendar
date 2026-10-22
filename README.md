@@ -82,6 +82,31 @@ What that means for how it's built:
    event gone from Rubric is flagged, never deleted. `RUBRIC_MERGE=apply`
    (the default) saves the merge; `RUBRIC_MERGE=report` only prints it
    (`python merge.py --from 2026-10-19 --to 2026-10-25` for a range).
+6. **Still on?** (`worker/recheck.py`) Nothing cancels an event by itself: the
+   worker flags it for `/admin` ("Needs a look"), where a person sets
+   Cancelled or Postponed. Cancelled events stay listed with a red badge and a
+   struck-through title until their date passes, so people who saw them learn
+   they're off. Flags come from: an edited caption (saved on every fetch, then
+   re-read and compared: date, time, place, status); a new post saying
+   cancelled, postponed, rescheduled or "no longer happening" (flags that
+   club's upcoming events); the daily check of every event in the next 14 days
+   (fetches the club's profile, or opens a post too old to show there; a
+   deleted or unavailable post flags its events); Rubric (a listing gone or
+   titled cancelled); and two "This got cancelled" reports from visitors (a
+   database trigger). Event pages show "Last checked" from when the post or
+   Rubric listing was last seen. "Save & clear flags" in the admin dismisses
+   an event's flags for good. First run: `python recheck.py --every-club`.
+7. **Registration** (`worker/registration.py`): required, recommended
+   ("RSVP appreciated"), drop in, or unknown (the default: the source doesn't
+   say). The caption wins (Claude reads it; a Rubric-only event uses its
+   rejected Instagram copies' captions). Rubric only makes it required when
+   its listing says to register, is capped or sold out, or has a paid ticket;
+   a free ticket alone doesn't, since clubs use them as headcounts for drop-in
+   events. When the caption says drop in but Rubric has a ticket, the caption
+   wins and the event is flagged. Cards show "RSVP" (required) or "Drop in";
+   event pages show "Registration required: [where]" with a button, or a
+   lighter "RSVP appreciated". New and changed events are judged each cycle;
+   `python registration.py --all --apply` judges every upcoming event again.
 
 Every request is logged: `fetch_logs` (club, backend, status, bytes) and
 `llm_usage` (tokens and estimated cost; `python usage.py` for totals).
