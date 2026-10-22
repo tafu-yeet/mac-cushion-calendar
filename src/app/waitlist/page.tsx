@@ -21,7 +21,7 @@ const DESCRIPTION = `Every public ${campus.schoolShortName} event in one place, 
 export const metadata: Metadata = {
   title: "Join the waitlist",
   description: DESCRIPTION,
-  openGraph: { title: `${campus.siteName}: join the waitlist`, description: DESCRIPTION },
+  openGraph: { title: `${campus.siteName}: join the waitlist`, description: DESCRIPTION, siteName: campus.siteName, type: "website" },
 };
 
 const PEEK_COUNT = 3;

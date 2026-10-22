@@ -28,11 +28,17 @@ const nunito = Nunito({
   subsets: ["latin"],
 });
 
+const description = `Every public ${campus.schoolShortName} campus event in one place, from club Instagram posts: free food, socials, sports, talks, and more.`;
+
 export const metadata: Metadata = {
   // Share previews need absolute URLs.
   metadataBase: new URL(SITE_URL),
   title: { default: campus.siteName, template: `%s · ${campus.siteName}` },
-  description: `Every public ${campus.schoolShortName} campus event in one place, from club Instagram posts: free food, socials, sports, talks, and more.`,
+  description,
+  // The link preview in chats and DMs, with the image from opengraph-image.tsx.
+  // Event pages and the waitlist set their own title and description.
+  openGraph: { title: campus.siteName, description, siteName: campus.siteName, type: "website", locale: "en_CA" },
+  twitter: { card: "summary_large_image" },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
