@@ -37,7 +37,8 @@ def main() -> int:
                         help="event ids flagged by this run (recheck.py prints them)")
     args = parser.parse_args()
     sb = connect()
-    now = datetime.now(timezone.utc).isoformat()
+    # From the start of today, so a cancellation flagged this morning still shows.
+    now = datetime.now(LOCAL_TZ).replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc).isoformat()
     events = fetch_all(lambda a, b: sb.table("events").select(
         "id, name, status, starts_at, flags, review_notes, updated_at, schedule_status, registration, registration_where, "
         "registration_url, registration_note, clubs(instagram_username)")
