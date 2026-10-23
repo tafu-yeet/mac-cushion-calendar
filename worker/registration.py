@@ -8,10 +8,12 @@ copies of it.
 
 Rubric only makes registration required when its listing does: the description
 says to register, the event is capped or sold out, or a ticket costs money. A
-free ($0) ticket alone means nothing; many clubs use one as a headcount for
-drop-in events. When the caption and Rubric disagree (the caption says drop in
-but Rubric has a ticket), the caption wins and the event is flagged
-(registration_conflict) for a person.
+free ($0) ticket alone means nothing: clubs use one as a headcount for drop-in
+events, so a caption saying drop in next to a free ticket is simply drop in.
+When the caption and Rubric really disagree (the caption says drop in, but the
+ticket costs money, the event is capped or sold out, or Rubric says to
+register), the caption wins and the event is flagged (registration_conflict)
+for a person.
 
 Each worker cycle judges upcoming events not judged yet, or whose caption or
 Rubric listing changed since. A registration a person set is left alone, and a
@@ -176,9 +178,9 @@ def decide(e: dict, own: Reading | None, copies: Reading | None, r: dict | None)
     note = f"“{ig.quote}”" if ig.quote else None
 
     conflict = None
-    has_ticket = bool(r and r.get("tickets"))
-    if ig.registration == "drop_in" and (r_state in ("required", "recommended") or has_ticket):
-        conflict = "the post says drop in, but " + ("; ".join(facts) if facts else "Rubric has a free ticket")
+    # A free Rubric ticket next to "drop in" is a headcount, not a disagreement.
+    if ig.registration == "drop_in" and r_state == "required":
+        conflict = "the post says drop in, but " + "; ".join(facts)
     elif ig.registration in ("required", "recommended") and r_state == "drop_in":
         conflict = f"the post asks people to register, but {facts[0] if facts else 'Rubric says drop in'}"
     elif ig.registration == "recommended" and r_state == "required":

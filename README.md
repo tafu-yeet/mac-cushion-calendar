@@ -102,8 +102,9 @@ What that means for how it's built:
    rejected Instagram copies' captions). Rubric only makes it required when
    its listing says to register, is capped or sold out, or has a paid ticket;
    a free ticket alone doesn't, since clubs use them as headcounts for drop-in
-   events. When the caption says drop in but Rubric has a ticket, the caption
-   wins and the event is flagged. Cards show "RSVP" (required) or "Drop in";
+   events (a caption saying drop in next to a free ticket is just drop in).
+   When the caption says drop in but Rubric has a paid ticket, a cap, sells
+   out or says to register, the caption wins and the event is flagged. Cards show "RSVP" (required) or "Drop in";
    event pages show "Registration required: [where]" with a button, or a
    lighter "RSVP appreciated". New and changed events are judged each cycle;
    `python registration.py --all --apply` judges every upcoming event again.
