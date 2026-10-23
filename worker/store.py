@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections import Counter
 from datetime import datetime, timedelta, timezone
 
@@ -158,9 +159,15 @@ def mark_missing_posts(sb: Client, club_id: int, posts: list[Post]) -> tuple[lis
     return gone, back
 
 
+def _caption_words(text: str | None) -> str:
+    return re.sub(r"[\W_]+", "", (text or "").lower())
+
+
 def _same_caption(a: str | None, b: str | None) -> bool:
-    """Captions equal apart from spacing (the page sometimes re-wraps lines)."""
-    return " ".join((a or "").split()) == " ".join((b or "").split())
+    """Captions with the same letters and digits. The profile page sometimes adds a
+    trailing '". ', re-wraps lines or swaps spaces from one fetch to the next, and an
+    edit to punctuation or emoji alone can't move a date, time or place."""
+    return _caption_words(a) == _caption_words(b)
 
 
 def update_captions(sb: Client, posts: list[Post]) -> list[dict]:

@@ -191,8 +191,8 @@ def daily(sb: Client, fetch_club: Callable[[Client, dict], None], force: bool = 
 
 def _truncated_match(page: str, stored: str | None) -> bool:
     """The page's caption may be cut short: equal as far as it goes counts as the same."""
-    a, b = " ".join(page.split()), " ".join((stored or "").split())
-    return len(a) >= 40 and b.startswith(a.rstrip("…. "))
+    a, b = store._caption_words(page), store._caption_words(stored)
+    return len(a) >= 30 and b.startswith(a)
 
 
 def reread_edited(sb: Client, items: list[tuple[dict, dict, list[dict]]]) -> list[tuple[int, str]]:
@@ -234,9 +234,15 @@ def compare(e: dict, new: list) -> list[str]:
     """What moved between the stored event and the post's events as read now."""
     if not new:
         return ["no longer in the post"]
-    best = max(new, key=lambda n: name_similarity(e["name"], n.event_name))
-    if len(new) > 1 and name_similarity(e["name"], best.event_name) < 0.3:
+    top = max(name_similarity(e["name"], n.event_name) for n in new)
+    if len(new) > 1 and top < 0.3:
         return ["no longer in the post"]
+    # Of the events named most like this one ("Meet and Cheese (Block 1)" and "(Block 2)"),
+    # the one starting closest to it.
+    alike = [n for n in new if name_similarity(e["name"], n.event_name) >= top - 0.1]
+    stored = _local(e["starts_at"])
+    best = min(alike, key=lambda n: abs(((n.start if n.start.tzinfo else n.start.replace(tzinfo=LOCAL_TZ)) - stored).total_seconds())
+               if n.start else float("inf"))
     changes = []
     if best.start:
         start = best.start if best.start.tzinfo else best.start.replace(tzinfo=LOCAL_TZ)
