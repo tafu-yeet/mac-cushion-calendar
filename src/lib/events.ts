@@ -37,6 +37,8 @@ export type PublicEvent = {
   registrationWhere: "rubric" | "link_in_bio" | "form" | "qr_code" | "at_the_door" | "other" | null;
   registrationUrl: string | null;
   checkedAt: string | null; // when its post or Rubric listing was last seen still there
+  // Why it may be off or changed, while the worker's flag waits for a person (null when nothing's in doubt).
+  headsUp: string | null;
 };
 
 // The admin's review actions call updateTag(EVENTS_TAG), so approvals show up
@@ -44,7 +46,7 @@ export type PublicEvent = {
 export const EVENTS_TAG = "events";
 
 const COLUMNS = `id, club_id, name, category, event_type, tags, has_free_food, food_description, cost, price, starts_at, ends_at, start_time_known, location, off_campus, hosted_by, open_to_all,
-  ticket_url, schedule_status, registration, registration_where, registration_url, checked_at,
+  ticket_url, schedule_status, registration, registration_where, registration_url, checked_at, flags,
   clubs (name, instagram_username), posts (permalink, deleted_at)`;
 
 type Row = {
@@ -71,9 +73,24 @@ type Row = {
   registration_where: string | null;
   registration_url: string | null;
   checked_at: string | null;
+  flags: string[];
   clubs: { name: string; instagram_username: string } | null;
   posts: { permalink: string; deleted_at: string | null } | null;
 };
+
+/**
+ * What visitors should know when the worker has doubts about an event that a person
+ * hasn't settled yet (worker/recheck.py, merge.py, visitors' reports). Clearing the
+ * flags in the admin, or marking the event cancelled or postponed, replaces it.
+ */
+function headsUp(flags: string[] | null): string | null {
+  const f = new Set(flags ?? []);
+  if (f.has("instagram_post_deleted")) return "The club deleted its post about this event, so it may be cancelled or changed.";
+  if (f.has("possibly_cancelled") || f.has("rubric_cancelled")) return "The club posted about a cancellation or change that may affect this event.";
+  if (f.has("reported_cancelled")) return "Visitors told us this event may be cancelled.";
+  if (f.has("caption_changed")) return "The club edited its post since we read it, so details may have changed.";
+  return null;
+}
 
 function toPublicEvent(r: Row): PublicEvent {
   return {
@@ -104,6 +121,7 @@ function toPublicEvent(r: Row): PublicEvent {
     registrationWhere: r.registration_where as PublicEvent["registrationWhere"],
     registrationUrl: r.registration_url,
     checkedAt: r.checked_at,
+    headsUp: r.schedule_status === "scheduled" ? headsUp(r.flags) : null,
   };
 }
 

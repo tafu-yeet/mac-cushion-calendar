@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { hasRegistrationBadge, RegistrationBadge } from "@/components/event-card";
+import { hasRegistrationBadge, HeadsUpBadge, RegistrationBadge } from "@/components/event-card";
 import { ChevronIcon, PinIcon, UtensilsIcon } from "@/components/icons";
 import { categoryOf, dayTone, type Tone } from "@/lib/categories";
 import { freeFoodPhrase } from "@/lib/clean";
@@ -42,7 +42,7 @@ function shortPrice(price: string | null): string {
 /** Cancelled or postponed, free food, price, and RSVP or drop in, as small badges. */
 function Badges({ event, tone, size }: { event: PublicEvent; tone: Tone; size: "chip" | "row" }) {
   const off = event.scheduleStatus !== "scheduled";
-  if (!off && !event.hasFreeFood && event.cost !== "paid" && !hasRegistrationBadge(event)) return null;
+  if (!off && !event.headsUp && !event.hasFreeFood && event.cost !== "paid" && !hasRegistrationBadge(event)) return null;
   const text = size === "chip" ? "text-[10px]" : "text-[11px]";
   return (
     <span className={`flex flex-wrap gap-1 ${size === "chip" ? "pl-3" : ""}`}>
@@ -51,6 +51,7 @@ function Badges({ event, tone, size }: { event: PublicEvent; tone: Tone; size: "
           {event.scheduleStatus === "cancelled" ? "Cancelled" : "Postponed"}
         </span>
       )}
+      <HeadsUpBadge event={event} size="xs" />
       {event.hasFreeFood && (
         <span
           className={`inline-flex items-center gap-0.5 rounded-full px-1.5 py-px font-bold ${text} ${tone.chipBadge}`}

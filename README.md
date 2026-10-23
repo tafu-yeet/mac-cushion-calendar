@@ -94,8 +94,12 @@ What that means for how it's built:
    deleted or unavailable post flags its events); Rubric (a listing gone or
    titled cancelled); and two "This got cancelled" reports from visitors (a
    database trigger). Event pages show "Last checked" from when the post or
-   Rubric listing was last seen. "Save & clear flags" in the admin dismisses
-   an event's flags for good. First run: `python recheck.py --every-club`.
+   Rubric listing was last seen. While a flag waits (deleted post, a post about
+   a cancellation, an edited post, visitors' reports), the event shows "Check
+   before you go" with the reason; every event page also says clubs post
+   last-minute changes in their stories, with a link to the club's profile
+   (stories can't be read). "Save & clear flags" in the admin dismisses an
+   event's flags for good. First run: `python recheck.py --every-club`.
 7. **Registration** (`worker/registration.py`): required, recommended
    ("RSVP appreciated"), drop in, or unknown (the default: the source doesn't
    say). The caption wins (Claude reads it; a Rubric-only event uses its

@@ -48,6 +48,17 @@ export function ScheduleBadge({ status, size = "sm" }: { status: PublicEvent["sc
   );
 }
 
+/** "Check before you go" while there's reason to doubt the event (see headsUp in lib/events.ts). */
+export function HeadsUpBadge({ event, size = "sm" }: { event: PublicEvent; size?: "sm" | "xs" }) {
+  if (!event.headsUp) return null;
+  const box = size === "xs" ? "px-1.5 py-px text-[10px]" : "px-2 py-0.5 text-xs";
+  return (
+    <span className={`inline-flex items-center rounded-full bg-white/90 font-bold text-amber-950 ring-2 ring-amber-500 ${box}`} title={event.headsUp}>
+      Check before you go
+    </span>
+  );
+}
+
 /** Whether a card shows a registration badge: "RSVP" when it's required, "Drop in" when the club said so. */
 export const hasRegistrationBadge = (event: PublicEvent) => event.registration === "required" || event.registration === "drop_in";
 
@@ -79,6 +90,7 @@ export function EventCard({ event, now, showDate = false }: { event: PublicEvent
         <div className="min-w-0">
           <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-medium">
             {off ? <ScheduleBadge status={event.scheduleStatus} /> : <StatusBadge event={event} now={now} className={category.tone.accent} />}
+            <HeadsUpBadge event={event} />
             <span className="opacity-90">{category.label}</span>
           </p>
           <h3 className={`mt-1.5 font-display text-2xl font-semibold leading-[1.1] ${event.scheduleStatus === "cancelled" ? "line-through decoration-2" : ""}`}>

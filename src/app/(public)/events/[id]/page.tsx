@@ -63,6 +63,8 @@ async function EventDetail({ id }: { id: number }) {
   const host = event.hostedBy ?? event.clubName;
 
   const cancelled = event.scheduleStatus === "cancelled";
+  // The posting club's profile, where its stories (and any change it posted) are.
+  const profile = event.clubUsername ? `https://www.instagram.com/${event.clubUsername}/` : null;
 
   return (
     <article className={`rounded-[32px] p-6 sm:p-8 ${category.tone.card}`}>
@@ -93,6 +95,20 @@ async function EventDetail({ id }: { id: number }) {
           {cancelled
             ? "The club cancelled this event."
             : "The club postponed this event. Check their post for a new date."}
+        </p>
+      )}
+
+      {event.headsUp && (
+        <p className="mt-5 rounded-2xl bg-white/90 px-4 py-3 text-sm text-amber-950 ring-2 ring-amber-500">
+          <span className="font-bold">Check before you go:</span> {event.headsUp}
+          {profile && (
+            <>
+              {" "}
+              <a href={profile} target="_blank" rel="noreferrer" className="font-semibold underline underline-offset-2">
+                See @{event.clubUsername}
+              </a>
+            </>
+          )}
         </p>
       )}
 
@@ -184,7 +200,21 @@ async function EventDetail({ id }: { id: number }) {
           <CancelledReport eventId={event.id} className="text-sm font-medium underline underline-offset-2 opacity-90 hover:opacity-100" />
         )}
       </div>
-      {event.checkedAt && <p className="mt-3 text-xs opacity-80">Last checked: {timeAgo(event.checkedAt, checkedNow())}</p>}
+      <p className="mt-3 text-xs leading-relaxed opacity-80">
+        {event.checkedAt && <>Last checked: {timeAgo(event.checkedAt, checkedNow())}. </>}
+        Clubs often post last-minute changes in their stories
+        {profile ? (
+          <>
+            , so check{" "}
+            <a href={profile} target="_blank" rel="noreferrer" className="font-semibold underline underline-offset-2">
+              @{event.clubUsername}
+            </a>{" "}
+            before you go.
+          </>
+        ) : (
+          ", so check the club's Instagram before you go."
+        )}
+      </p>
     </article>
   );
 }
