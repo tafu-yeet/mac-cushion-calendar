@@ -5,7 +5,9 @@ Matching: a Rubric event and an Instagram event are taken to be the same when
 they're from the same club (through rubric_societies; a co-host counts too), on
 the same day, starting within an hour of each other. Each pair is scored from
 the club link, how close the times are and how alike the names are (a weak
-sign: "MDA Crafting Night" is "Clay It Your Way"). At AUTO and up they merge;
+sign: "MDA Crafting Night" is "Clay It Your Way"). A link to the Rubric event
+in the Instagram club's bio or Linktree (bio_links.py) counts as a club link
+and adds BIO_BONUS. At AUTO and up they merge;
 from REVIEW up a person decides (event_matches); below, they're separate events.
 
 Which source wins, field by field:
@@ -51,6 +53,7 @@ from datetime import date, datetime, timedelta, timezone
 
 from supabase import Client
 
+import bio_links
 from auto_approve import name_similarity, similar_names, word_overlap
 from clean import clean_place
 from extractors.two_stage import GENERIC_PLACE_WORDS, same_place
@@ -58,6 +61,7 @@ from rubric import acronyms, aliases_for, fetch_all
 from settings import CAMPUS, LOCAL_TZ
 
 AUTO, REVIEW = 0.75, 0.5
+BIO_BONUS = 0.15         # the Instagram club's bio links the Rubric event
 MAX_START_GAP_MIN = 60   # starts further apart than this are different events
 CONFLICT_MIN = 15        # times further apart than this need a person
 RUBRIC_ONLY_CONFIDENCE = 0.85
@@ -149,7 +153,7 @@ EVENT_COLUMNS = (
     "food_description, cost, price, open_to_all, confidence, reviewed_fields, reviewed_by, conflicts, flags, "
     "rubric_eid, source, signup_required, food_source, ticket_url, image_url, description, post_id, review_notes, "
     "category, event_type, reason, auto_approved, "
-    "posts(posted_at, caption, deleted_at, permalink), clubs(instagram_username, name)"
+    "posts(posted_at, caption, deleted_at, permalink), clubs(instagram_username, name, links)"
 )
 
 
@@ -190,6 +194,10 @@ def score_pair(r: dict, e: dict, societies: dict[int, Society]) -> tuple[float, 
     if local_day(r["starts_at"]) != local_day(e["starts_at"]):
         return None
     club, club_why = club_link(r, e, societies)
+    # The Instagram club's own bio (or Linktree) links this Rubric event: strong evidence.
+    linked = r["eid"] in bio_links.rubric_ids((e.get("clubs") or {}).get("links") or [], bio_links.RUBRIC_EVENT)
+    if linked:
+        club, club_why = 1.0, "the club's bio links this Rubric event"
     if not club:
         return None
     if e["start_time_known"]:
@@ -206,7 +214,7 @@ def score_pair(r: dict, e: dict, societies: dict[int, Society]) -> tuple[float, 
     place = 0.0
     if r["location"] and e["location"]:
         place = 0.05 if same_place(expand_codes(r["location"]), expand_codes(e["location"])) else -0.1
-    score = max(0.0, min(1.0, 0.45 * club + 0.35 * timing + 0.20 * title + place))
+    score = max(0.0, min(1.0, 0.45 * club + 0.35 * timing + 0.20 * title + place + (BIO_BONUS if linked else 0)))
     return round(score, 3), {"club": club_why, "time": time_why, "title": round(title, 2), "place": place}
 
 

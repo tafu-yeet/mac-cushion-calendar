@@ -237,7 +237,8 @@ function registrationLink(event: PublicEvent): string | null {
     case "rubric":
       return event.registrationUrl ?? event.rubricUrl;
     case "link_in_bio":
-      return event.clubUsername ? `https://www.instagram.com/${event.clubUsername}/` : null;
+      // The specific link from the club's bio or Linktree when we found it (worker/bio_links.py), else the profile.
+      return event.registrationUrl ?? (event.clubUsername ? `https://www.instagram.com/${event.clubUsername}/` : null);
     case "at_the_door":
       return null;
     case "qr_code":
@@ -250,7 +251,9 @@ function registrationLink(event: PublicEvent): string | null {
 /** Required: "Registration required: [where]" with a button. Recommended: a lighter note. Otherwise nothing. */
 function Registration({ event, buttonClass }: { event: PublicEvent; buttonClass: string }) {
   if (event.registration !== "required" && event.registration !== "recommended") return null;
-  const where = event.registrationWhere ? WHERE[event.registrationWhere] : { label: "check the club's post for how", button: "See the post" };
+  const known = event.registrationWhere ? WHERE[event.registrationWhere] : { label: "check the club's post for how", button: "See the post" };
+  // A "link in bio" we resolved to the actual sign-up link opens it directly.
+  const where = event.registrationWhere === "link_in_bio" && event.registrationUrl ? { ...known, button: "Open the sign-up link" } : known;
   const href = event.registrationWhere ? registrationLink(event) : event.permalink;
 
   if (event.registration === "recommended") {

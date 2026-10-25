@@ -41,7 +41,7 @@ from extractors.two_stage import same_place
 from fetchers import BlockedError, print_attempt
 from fetchers.profile_page import fetch_post_page
 from rubric import fetch_all
-from settings import LOCAL_TZ, WORKER_DIR
+from settings import LOCAL_TZ, MAX_POST_AGE_DAYS, WORKER_DIR
 
 DAYS_AHEAD = 14
 STATE_FILE = WORKER_DIR / "cache" / "recheck.json"
@@ -78,6 +78,21 @@ def upcoming_events(sb: Client, club_id: int | None = None, days: int = DAYS_AHE
 
 
 # New posts that say something's off ---------------------------------------------------
+
+def read_updates(sb: Client, rows: list[dict]) -> list[dict]:
+    """New posts that mention a cancellation or reschedule are read like any post, even a
+    reel (reels are otherwise skipped: SKIP_REELS), so a rescheduled or new event they
+    announce gets created ("the mushroom hike is back on... rescheduled to Oct 30").
+    The copy checks still catch a repeat of an event we have. Returns the posts queued."""
+    queued = []
+    for row in rows:
+        if row["extraction_status"] == "skipped" and CANCEL_WORDS.search(row.get("caption") or "") \
+                and datetime.fromisoformat(row["posted_at"]) > datetime.now(timezone.utc) - timedelta(days=MAX_POST_AGE_DAYS):
+            sb.table("posts").update({"extraction_status": "pending"}).eq("id", row["id"]).execute()
+            row["extraction_status"] = "pending"
+            queued.append(row)
+    return queued
+
 
 def scan(sb: Client, club: dict, posts: list[dict]) -> list[tuple[int, str]]:
     """Flags the club's upcoming events when one of these posts says an event is off.

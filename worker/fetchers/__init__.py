@@ -36,6 +36,7 @@ class FetchResult:
     posts: list[Post]
     backend: str
     followers: int | None = None  # when the backend's page showed it
+    bio_links: list[dict] | None = None  # [{url, title}]; None from a backend without them (Apify)
 
 
 def fetch_posts(
@@ -62,6 +63,6 @@ def fetch_posts(
         return _result(apify.fetch(username, since, on_attempt), apify.NAME)
 
 
-def _result(fetched: tuple[list[Post], int | None], backend: str) -> FetchResult:
-    posts, followers = fetched
-    return FetchResult(posts, backend, followers)
+def _result(fetched: tuple, backend: str) -> FetchResult:
+    posts, followers, *bio = fetched
+    return FetchResult(posts, backend, followers, bio[0] if bio else None)

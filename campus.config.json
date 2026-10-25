@@ -26,5 +26,11 @@
     "countryCode": "CA",
     "state": "Ontario",
     "siteUrl": "https://campus.hellorubric.com"
-  }
+  },
+  "registrationHosts": [
+    "oscarplus.mcmaster.ca",
+    "estore.msumcmaster.ca",
+    "macreconline.ca",
+    "libcal.mcmaster.ca"
+  ]
 }

@@ -60,10 +60,11 @@ def proxy_label(proxy: str | None) -> str:
     return proxy.rsplit("@", 1)[1] if proxy else "direct"
 
 
-def fetch(username: str, since: datetime | None, on_attempt: AttemptLogger) -> tuple[list[Post], int | None]:
+def fetch(username: str, since: datetime | None, on_attempt: AttemptLogger) -> tuple[list[Post], int | None, list[dict]]:
     """Fetch a profile page, retrying through a different proxy when blocked.
 
-    Returns the recent posts and the follower count (None if the page didn't show it).
+    Returns the recent posts, the follower count (None if the page didn't show
+    it), and the links in the bio ([{url, title}]).
     """
     proxies = proxy_pool()
     if not proxies:
@@ -83,7 +84,7 @@ def fetch(username: str, since: datetime | None, on_attempt: AttemptLogger) -> t
                     allow_redirects=False,
                 )
             status, size = resp.status_code, resp.response_size
-            nodes, followers = parse_page(resp)
+            nodes, followers, bio = parse_page(resp)
         except (_Retryable, RequestException) as e:
             on_attempt(Attempt(username, NAME, attempt, status, "retry", size, proxy_label(proxy), str(e)))
             continue
@@ -91,13 +92,13 @@ def fetch(username: str, since: datetime | None, on_attempt: AttemptLogger) -> t
             on_attempt(Attempt(username, NAME, attempt, status, "failed", size, proxy_label(proxy), str(e)))
             raise
         on_attempt(Attempt(username, NAME, attempt, status, "ok", size, proxy_label(proxy)))
-        return [to_post(node, username) for node in nodes], followers
+        return [to_post(node, username) for node in nodes], followers, bio
 
     raise BlockedError(f"all {MAX_ATTEMPTS} attempts were blocked")
 
 
-def parse_page(resp: requests.Response) -> tuple[list[dict], int | None]:
-    """Return the post nodes and follower count from a good profile page, or raise."""
+def parse_page(resp: requests.Response) -> tuple[list[dict], int | None, list[dict]]:
+    """Return the post nodes, follower count and bio links from a good profile page, or raise."""
     status = resp.status_code
     if 300 <= status < 400:
         location = resp.headers.get("location", "")
@@ -116,9 +117,25 @@ def parse_page(resp: requests.Response) -> tuple[list[dict], int | None]:
             raise UnavailableError("account is private")
         # Usually a login wall served in place of the profile.
         raise _Retryable("no post data in page")
-    return nodes, followers_from_html(html)
+    return nodes, followers_from_html(html), bio_links_from_html(html)
 
 
+def bio_links_from_html(page: str) -> list[dict]:
+    """The links in the profile's bio: [{url, title}] (worker/bio_links.py uses them)."""
+    links = []
+    i = page.find('"bio_links":')
+    if i != -1:
+        try:
+            items, _ = json.JSONDecoder().raw_decode(page, i + len('"bio_links":'))
+            links = [{"url": l["url"], "title": (l.get("title") or "").strip()} for l in items if l.get("url")]
+        except (ValueError, KeyError, TypeError):
+            links = []
+    if not links and (m := EXTERNAL_URL.search(page)):
+        links = [{"url": json.loads(f'"{m.group(1)}"'), "title": ""}]
+    return links
+
+
+EXTERNAL_URL = re.compile(r'"external_url":"(https?:[^"]+)"')
 FOLLOWER_JSON = re.compile(r'"follower_count":(\d+)')
 FOLLOWER_META = re.compile(r'content="([\d.,]+)([KkMm]?) Followers')
 

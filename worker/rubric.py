@@ -468,7 +468,8 @@ def name_score(society: str, club_name: str, username: str, distinctive: dict[st
 
 
 def map_societies(sb: Client, verbose: bool = False) -> dict[str, int]:
-    """Link Rubric clubs to ours. A person's decisions (method "person", or "rejected") are kept."""
+    """Link Rubric clubs to ours. A person's decisions (method "person", or "rejected") are kept,
+    and so are matches a club's own bio confirmed (method "bio", from bio_links.map_rubric)."""
     clubs = fetch_all(lambda a, b: sb.table("clubs").select("id, instagram_username, name").range(a, b))
     by_handle = {c["instagram_username"]: c for c in clubs}
     socs = fetch_all(lambda a, b: sb.table("rubric_societies").select(
@@ -482,7 +483,7 @@ def map_societies(sb: Client, verbose: bool = False) -> dict[str, int]:
     counts = {"instagram": 0, "name": 0, "review": 0, "none": 0, "kept": 0}
     updates = []
     for s in socs:
-        if s["match_method"] == "person" or s["match_status"] == "rejected":
+        if s["match_method"] in ("person", "bio") or s["match_status"] == "rejected":
             counts["kept"] += 1
             continue
         update = {"society_id": s["society_id"], "name": s["name"], "aliases": aliases_for(s["name"])}

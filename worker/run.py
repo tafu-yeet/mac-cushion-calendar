@@ -41,6 +41,7 @@ from supabase import Client
 
 import auto_approve
 import batch_reader
+import bio_links
 import merge
 import recheck
 import registration
@@ -82,12 +83,18 @@ def fetch_club(sb: Client, club: dict) -> None:
         return
 
     new_rows = store.insert_new_posts(sb, club["id"], result.posts, result.backend)
+    try:
+        bio_links.update(sb, club, result.bio_links)  # the bio's links, and its Linktree page's at most daily
+    except Exception as e:  # noqa: BLE001 - the links are a bonus; the posts matter
+        print(f"  @{username}: couldn't save bio links ({type(e).__name__}: {e})")
     edited = store.update_captions(sb, result.posts)
     store.mark_seen(sb, [p.id for p in result.posts])
     if edited:
         print(f"  @{username}: {len(edited)} caption(s) edited since we stored them")
     for event_id, note in recheck.scan(sb, club, new_rows + edited):
         print(f"  flagged #{event_id}: {note}")
+    for row in recheck.read_updates(sb, new_rows):
+        print(f"  post {row['id']} mentions a cancellation or reschedule: read it even though it's a {row['media_type'] or 'skipped post'}")
     if result.backend == "primary":  # the profile page's fixed dozen; Apify returns a different set
         gone, back = store.mark_missing_posts(sb, club["id"], result.posts)
         if gone or back:
@@ -282,6 +289,9 @@ def run(args: argparse.Namespace) -> int:
                 judged = registration.run(sb)
                 if judged:
                     print(f"Registration judged for {len(judged)} event(s)")
+                linked = bio_links.refresh(sb)
+                if linked:
+                    print(f"{linked} \"link in bio\" registration(s) given the specific link")
             except Exception as e:  # noqa: BLE001
                 print(f"Registration stopped ({type(e).__name__}: {e}); it runs again next cycle")
     return 0
@@ -304,6 +314,7 @@ def sync_rubric(sb: Client) -> None:
         print(f"Rubric unavailable ({e}); skipping it this run")
         return
     rubric.map_societies(sb)
+    bio_links.map_rubric(sb)  # a club's bio linking its Rubric page confirms the match
     store.mark_rubric_seen(sb)
     print(f"Rubric: {result.events} events, {len(result.new)} new, {len(result.changed)} changed, "
           f"{len(result.missing)} no longer listed ({result.requests} request(s))")

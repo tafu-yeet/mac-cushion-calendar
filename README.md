@@ -112,6 +112,14 @@ What that means for how it's built:
    event pages show "Registration required: [where]" with a button, or a
    lighter "RSVP appreciated". New and changed events are judged each cycle;
    `python registration.py --all --apply` judges every upcoming event again.
+8. **Bio links** (`worker/bio_links.py`): every profile fetch saves the links
+   in the club's bio, and reads the link-in-bio page they lead to (Linktree
+   and the like) when the bio changes or once a day. A bio linking one Rubric
+   club page (or its events) confirms that Rubric club is this club; a bio
+   link to a Rubric event makes it count as the same event as that club's
+   post that day; and a "link in bio" registration gets the link whose title
+   names the event, so the button opens the actual form. First run:
+   `python bio_links.py --fetch-upcoming`.
 
 Every request is logged: `fetch_logs` (club, backend, status, bytes) and
 `llm_usage` (tokens and estimated cost; `python usage.py` for totals).

@@ -86,7 +86,8 @@ type Row = {
 function headsUp(flags: string[] | null): string | null {
   const f = new Set(flags ?? []);
   if (f.has("instagram_post_deleted")) return "The club deleted its post about this event, so it may be cancelled or changed.";
-  if (f.has("possibly_cancelled") || f.has("rubric_cancelled")) return "The club posted about a cancellation or change that may affect this event.";
+  // "Update", not "cancellation": the post may as well say an event is back on.
+  if (f.has("possibly_cancelled") || f.has("rubric_cancelled")) return "The club posted an update that may affect this event.";
   if (f.has("reported_cancelled")) return "Visitors told us this event may be cancelled.";
   if (f.has("caption_changed")) return "The club edited its post since we read it, so details may have changed.";
   return null;
