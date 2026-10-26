@@ -5,7 +5,8 @@ import { useEffect, useId, useRef, useState } from "react";
 import { CalendarPlusIcon } from "./icons";
 
 const CHOICES = [
-  { app: "google", label: "Google Calendar", hint: "Opens Google Calendar" },
+  // Google Calendar can show a "sync error" when it isn't open yet; the second try works.
+  { app: "google", label: "Google Calendar", hint: "Says “sync error” the first time? Open Google Calendar, then tap this again." },
   { app: "outlook", label: "Outlook", hint: "School or work email" },
   { app: "ics", label: "Apple Calendar or other", hint: "Opens a calendar file" },
 ] as const;
@@ -50,7 +51,7 @@ export function AddToCalendar({ eventId, className }: { eventId: number; classNa
         Add to calendar
       </button>
       {open && (
-        <ul id={menuId} className="absolute top-full left-0 z-20 mt-2 w-60 rounded-2xl bg-cream p-1.5 text-maroon shadow-lg ring-1 ring-maroon/15">
+        <ul id={menuId} className="absolute top-full left-0 z-20 mt-2 w-64 rounded-2xl bg-cream p-1.5 text-maroon shadow-lg ring-1 ring-maroon/15">
           {CHOICES.map((choice) => (
             <li key={choice.app}>
               <a
