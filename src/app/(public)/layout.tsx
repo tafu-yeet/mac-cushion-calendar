@@ -41,6 +41,9 @@ export default function PublicLayout({ children }: LayoutProps<"/">) {
         <footer className="mx-auto w-full max-w-5xl px-4 py-8">
           <div className="flex flex-wrap gap-x-5 gap-y-2">
             <TourButton className="text-sm font-semibold text-maroon underline underline-offset-2 hover:text-plum" />
+            <Link href="/communities" className="text-sm font-semibold text-maroon underline underline-offset-2 hover:text-plum">
+              Communities
+            </Link>
             <FeedbackLink type="idea" className="text-sm font-semibold text-maroon underline underline-offset-2 hover:text-plum">
               Send feedback
             </FeedbackLink>

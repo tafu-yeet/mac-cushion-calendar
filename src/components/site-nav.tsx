@@ -6,6 +6,8 @@ import { usePathname } from "next/navigation";
 const LINKS = [
   { href: "/", label: "What's on", matches: (path: string) => path === "/" },
   { href: "/week", label: "Calendar", matches: (path: string) => path === "/week" || path === "/day" },
+  // No room beside the wordmark on phones: there, the home page and footer link to it.
+  { href: "/communities", label: "Communities", matches: (path: string) => path === "/communities", wide: true },
 ] as const;
 
 /** The nav with the current page highlighted. Reads the URL, so render it inside <Suspense>. */
@@ -17,12 +19,12 @@ export function SiteNav() {
 export function SiteNavLinks({ active }: { active?: string }) {
   return (
     <nav className="flex gap-1.5">
-      {LINKS.map(({ href, label, matches }) => (
+      {LINKS.map(({ href, label, matches, ...link }) => (
         <Link
           key={href}
           href={href}
           data-tour={href === "/week" ? "calendar" : undefined}
-          className={`whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm font-semibold transition-colors ${
+          className={`whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm font-semibold transition-colors ${"wide" in link ? "hidden sm:inline-block" : ""} ${
             active && matches(active)
               ? "bg-maroon text-cream"
               : "text-maroon ring-1 ring-maroon/30 hover:bg-panel/60"

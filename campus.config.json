@@ -32,5 +32,162 @@
     "estore.msumcmaster.ca",
     "macreconline.ca",
     "libcal.mcmaster.ca"
+  ],
+  "communities": [
+    {
+      "key": "pride",
+      "label": "Pride (2SLGBTQIA+)",
+      "group": "Identity"
+    },
+    {
+      "key": "women",
+      "label": "Women & gender",
+      "group": "Identity",
+      "hint": "women, girls, sisters, gender equity"
+    },
+    {
+      "key": "international",
+      "label": "International students",
+      "group": "Identity"
+    },
+    {
+      "key": "muslim",
+      "label": "Muslim",
+      "group": "Faith"
+    },
+    {
+      "key": "christian",
+      "label": "Christian",
+      "group": "Faith"
+    },
+    {
+      "key": "jewish",
+      "label": "Jewish",
+      "group": "Faith"
+    },
+    {
+      "key": "hindu",
+      "label": "Hindu",
+      "group": "Faith"
+    },
+    {
+      "key": "sikh",
+      "label": "Sikh",
+      "group": "Faith"
+    },
+    {
+      "key": "buddhist",
+      "label": "Buddhist",
+      "group": "Faith"
+    },
+    {
+      "key": "east_asian",
+      "label": "East Asian",
+      "group": "Culture & heritage",
+      "hint": "Chinese, Hong Kong, Taiwanese, Korean, Japanese, Mongolian"
+    },
+    {
+      "key": "south_asian",
+      "label": "South Asian",
+      "group": "Culture & heritage",
+      "hint": "Indian, Pakistani, Bangladeshi, Sri Lankan, Tamil, Punjabi, Nepali, Gujarati"
+    },
+    {
+      "key": "southeast_asian",
+      "label": "Southeast Asian",
+      "group": "Culture & heritage",
+      "hint": "Filipino, Vietnamese, Thai, Malaysian, Indonesian, Singaporean, Cambodian"
+    },
+    {
+      "key": "black_african",
+      "label": "Black & African",
+      "group": "Culture & heritage",
+      "hint": "Black, African, Nigerian, Ghanaian, Somali, Ethiopian, Eritrean"
+    },
+    {
+      "key": "caribbean",
+      "label": "Caribbean",
+      "group": "Culture & heritage",
+      "hint": "Caribbean, Jamaican, Trinidadian, Haitian"
+    },
+    {
+      "key": "mena",
+      "label": "Middle Eastern & North African",
+      "group": "Culture & heritage",
+      "hint": "Arab, Persian, Turkish, Kurdish, Armenian, Egyptian, Moroccan, Lebanese, Syrian, Iraqi"
+    },
+    {
+      "key": "latin_american",
+      "label": "Latin American",
+      "group": "Culture & heritage",
+      "hint": "Latin American, Hispanic, Brazilian, Mexican"
+    },
+    {
+      "key": "european",
+      "label": "European",
+      "group": "Culture & heritage",
+      "hint": "Polish, Ukrainian, Italian, Greek, Portuguese, Russian-speaking, Hellenic, Croatian"
+    },
+    {
+      "key": "indigenous",
+      "label": "Indigenous",
+      "group": "Culture & heritage"
+    },
+    {
+      "key": "engineering",
+      "label": "Engineering",
+      "group": "Program"
+    },
+    {
+      "key": "science",
+      "label": "Science",
+      "group": "Program"
+    },
+    {
+      "key": "health_sciences",
+      "label": "Health Sciences",
+      "group": "Program"
+    },
+    {
+      "key": "business",
+      "label": "Business (DeGroote)",
+      "group": "Program"
+    },
+    {
+      "key": "humanities",
+      "label": "Humanities",
+      "group": "Program"
+    },
+    {
+      "key": "social_sciences",
+      "label": "Social Sciences",
+      "group": "Program"
+    },
+    {
+      "key": "arts_science",
+      "label": "Arts & Science",
+      "group": "Program"
+    },
+    {
+      "key": "nursing",
+      "label": "Nursing",
+      "group": "Program"
+    },
+    {
+      "key": "kinesiology",
+      "label": "Kinesiology",
+      "group": "Program"
+    },
+    {
+      "key": "medicine",
+      "label": "Medicine & health professions",
+      "group": "Program",
+      "hint": "medical school, rehab science, midwifery, physician assistant"
+    },
+    {
+      "key": "graduate",
+      "label": "Graduate students",
+      "group": "Program"
+    }
   ]
 }

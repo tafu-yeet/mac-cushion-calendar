@@ -42,6 +42,7 @@ from supabase import Client
 import auto_approve
 import batch_reader
 import bio_links
+import communities
 import merge
 import recheck
 import registration
@@ -292,6 +293,9 @@ def run(args: argparse.Namespace) -> int:
                 linked = bio_links.refresh(sb)
                 if linked:
                     print(f"{linked} \"link in bio\" registration(s) given the specific link")
+                clubs_tagged, events_tagged = communities.run(sb)  # for the /communities page
+                if clubs_tagged or events_tagged:
+                    print(f"Communities: {clubs_tagged} club(s), {events_tagged} event(s) tagged")
             except Exception as e:  # noqa: BLE001
                 print(f"Registration stopped ({type(e).__name__}: {e}); it runs again next cycle")
     return 0

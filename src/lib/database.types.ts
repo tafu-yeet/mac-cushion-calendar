@@ -64,6 +64,8 @@ export type Database = {
       clubs: {
         Row: {
           active: boolean
+          communities: string[]
+          communities_checked_at: string | null
           created_at: string
           followers: number | null
           followers_at: string | null
@@ -75,6 +77,8 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          communities?: string[]
+          communities_checked_at?: string | null
           created_at?: string
           followers?: number | null
           followers_at?: string | null
@@ -86,6 +90,8 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          communities?: string[]
+          communities_checked_at?: string | null
           created_at?: string
           followers?: number | null
           followers_at?: string | null
@@ -151,6 +157,8 @@ export type Database = {
           category: string
           checked_at: string | null
           club_id: number
+          communities: string[]
+          communities_checked_at: string | null
           confidence: number | null
           conflicts: Json
           cost: string
@@ -199,6 +207,8 @@ export type Database = {
           category?: string
           checked_at?: string | null
           club_id: number
+          communities?: string[]
+          communities_checked_at?: string | null
           confidence?: number | null
           conflicts?: Json
           cost?: string
@@ -247,6 +257,8 @@ export type Database = {
           category?: string
           checked_at?: string | null
           club_id?: number
+          communities?: string[]
+          communities_checked_at?: string | null
           confidence?: number | null
           conflicts?: Json
           cost?: string

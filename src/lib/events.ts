@@ -39,6 +39,8 @@ export type PublicEvent = {
   checkedAt: string | null; // when its post or Rubric listing was last seen still there
   // Why it may be off or changed, while the worker's flag waits for a person (null when nothing's in doubt).
   headsUp: string | null;
+  // Who it's for (campus.config.json "communities"): its club's plus its own (worker/communities.py).
+  communities: string[];
 };
 
 // The admin's review actions call updateTag(EVENTS_TAG), so approvals show up
@@ -46,8 +48,8 @@ export type PublicEvent = {
 export const EVENTS_TAG = "events";
 
 const COLUMNS = `id, club_id, name, category, event_type, tags, has_free_food, food_description, cost, price, starts_at, ends_at, start_time_known, location, off_campus, hosted_by, open_to_all,
-  ticket_url, schedule_status, registration, registration_where, registration_url, checked_at, flags,
-  clubs (name, instagram_username), posts (permalink, deleted_at)`;
+  ticket_url, schedule_status, registration, registration_where, registration_url, checked_at, flags, communities,
+  clubs (name, instagram_username, communities), posts (permalink, deleted_at)`;
 
 type Row = {
   id: number;
@@ -74,7 +76,8 @@ type Row = {
   registration_url: string | null;
   checked_at: string | null;
   flags: string[];
-  clubs: { name: string; instagram_username: string } | null;
+  communities: string[];
+  clubs: { name: string; instagram_username: string; communities: string[] } | null;
   posts: { permalink: string; deleted_at: string | null } | null;
 };
 
@@ -123,6 +126,7 @@ function toPublicEvent(r: Row): PublicEvent {
     registrationUrl: r.registration_url,
     checkedAt: r.checked_at,
     headsUp: r.schedule_status === "scheduled" ? headsUp(r.flags) : null,
+    communities: [...new Set([...(r.clubs?.communities ?? []), ...(r.communities ?? [])])],
   };
 }
 

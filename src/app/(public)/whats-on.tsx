@@ -91,7 +91,12 @@ export function WhatsOn({ events, today, now: serverNow, fromUrl }: { events: Pu
           ]}
         />
       </div>
-      <p className="-mt-2 text-maroon/75">Every public {campus.schoolShortName} event in one place, from club posts.</p>
+      <p className="-mt-2 text-maroon/75">
+        Every public {campus.schoolShortName} event in one place, from club posts.{" "}
+        <Link href="/communities" className="font-semibold whitespace-nowrap text-maroon underline underline-offset-2 hover:text-plum">
+          Find events for your community
+        </Link>
+      </p>
 
       <section data-tour="events" className="-mx-1 flex flex-col gap-5 rounded-[32px] bg-panel p-3 shadow-sm sm:mx-0 sm:p-6">
         <div className="flex items-center justify-between gap-3">

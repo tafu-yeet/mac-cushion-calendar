@@ -120,6 +120,14 @@ What that means for how it's built:
    post that day; and a "link in bio" registration gets the link whose title
    names the event, so the button opens the actual form. First run:
    `python bio_links.py --fetch-upcoming`.
+9. **Communities** (`worker/communities.py`): clubs and events are tagged
+   with the communities they're for, from the list in `campus.config.json`
+   (Pride, women, each faith, culture by region, each program). A club's tags
+   (from its name and account, read by Sonnet once) apply to all its events;
+   an event adds its own from its words (a women-only class, Diwali, an
+   engineering night). `/communities` lists upcoming events per community,
+   including events only for that group's members. `python communities.py
+   --all` tags everything again.
 
 Every request is logged: `fetch_logs` (club, backend, status, bytes) and
 `llm_usage` (tokens and estimated cost; `python usage.py` for totals).
