@@ -1,3 +1,6 @@
+import { after } from "next/server";
+
+import { recordCalendarAdd } from "@/lib/calendar-adds";
 import { getEvent } from "@/lib/events";
 import { eventToIcs } from "@/lib/ics";
 
@@ -9,6 +12,7 @@ export async function GET(request: Request, { params }: RouteContext<"/events/[i
   if (!event) {
     return new Response("Event not found", { status: 404 });
   }
+  after(() => recordCalendarAdd(event.id, "ics")); // Apple Calendar and others
   const eventUrl = new URL(`/events/${event.id}`, request.url).toString();
   const filename = `${event.name.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").slice(0, 60) || "event"}.ics`;
   return new Response(eventToIcs(event, eventUrl), {

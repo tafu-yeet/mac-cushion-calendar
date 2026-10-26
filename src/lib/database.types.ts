@@ -32,6 +32,35 @@ export type Database = {
         }
         Relationships: []
       }
+      calendar_adds: {
+        Row: {
+          app: string
+          created_at: string
+          event_id: number
+          id: number
+        }
+        Insert: {
+          app: string
+          created_at?: string
+          event_id: number
+          id?: never
+        }
+        Update: {
+          app?: string
+          created_at?: string
+          event_id?: number
+          id?: never
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_adds_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clubs: {
         Row: {
           active: boolean

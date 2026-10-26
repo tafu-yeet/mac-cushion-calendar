@@ -1,3 +1,6 @@
+import { after } from "next/server";
+
+import { recordCalendarAdd } from "@/lib/calendar-adds";
 import { CALENDAR_APPS, calendarLink, type CalendarApp } from "@/lib/calendar-links";
 import { getEvent } from "@/lib/events";
 
@@ -11,6 +14,7 @@ export async function GET(request: Request, { params }: RouteContext<"/events/[i
   if (!event) {
     return new Response("Event not found", { status: 404 });
   }
+  after(() => recordCalendarAdd(event.id, app as CalendarApp)); // counted once the redirect is on its way
   const eventUrl = new URL(`/events/${event.id}`, request.url).toString();
   return Response.redirect(calendarLink(app as CalendarApp, event, eventUrl), 302);
 }
