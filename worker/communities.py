@@ -97,11 +97,19 @@ def tag_clubs(sb: Client, client: anthropic.Anthropic, everything: bool, verbose
     clubs = [c for c in fetch_all(lambda a, b: sb.table("clubs").select(
         "id, instagram_username, name, communities, communities_checked_at").range(a, b))
         if everything or not c["communities_checked_at"]]
+    # The club's full name on Rubric, when we know it: "McMaster TSA" is the Turkish Students
+    # Association there, not the Taiwanese one an acronym suggests.
+    rubric_names = {s["club_id"]: s["name"] for s in fetch_all(lambda a, b: sb.table("rubric_societies").select(
+        "club_id, name").eq("match_status", "confirmed").not_.is_("club_id", "null").range(a, b))}
     system = RULES.replace("{taxonomy}", taxonomy()) + "\n\nAnswer for every club id."
     done = 0
     for i in range(0, len(clubs), CLUBS_PER_CALL):
         chunk = clubs[i:i + CLUBS_PER_CALL]
-        listing = "\n".join(f"{c['id']} | @{c['instagram_username']} | {c['name']}" for c in chunk)
+        listing = "\n".join(
+            f"{c['id']} | @{c['instagram_username']} | {c['name']}"
+            + (f" | on Rubric: {rubric_names[c['id']]}" if c["id"] in rubric_names else "")
+            for c in chunk
+        )
         try:
             tags, usage = ask(client, VERIFY_MODEL, CHECK_EFFORT, system, listing)
             log_usage(sb, None, usage, "communities-clubs")
