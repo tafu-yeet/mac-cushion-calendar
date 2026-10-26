@@ -6,6 +6,7 @@ import { addDays } from "@/lib/time";
 
 import { CalendarHeader, calendarHref, monthDay, weekRange } from "../calendar-header";
 import { MissingEventLink } from "../feedback";
+import { GroupEventsHidden } from "../whats-on";
 
 import { DayCard } from "./day-card";
 import type { WeekDay } from "./types";
@@ -30,6 +31,9 @@ export function WeekBrowser({
   const live = shown.flatMap((d) => d.events).filter((e) => e.scheduleStatus !== "cancelled");
   const count = live.length;
   const withFood = live.filter((e) => e.hasFreeFood).length;
+  const hiddenForGroups = filters.limited
+    ? 0
+    : days.flatMap((d) => d.events).filter((e) => !e.openToAll && matchesFilters(e, { ...filters, limited: true })).length;
 
   const week = (start: string) => calendarHref("week", start === thisMonday ? null : start, filters);
   const day = (date: string) => calendarHref("day", date === today ? null : date, filters);
@@ -68,6 +72,8 @@ export function WeekBrowser({
           <DayCard key={d.date} day={d} dayHref={day(d.date)} today={today} />
         ))}
       </div>
+
+      {hiddenForGroups > 0 && <GroupEventsHidden count={hiddenForGroups} alone={count === 0} onShow={() => update({ limited: true })} />}
 
       <MissingEventLink />
     </div>

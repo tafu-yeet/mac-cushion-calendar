@@ -54,6 +54,18 @@ export function WhatsOn({ events, today, now: serverNow, fromUrl }: { events: Pu
   const withFood = groups.reduce((n, g) => n + [...g.fits, ...g.offCampus].filter((e) => on(e) && e.hasFreeFood).length, 0);
   const lastShown = groups[groups.length - 1].date;
   const comingUp = matching.filter((e) => dateOf(e) > lastShown && inWindow(e, slot) !== false).slice(0, COMING_UP_COUNT);
+  // Events for one group (members, women, a faith or program) that the filters would show if
+  // they weren't hidden by default: say so, so a search for one doesn't look like we missed it.
+  const hiddenForGroups = filters.limited
+    ? 0
+    : events.filter(
+        (e) =>
+          !e.openToAll &&
+          dates.includes(dateOf(e)) &&
+          inWindow(e, slot) !== false &&
+          !(dateOf(e) === today && e.startTimeKnown && endMs(e) <= now) &&
+          matchesFilters(e, { ...filters, limited: true }),
+      ).length;
 
   // What the calendar picker marks: per day, what you could go to with these filters.
   const counts: DayCounts = new Map();
@@ -119,6 +131,8 @@ export function WhatsOn({ events, today, now: serverNow, fromUrl }: { events: Pu
             ))}
           </Section>
         )}
+
+        {hiddenForGroups > 0 && <GroupEventsHidden count={hiddenForGroups} alone={total === 0} onShow={() => update({ limited: true })} />}
 
         <MissingEventLink />
       </section>
@@ -207,6 +221,20 @@ function EmptyState({
         )
       )}
     </div>
+  );
+}
+
+/** "2 more for specific groups (members, women, a faith or program) are hidden. Show them" */
+export function GroupEventsHidden({ count, onShow, alone = false }: { count: number; onShow: () => void; alone?: boolean }) {
+  return (
+    <p className="rounded-[28px] bg-canvas px-5 py-3 text-sm text-maroon/85">
+      {count} {alone ? "" : "more "}
+      {count === 1 ? "event is" : "events are"} only for specific groups (members, women, a faith or a
+      program), so {count === 1 ? "it's" : "they're"} hidden.{" "}
+      <button type="button" onClick={onShow} className="font-semibold text-maroon underline underline-offset-2">
+        Show {count === 1 ? "it" : "them"}
+      </button>
+    </p>
   );
 }
 
