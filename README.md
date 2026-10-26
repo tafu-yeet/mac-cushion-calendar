@@ -61,11 +61,16 @@ What that means for how it's built:
 4. **Review:** an event publishes itself when Sonnet read it the same way as
    Haiku (or, where they disagreed, an Opus tie-breaker sided with Sonnet), it
    has a start time, the confidence is 0.85+ with free food or 0.75+ without,
-   and it isn't another club's event or an off-campus collab. Copies sort
-   themselves out (a copy of a published event, the less complete of two
-   pending copies, a teaser once the dated post arrives, and a date a newer
-   post moved are rejected with a note), and pending events expire when their
-   date passes. Everything else waits as `pending` at `/admin`. See
+   and it isn't another club's event or an off-campus collab. Where and when
+   decide what's a copy before the name does (`worker/places.py`): the same
+   room at about the same time is one event whatever it's called, and a similar
+   name in another room or building, or hours apart, isn't (another club's is a
+   separate event; the same club's waits for a person, since it may be a room
+   change or a second session). Copies sort themselves out (a copy of a
+   published event, the less complete of two pending copies, a teaser once the
+   dated post arrives, and a date a newer post moved are rejected with a note),
+   and pending events expire when their date passes. Everything else waits as
+   `pending` at `/admin`. See
    `worker/auto_approve.py`; `AUTO_APPROVE_MIN_CONFIDENCE=none` turns
    auto-approval off.
 5. **Rubric:** hourly, the worker also reads McMaster's listing on Rubric
@@ -73,13 +78,18 @@ What that means for how it's built:
    most one request a second, and maps each Rubric club to our Instagram
    account, by the Instagram link the club gave Rubric or by name (unsure
    links wait at `/admin/clubs`). `worker/merge.py` then matches Rubric events
-   to Instagram ones (same club, same day, starting within an hour) and takes
+   to Instagram ones (same club, same day, starting within an hour; the same
+   room counts for a match, another room against) and takes
    each field from the more trustworthy source: Rubric for time, place, price
    and tickets; Instagram for free food, description and image. Rubric events
    with no Instagram match publish on their own once they pass a duplicate
-   check and their club is on our list (otherwise they wait). Disagreements
-   and unsure matches wait at `/admin` ("Needs a look"); a deleted post or an
-   event gone from Rubric is flagged, never deleted. `RUBRIC_MERGE=apply`
+   check and their club is on our list (otherwise they wait). A published
+   Rubric event stays up until a person takes it down: when it starts, when it
+   leaves Rubric (flagged, with "Check before you go"), and while an Instagram
+   post of it waits for review (they merge once that post is approved).
+   Disagreements and unsure matches wait at `/admin` ("Needs a look"); a
+   deleted post or an event gone from Rubric is flagged, never deleted.
+   `RUBRIC_MERGE=apply`
    (the default) saves the merge; `RUBRIC_MERGE=report` only prints it
    (`python merge.py --from 2026-10-19 --to 2026-10-25` for a range).
 6. **Still on?** (`worker/recheck.py`) Nothing cancels an event by itself: the
@@ -95,7 +105,8 @@ What that means for how it's built:
    titled cancelled); and two "This got cancelled" reports from visitors (a
    database trigger). Event pages show "Last checked" from when the post or
    Rubric listing was last seen. While a flag waits (deleted post, a post about
-   a cancellation, an edited post, visitors' reports), the event shows "Check
+   a cancellation, a listing gone from Rubric, an edited post, visitors'
+   reports), the event shows "Check
    before you go" with the reason; every event page also says clubs post
    last-minute changes in their stories, with a link to the club's profile
    (stories can't be read). "Save & clear flags" in the admin dismisses an

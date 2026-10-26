@@ -91,6 +91,8 @@ function headsUp(flags: string[] | null): string | null {
   if (f.has("instagram_post_deleted")) return "The club deleted its post about this event, so it may be cancelled or changed.";
   // "Update", not "cancellation": the post may as well say an event is back on.
   if (f.has("possibly_cancelled") || f.has("rubric_cancelled")) return "The club posted an update that may affect this event.";
+  // Published events stay up when they leave Rubric (worker/merge.py); this says why to check.
+  if (f.has("rubric_missing")) return "The club took this event off Rubric, so it may be cancelled or changed.";
   if (f.has("reported_cancelled")) return "Visitors told us this event may be cancelled.";
   if (f.has("caption_changed")) return "The club edited its post since we read it, so details may have changed.";
   return null;

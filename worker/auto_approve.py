@@ -11,12 +11,19 @@ the review queue:
   teasers that a fuller post follows);
 - it's run by the posting club, or co-run with a club on our list, or held on
   campus or online (an off-campus collab can be another school's event);
-- no other club's event looks like the same one: a similar name on the same
-  day, the same start time and room, or a repost naming this club as host.
+- no other club's event looks like the same one: the same room at about the
+  same time, a similar name the same day (unless it's somewhere else or hours
+  apart), or a repost naming this club as host.
+
+Two events are one event when they're in the same room at about the same time,
+whatever their names; similar names count only when the places and times don't
+say otherwise (two clubs' "Halloween Social"s in different buildings are two
+events). See same_event and places.py.
 
 Copies sort themselves out instead of waiting for a person. Within one club
 (never between two events from the same post, which the model split on
-purpose):
+purpose), and except that a similar name in another room or hours apart waits
+for a person (a moved event, or a second session):
 - a copy of an event already published is rejected;
 - of several pending copies on the same day, the most complete one stays and
   the rest are rejected;
@@ -48,12 +55,15 @@ from types import SimpleNamespace
 
 from supabase import Client
 
-from extractors.two_stage import room_key, settle, settleable
+from extractors.two_stage import settle, settleable
+from places import place_match
 from settings import AUTO_APPROVE_MIN_CONFIDENCE, AUTO_APPROVE_OTHER_MIN_CONFIDENCE, CAMPUS, LOCAL_TZ
 
 # Same threshold and filler words as the review queue's grouping (src/lib/duplicates.ts).
 SIMILAR_NAMES = 0.6
 NEAR_IDENTICAL_NAMES = 0.8
+SAME_SLOT_MIN = 30      # one room, starts this close: one event, whatever the names
+TIMES_AGREE_MIN = 90    # similar names starting further apart are separate sessions
 MOVED_WITHIN_DAYS = 14
 UNDATED_EXPIRE_DAYS = 14
 FILLER = {"mcmaster", "mac", "the", "a", "an", "of", "at", "and", "x", "with", "club", "society", "association"}
@@ -86,7 +96,7 @@ def review(sb: Client, row: dict, verified_by: str | None, club_name: str, poste
         row.update(status="approved", auto_approved=True, reviewed_at=now_iso)
     elif decision.action == "reject":
         row.update(status="rejected", reviewed_at=now_iso)
-    if decision.note:
+    if decision.note and decision.note not in row["review_notes"]:
         row["review_notes"] = [*row["review_notes"], decision.note]
     return decision
 
@@ -94,6 +104,7 @@ def review(sb: Client, row: dict, verified_by: str | None, club_name: str, poste
 def decide(sb: Client, row: dict, verified_by: str | None, club_name: str, posted_at: str, exclude_id: int | None = None) -> Decision:
     today = datetime.now(LOCAL_TZ).date()
     others: list[tuple[int, str]] = []
+    unsure: dict | None = None  # the same club's event this may be, in another room or at another time
     if row["starts_at"]:
         start = _local(row["starts_at"])
         for o in _club_events(sb, row, exclude_id):
@@ -103,10 +114,12 @@ def decide(sb: Client, row: dict, verified_by: str | None, club_name: str, poste
                 if o["status"] == "pending" and similar_names(row["name"], o["name"]):
                     others.append((o["id"], f"Rejected automatically: “{row['name']}” announced a date for this teaser."))
                 continue
-            o_start = _local(o["starts_at"])
-            same_day = o_start.date() == start.date()
-            same_start = o["start_time_known"] and row["start_time_known"] and o_start == start
-            if same_day and (same_start or similar_names(row["name"], o["name"])):
+            same_day = _local(o["starts_at"]).date() == start.date()
+            verdict = same_event(row, o, same_club=True) if same_day else False
+            if verdict is None:
+                if o["status"] != "rejected" and unsure is None:
+                    unsure = o
+            elif verdict:
                 if o["status"] == "approved":
                     return Decision("reject", "copy of a published event", f"Rejected automatically: a copy of “{o['name']}” (#{o['id']}), already published.")
                 if o["status"] == "rejected":
@@ -123,6 +136,10 @@ def decide(sb: Client, row: dict, verified_by: str | None, club_name: str, poste
                 if o["status"] == "pending":
                     others.append((o["id"], f"Rejected automatically: a newer post (“{row['name']}”) gives it another date."))
 
+    if unsure is not None:
+        where = "in another room" if place_match(row["location"], unsure["location"]) == "different" else "at another time"
+        return Decision("hold", "maybe a copy", f"Not published automatically: it may be “{unsure['name']}” (#{unsure['id']}, "
+                        f"{unsure['status']}), but {where}. Reject this one if it's the same event.", others)
     reason = blocker(sb, row, verified_by, today)
     if reason:
         return Decision("hold", reason, reject_others=others)
@@ -213,16 +230,45 @@ def _other_club_lookalike(sb: Client, row: dict, club_name: str, exclude_id: int
     for other in same_day:
         if other["id"] == exclude_id or other["status"] == "rejected":
             continue
+        # A repost naming this club as host is this club's event, unless it's somewhere else or hours apart.
         reposted = bool(club_name and other["hosted_by"]) and club_name.lower() in other["hosted_by"].lower()
-        same_slot = (
-            other["start_time_known"]
-            and _local(other["starts_at"]) == start
-            and room_key(row["location"]) != ""
-            and room_key(row["location"]) == room_key(other["location"])
-        )
-        if reposted or same_slot or similar_names(row["name"], other["name"]):
+        if (reposted and not _apart(row, other)) or same_event(row, other, same_club=False):
             return other
     return None
+
+
+def _gap_minutes(a: dict, b: dict) -> float | None:
+    """How far apart two events start, or None when either has no start time."""
+    if not (a["start_time_known"] and b["start_time_known"] and a["starts_at"] and b["starts_at"]):
+        return None
+    return abs((_local(a["starts_at"]) - _local(b["starts_at"])).total_seconds()) / 60
+
+
+def _apart(a: dict, b: dict) -> bool:
+    """In different rooms or buildings, or starting hours apart."""
+    gap = _gap_minutes(a, b)
+    return place_match(a["location"], b["location"]) == "different" or (gap is not None and gap > TIMES_AGREE_MIN)
+
+
+def same_event(a: dict, b: dict, same_club: bool) -> bool | None:
+    """Whether two events on the same day are one event; None when a person should say
+    (the same club, a similar name, but in another room or hours apart: a moved event,
+    or a second session).
+
+    Where and when go first. One room at one time is one event, whatever the names:
+    "Ala Bab El Cima" and "McMasr x NASA Movie Night", both PC 155 at 7. A similar name
+    in another building, or hours later, is another event: two clubs' "Halloween
+    Social"s. When the places can't tell (a shared lounge, no room given, online),
+    similar names are one event, and so, from one club, are two posts with one start.
+    """
+    gap = _gap_minutes(a, b)
+    if place_match(a["location"], b["location"]) == "same" and gap is not None and gap <= SAME_SLOT_MIN:
+        return True
+    if not similar_names(a["name"], b["name"]):
+        return same_club and gap == 0 and place_match(a["location"], b["location"]) is None
+    if _apart(a, b):
+        return None if same_club else False
+    return True
 
 
 def _moved(row: dict, other: dict) -> bool:

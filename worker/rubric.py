@@ -338,11 +338,15 @@ def sync(sb: Client, client: RubricClient | None = None) -> SyncResult:
 
     # Upcoming events Rubric no longer lists: keep them, mark them, let merge.py flag theirs.
     listed = {event_id(r) for r in results}
-    gone = [
-        eid for eid, r in existing.items()
-        if eid not in listed and not r["missing_since"]
-        and int(r["search"].get("sortindex", 0)) >= started.timestamp()
-    ]
+    upcoming = [eid for eid, r in existing.items()
+                if not r["missing_since"] and int(r["search"].get("sortindex", 0)) >= started.timestamp()]
+    gone = [eid for eid in upcoming if eid not in listed]
+    # Most of them gone at once is a short or failed listing, not a wave of cancellations:
+    # marking them would put "Check before you go" on nearly every event.
+    if len(gone) > max(5, len(upcoming) // 3):
+        print(f"  Rubric listed {len(results)} events but {len(gone)} of {len(upcoming)} upcoming ones are missing: "
+              "not marking them (a bad fetch?)")
+        gone = []
     if gone:
         sb.table("rubric_events").update({"missing_since": started.isoformat()}).in_("eid", gone).execute()
     out.missing = gone

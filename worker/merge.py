@@ -4,8 +4,9 @@ trustworthy value for each field.
 Matching: a Rubric event and an Instagram event are taken to be the same when
 they're from the same club (through rubric_societies; a co-host counts too), on
 the same day, starting within an hour of each other. Each pair is scored from
-the club link, how close the times are and how alike the names are (a weak
-sign: "MDA Crafting Night" is "Clay It Your Way"). A link to the Rubric event
+the club link, how close the times are, the place (the same room counts for
+it, another room or building against: places.py) and how alike the names are
+(a weak sign: "MDA Crafting Night" is "Clay It Your Way"). A link to the Rubric event
 in the Instagram club's bio or Linktree (bio_links.py) counts as a club link
 and adds BIO_BONUS. At AUTO and up they merge;
 from REVIEW up a person decides (event_matches); below, they're separate events.
@@ -25,13 +26,20 @@ different price) changes nothing: both values go to events.conflicts for a
 person. Small differences take Rubric's value.
 
 A Rubric event that matches nothing becomes an event of its own (no post) and
-is published straight away, unless: it may be a duplicate (a similar name the
-same day from any club, the same club within a few hours, an undecided possible
-match, or one a person rejected); or its club isn't on our list, or the link to
-it is unconfirmed; or it has started or left Rubric. Then it waits, the reason
-in its review notes. A person's approval or rejection always stands. A deleted
-Instagram post doesn't cancel an event, and neither does an event dropping off
-Rubric: both are flagged, never deleted.
+is published straight away, unless: it may be a duplicate (any club's event in
+the same room at about the same time, or with a similar name the same day and
+not somewhere else or hours apart; the same club within a few hours when the
+places can't tell; an undecided possible match, or one a person rejected); or
+its club isn't on our list, or the link to it is unconfirmed; or it has
+started or left Rubric. Then it waits, the reason in its review notes. Those
+holds only stop a listing from publishing itself: one already published stays
+up when it starts, leaves Rubric (flagged rubric_missing) or an unpublished
+look-alike appears, and gives way only to a published event that's the same.
+Nor does it merge into an Instagram event still waiting for review: that would
+replace the published row with one nobody can see. They merge once a person
+approves the Instagram event. A person's approval or rejection always stands.
+A deleted Instagram post doesn't cancel an event, and neither does an event
+dropping off Rubric: both are flagged, never deleted.
 
 Matching from scratch each run gives the same answer, so running it again only
 writes what changed.
@@ -47,21 +55,22 @@ from __future__ import annotations
 import argparse
 import re
 import sys
-import unicodedata
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
 
 from supabase import Client
 
 import bio_links
-from auto_approve import name_similarity, similar_names, word_overlap
+from auto_approve import name_similarity, same_event, similar_names, word_overlap
 from clean import clean_place
 from extractors.two_stage import GENERIC_PLACE_WORDS, same_place
+from places import CODES, expand_codes, place_match
 from rubric import acronyms, aliases_for, fetch_all
 from settings import CAMPUS, LOCAL_TZ
 
 AUTO, REVIEW = 0.75, 0.5
 BIO_BONUS = 0.15         # the Instagram club's bio links the Rubric event
+PLACE_WEIGHT = {"same": 0.15, "different": -0.3}  # the same room, or another room or building
 MAX_START_GAP_MIN = 60   # starts further apart than this are different events
 CONFLICT_MIN = 15        # times further apart than this need a person
 RUBRIC_ONLY_CONFIDENCE = 0.85
@@ -211,24 +220,11 @@ def score_pair(r: dict, e: dict, societies: dict[int, Society]) -> tuple[float, 
     society = societies.get(r["society_id"])
     a, b = strip_club_words(r["title"], society), strip_club_words(e["name"], society)
     title = max(name_similarity(a, b), word_overlap(a, b))
-    place = 0.0
-    if r["location"] and e["location"]:
-        place = 0.05 if same_place(expand_codes(r["location"]), expand_codes(e["location"])) else -0.1
+    # Where says more than the name: one room is all but certain, another room or building
+    # rules it out unless the club and time are sure (places.py).
+    place = PLACE_WEIGHT.get(place_match(r["location"], e["location"]), 0.0)
     score = max(0.0, min(1.0, 0.45 * club + 0.35 * timing + 0.20 * title + place + (BIO_BONUS if linked else 0)))
     return round(score, 3), {"club": club_why, "time": time_why, "title": round(title, 2), "place": place}
-
-
-CODES = {code.lower(): full for code, full in CAMPUS["campusLocations"].items()}
-
-
-def expand_codes(location: str) -> str:
-    """"MUSC 230" -> "MUSC 230 McMaster University Student Centre", so codes and full names compare;
-    accents and apostrophes go, so "Bridges Café" and "Bridge's Cafe" are one place."""
-    folded = unicodedata.normalize("NFKD", location).encode("ascii", "ignore").decode()
-    folded = re.sub(r"['’]", "", folded)
-    words = re.findall(r"[A-Za-z]+", folded)
-    extra = [CODES[w.lower()] for w in words if w.lower() in CODES]
-    return " ".join([folded, *extra])
 
 
 def place_words(location: str) -> set[str]:
@@ -417,28 +413,34 @@ def rubric_only_row(r: dict, club_id: int, society: Society) -> dict:
 DUPLICATE_WINDOW_MIN = 180  # the same club's events this close on one day may be one event
 
 
-def rubric_duplicate(r: dict, events: list[dict], society: Society | None, match_waiting: bool) -> str | None:
-    """Why a Rubric event that matched nothing may still be an event we list, or None.
+def rubric_duplicate(r: dict, events: list[dict], society: Society | None,
+                     waiting: list[str] | None) -> tuple[str, bool] | None:
+    """Why a Rubric event that matched nothing may still be an event we list, or None;
+    with whether that other event is published (then this one is listed through it).
 
-    Checked before publishing it on its own: a similar name the same day from any
-    club (a hub's repost, a co-host's post), the same club the same day within a
-    few hours (Instagram may have the time wrong), or a possible match that a
-    person hasn't decided yet.
+    Checked before publishing it on its own: any club's event in the same room at
+    about the same time, or with a similar name the same day unless it's somewhere
+    else or hours apart (a hub's repost, a co-host's post: auto_approve.same_event);
+    the same club the same day within a few hours when the places can't tell
+    (Instagram may have the time wrong); or a possible match a person hasn't decided
+    yet (`waiting`: the statuses of its Instagram events).
     """
-    if match_waiting:
-        return "possible match with an Instagram event waiting for a person"
+    if waiting is not None:
+        return "possible match with an Instagram event waiting for a person", "approved" in waiting
     day, own = local_day(r["starts_at"]), set(society.clubs) if society else set()
-    title = strip_club_words(r["title"], society)
+    listing = {"name": strip_club_words(r["title"], society), "location": r["location"],
+               "starts_at": r["starts_at"], "start_time_known": True}
     for e in events:
         if not e["starts_at"] or local_day(e["starts_at"]) != day:
             continue
         same_club = e["club_id"] in own
         close = not e["start_time_known"] or minutes_apart(r["starts_at"], e["starts_at"]) <= DUPLICATE_WINDOW_MIN
-        if similar_names(title, strip_club_words(e["name"], society)) or (same_club and close):
+        verdict = same_event(listing, e | {"name": strip_club_words(e["name"], society)}, same_club)
+        if verdict is not False or (same_club and close and place_match(r["location"], e["location"]) is None):
             who = (e.get("clubs") or {}).get("instagram_username", "?")
             if e["status"] == "rejected":
-                return f"looks like #{e['id']} “{e['name']}” (@{who}), which a person rejected"
-            return f"may be the same as #{e['id']} “{e['name']}” (@{who})"
+                return f"looks like #{e['id']} “{e['name']}” (@{who}), which a person rejected", False
+            return f"may be the same as #{e['id']} “{e['name']}” (@{who})", e["status"] == "approved"
     return None
 
 
@@ -480,7 +482,9 @@ def plan(sb: Client, start: date, end: date) -> Plan:
         e["rubric_eid"]: e for e in fetch_all(lambda a, b: sb.table("events").select(EVENT_COLUMNS)
             .eq("source", "rubric").gte("starts_at", lo).lt("starts_at", hi).range(a, b))
     }
-    waiting = {m["rubric_eid"] for m in sb.table("event_matches").select("rubric_eid").eq("status", "review").execute().data}
+    waiting: dict[int, list[int]] = {}  # Rubric event -> Instagram events in possible matches a person hasn't decided
+    for m in sb.table("event_matches").select("rubric_eid, event_id").eq("status", "review").execute().data:
+        waiting.setdefault(m["rubric_eid"], []).append(m["event_id"])
     # Events a person rejected: a Rubric listing of the same event mustn't publish around them.
     rejected = fetch_all(lambda a, b: sb.table("events").select(EVENT_COLUMNS).eq("status", "rejected")
         .not_.is_("reviewed_by", "null").gte("starts_at", lo).lt("starts_at", hi).range(a, b))
@@ -498,11 +502,64 @@ def plan(sb: Client, start: date, end: date) -> Plan:
             elif scored:
                 pairs.append((scored[0], r, e, scored[1]))
 
+    # A possible match that no longer scores as one (an event changed, or its place now tells
+    # them apart) holds nothing back, and apply takes it out of the queue.
+    live = {(r["eid"], e["id"]) for score, r, e, _ in pairs if score >= REVIEW}
+    waiting = {eid: kept for eid, ids in waiting.items() if (kept := [i for i in ids if (eid, i) in live or i not in events])}
+
+    # Instagram events still waiting for review that a Rubric event would merge into.
+    pending_partners: dict[int, set[int]] = {}
+    for score, r, e, _ in pairs:
+        if score >= AUTO and e["status"] == "pending":
+            pending_partners.setdefault(r["eid"], set()).add(e["id"])
+
+    def on_its_own(r: dict) -> tuple[int | None, str | None]:
+        """The club a Rubric-only event is filed under, and why it can't be published (None: it can)."""
+        # Only a confirmed club link files a Rubric-only event under one of our clubs;
+        # an unconfirmed one waits for a person on the Clubs page.
+        society = societies.get(r["society_id"])
+        confirmed = [cid for cid, w in (society.clubs if society else {}).items() if w == 1.0]
+        club_id = confirmed[0] if confirmed else None
+        # Its own row aside, and the Instagram events waiting to merge with it: those are it.
+        others = [e for e in [*events.values(), *rejected]
+                  if not (e["source"] == "rubric" and e["rubric_eid"] == r["eid"]) and e["id"] not in pending_partners.get(r["eid"], ())]
+        statuses = [events[i]["status"] for i in waiting[r["eid"]] if i in events] if r["eid"] in waiting else None
+        duplicate = rubric_duplicate(r, others, society, statuses)
+        hold, listed_elsewhere = duplicate or (None, False)
+        if not hold:
+            if not society or not society.clubs:
+                hold = "club not on our list"
+            elif not club_id:
+                hold = "club link to confirm (admin Clubs page)"
+            elif r["missing_since"]:
+                hold = "no longer listed on Rubric"
+            elif datetime.fromisoformat(r["starts_at"]) <= datetime.now(timezone.utc):
+                hold = "already started"
+        # Holds keep a listing from publishing itself; they don't take down one that's up. Nothing
+        # takes an event off the site but a person: one that starts stays, one that leaves Rubric is
+        # flagged (rubric_missing). It gives way only to a published event that's the same one.
+        existing = rubric_rows.get(r["eid"])
+        if hold and existing and existing["status"] == "approved" and not listed_elsewhere:
+            hold = None
+        return club_id, hold
+
+    # A Rubric event that can be published on its own doesn't merge into an Instagram event
+    # still waiting for review (often a co-host's post, held as a copy of this very listing):
+    # the merge replaces the Rubric row, so the event would vanish from the site. It merges
+    # once a person approves the Instagram event; rejecting that one leaves the listing up.
+    alone = set()
+    for eid in pending_partners:
+        club_id, hold = on_its_own(rubric[eid])
+        if club_id is not None and hold is None:
+            alone.add(eid)
+
     # Best pairs first, each event used once; a second Instagram event that fits as
     # well is a copy (a hub's repost, a collab), not a different event.
     used_r, used_e = set(), set()
     for score, r, e, why in sorted(pairs, key=lambda x: -x[0]):
         if score < REVIEW:
+            continue
+        if score >= AUTO and e["status"] == "pending" and r["eid"] in alone:
             continue
         if r["eid"] in used_r or e["id"] in used_e:
             if r["eid"] in used_r and e["id"] not in used_e and score >= AUTO:
@@ -519,22 +576,7 @@ def plan(sb: Client, start: date, end: date) -> Plan:
     for r in rubric.values():
         if r["eid"] in used_r:
             continue
-        # Only a confirmed club link files a Rubric-only event under one of our clubs;
-        # an unconfirmed one waits for a person on the Clubs page.
-        society = societies.get(r["society_id"])
-        confirmed = [cid for cid, w in (society.clubs if society else {}).items() if w == 1.0]
-        club_id = confirmed[0] if confirmed else None
-        others = [e for e in [*events.values(), *rejected] if e.get("rubric_eid") != r["eid"]]
-        hold = rubric_duplicate(r, others, society, r["eid"] in waiting)
-        if not hold:
-            if not society or not society.clubs:
-                hold = "club not on our list"
-            elif not club_id:
-                hold = "club link to confirm (admin Clubs page)"
-            elif r["missing_since"]:
-                hold = "no longer listed on Rubric"
-            elif datetime.fromisoformat(r["starts_at"]) <= datetime.now(timezone.utc):
-                hold = "already started"
+        club_id, hold = on_its_own(r)
         p.rubric_only.append((r, club_id, rubric_rows.get(r["eid"]), hold))
 
     for e in instagram:
@@ -558,8 +600,11 @@ def apply(sb: Client, p: Plan) -> dict[str, int]:
             update["flags"] = flags
         if ch.conflicts != (e["conflicts"] or {}):
             update["conflicts"] = ch.conflicts
-        # A Rubric-only row added on an earlier run gives way to the Instagram event it turned out to be.
-        old = sb.table("events").select("id, reviewed_by").eq("rubric_eid", r["eid"]).neq("id", e["id"]).execute().data
+        # A Rubric-only row added on an earlier run gives way to the Instagram event it turned out to be,
+        # but a published one never to an event nobody can see (plan holds those back already).
+        old = sb.table("events").select("id, reviewed_by, status").eq("rubric_eid", r["eid"]).neq("id", e["id"]).execute().data
+        if old and old[0]["status"] == "approved" and e["status"] != "approved":
+            continue
         if old and not old[0]["reviewed_by"]:
             sb.table("events").delete().eq("id", old[0]["id"]).execute()
         elif old:
@@ -576,6 +621,11 @@ def apply(sb: Client, p: Plan) -> dict[str, int]:
         sb.table("event_matches").upsert({"rubric_eid": r["eid"], "event_id": e["id"], "score": score, "reasons": why,
                                           "status": "review"}, on_conflict="rubric_eid,event_id").execute()
         done["to_review"] += 1
+    proposed = {(r["eid"], e["id"]) for r, e, *_ in [*p.merged, *p.review]}
+    for m in sb.table("event_matches").select("rubric_eid, event_id").eq("status", "review").execute().data:
+        if m["rubric_eid"] in p.rubric and m["event_id"] in p.events and (m["rubric_eid"], m["event_id"]) not in proposed:
+            sb.table("event_matches").delete().eq("rubric_eid", m["rubric_eid"]).eq("event_id", m["event_id"]).execute()
+            done["withdrawn"] = done.get("withdrawn", 0) + 1
     now = datetime.now(timezone.utc).isoformat()
     for r, club_id, existing, hold in p.rubric_only:
         if club_id is None:
@@ -587,6 +637,9 @@ def apply(sb: Client, p: Plan) -> dict[str, int]:
         status = {"status": "pending" if hold else "approved", "auto_approved": not hold,
                   "reviewed_at": None if hold else now}
         if existing is None:
+            # An earlier merge may have given the Rubric id to an Instagram event that's waiting for
+            # review or was rejected; the listing takes it back (one row per Rubric event).
+            sb.table("events").update({"rubric_eid": None}).eq("rubric_eid", r["eid"]).neq("status", "approved").execute()
             sb.table("events").insert(row | status).execute()
             done["published" if not hold else "added"] = done.get("published" if not hold else "added", 0) + 1
             continue
