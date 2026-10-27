@@ -46,7 +46,7 @@ async function Feed({ searchParams }: { searchParams: PageProps<"/">["searchPara
 
 function FeedSkeleton() {
   return (
-    <div className="flex animate-pulse flex-col gap-4" aria-label="Loading">
+    <div className="flex animate-pulse flex-col gap-4" role="status" aria-label="Loading">
       <div className="h-4 w-40 rounded bg-maroon/10" />
       <div className="h-8 w-48 rounded bg-maroon/10" />
       <div className="h-11 rounded-xl bg-maroon/10" />

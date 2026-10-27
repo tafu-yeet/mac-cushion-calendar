@@ -61,7 +61,7 @@ export function AddToCalendar({ eventId, className }: { eventId: number; classNa
                 className="flex flex-col rounded-xl px-3 py-2 hover:bg-butter/70"
               >
                 <span className="text-sm font-semibold">{choice.label}</span>
-                <span className="text-xs text-maroon/70">{choice.hint}</span>
+                <span className="text-xs text-maroon/75">{choice.hint}</span>
               </a>
             </li>
           ))}

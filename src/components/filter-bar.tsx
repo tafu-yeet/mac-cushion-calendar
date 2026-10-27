@@ -96,13 +96,13 @@ export function FilterBar({
       }}>
       <label className="relative block" data-tour="search">
         <span className="sr-only">Search events</span>
-        <SearchIcon className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-maroon/50" />
+        <SearchIcon className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-maroon/60" />
         <input
           type="search"
           value={filters.q}
           onChange={(e) => update({ q: e.target.value })}
           placeholder="Search events, clubs, places, food…"
-          className="w-full rounded-full bg-panel py-2.5 pl-10 pr-4 text-base ring-1 ring-maroon/20 placeholder:text-maroon/45 focus:outline-none focus:ring-2 focus:ring-maroon sm:text-sm"
+          className="w-full rounded-full bg-panel py-2.5 pl-10 pr-4 text-base ring-1 ring-maroon/20 placeholder:text-maroon/75 focus:outline-none focus:ring-2 focus:ring-maroon sm:text-sm"
         />
       </label>
 

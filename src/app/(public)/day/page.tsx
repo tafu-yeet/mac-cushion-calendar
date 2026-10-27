@@ -15,7 +15,7 @@ export const metadata: Metadata = { title: "Day" };
 export default function DayPage({ searchParams }: PageProps<"/day">) {
   return (
     <div className="mx-auto max-w-3xl px-4 py-6">
-      <Suspense fallback={<div className="h-96 animate-pulse rounded-[28px] bg-maroon/10" aria-label="Loading" />}>
+      <Suspense fallback={<div className="h-96 animate-pulse rounded-[28px] bg-maroon/10" role="status" aria-label="Loading" />}>
         <Day searchParams={searchParams} />
       </Suspense>
     </div>

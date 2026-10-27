@@ -47,6 +47,11 @@ function FeedbackSheet({ type, event, onClosed }: Opening & { onClosed: () => vo
   const [chosen, setChosen] = useState<FeedbackType>(type);
   const [message, setMessage] = useState("");
   const [contact, setContact] = useState("");
+  // Said on Send rather than by the browser, whose bubble doesn't always show in a dialog (or for only spaces).
+  const [askedForMessage, setAskedForMessage] = useState(false);
+  const messageBox = useRef<HTMLTextAreaElement>(null);
+  const messageError = useId();
+  const missingMessage = askedForMessage && !message.trim();
 
   // Opens as a modal (focus stays inside, Escape closes it) and stops the page scrolling behind.
   useEffect(() => {
@@ -93,6 +98,13 @@ function FeedbackSheet({ type, event, onClosed }: Opening & { onClosed: () => vo
           </div>
         ) : (
           <form
+            noValidate
+            onSubmit={(e) => {
+              if (message.trim()) return;
+              e.preventDefault(); // stops the action too
+              setAskedForMessage(true);
+              messageBox.current?.focus();
+            }}
             // Which page they were on, read when they send it.
             action={(formData) => {
               formData.set("page_url", window.location.href);
@@ -131,28 +143,40 @@ function FeedbackSheet({ type, event, onClosed }: Opening & { onClosed: () => vo
               </>
             )}
 
-            <label className="flex flex-col gap-1.5">
-              <span className="flex items-baseline justify-between gap-3 text-sm font-semibold">
-                Message
-                <span className={`text-xs font-medium tabular-nums ${message.length > MAX_MESSAGE - 50 ? "text-maroon" : "text-maroon/60"}`}>
-                  {message.length}/{MAX_MESSAGE}
+            <div className="flex flex-col gap-1.5">
+              <label className="flex flex-col gap-1.5">
+                <span className="flex items-baseline justify-between gap-3 text-sm font-semibold">
+                  Message
+                  <span className={`text-xs font-medium tabular-nums ${message.length > MAX_MESSAGE - 50 ? "text-maroon" : "text-maroon/75"}`}>
+                    {message.length}/{MAX_MESSAGE}
+                  </span>
                 </span>
-              </span>
-              <textarea
-                name="message"
-                required
-                rows={4}
-                maxLength={MAX_MESSAGE}
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                placeholder={placeholder}
-                className="resize-none rounded-2xl bg-white/70 px-4 py-3 text-base ring-1 ring-maroon/20 placeholder:text-maroon/45 focus:outline-none focus-visible:ring-2 focus-visible:ring-maroon"
-              />
-            </label>
+                <textarea
+                  ref={messageBox}
+                  name="message"
+                  required
+                  aria-invalid={missingMessage}
+                  aria-describedby={missingMessage ? messageError : undefined}
+                  rows={4}
+                  maxLength={MAX_MESSAGE}
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  placeholder={placeholder}
+                  className={`resize-none rounded-2xl bg-white/70 px-4 py-3 text-base ring-1 placeholder:text-maroon/75 focus:outline-none focus-visible:ring-2 focus-visible:ring-maroon ${
+                    missingMessage ? "ring-2 ring-maroon" : "ring-maroon/20"
+                  }`}
+                />
+              </label>
+              {missingMessage && (
+                <p id={messageError} role="alert" className="text-sm font-semibold">
+                  Please enter a message.
+                </p>
+              )}
+            </div>
 
             <label className="flex flex-col gap-1.5">
               <span className="text-sm font-semibold">
-                How can we reach you? <span className="font-medium text-maroon/60">(optional)</span>
+                How can we reach you? <span className="font-medium text-maroon/75">(optional)</span>
               </span>
               <input
                 name="contact"
@@ -162,7 +186,7 @@ function FeedbackSheet({ type, event, onClosed }: Opening & { onClosed: () => vo
                 value={contact}
                 onChange={(e) => setContact(e.target.value)}
                 placeholder="@yourhandle or you@email.com"
-                className="rounded-full bg-white/70 px-4 py-2.5 text-base ring-1 ring-maroon/20 placeholder:text-maroon/45 focus:outline-none focus-visible:ring-2 focus-visible:ring-maroon"
+                className="rounded-full bg-white/70 px-4 py-2.5 text-base ring-1 ring-maroon/20 placeholder:text-maroon/75 focus:outline-none focus-visible:ring-2 focus-visible:ring-maroon"
               />
             </label>
 

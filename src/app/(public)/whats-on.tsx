@@ -78,7 +78,14 @@ export function WhatsOn({ events, today, now: serverNow, fromUrl }: { events: Pu
   const week = filters.day === "week";
   const shown = dates[0]; // the day the list shows, or the first of the week
   const dayName = shown === today ? "today" : shown === addDays(today, 1) ? "tomorrow" : formatDay(shown, "short", today);
-  const when = week ? "in the next 7 days" : picked ? `on ${dayName}` : dayName;
+  // Today's events that are over aren't listed, so the count says it's what's left (the Day view counts all).
+  const over =
+    !week && shown === today
+      ? events.filter(
+          (e) => dateOf(e) === today && e.startTimeKnown && endMs(e) <= now && on(e) && inWindow(e, slot) === true && matchesFilters(e, filters),
+        ).length
+      : 0;
+  const when = week ? "in the next 7 days" : over ? `still on today, of ${total + over}` : picked ? `on ${dayName}` : dayName;
 
   return (
     <div className="flex flex-col gap-6">
@@ -154,18 +161,18 @@ function DaySection({ group, today, now, showHeading }: { group: DayGroup; today
       {showHeading && (
         <h2 className="mt-2 px-1 font-display text-base font-semibold">
           {formatDay(group.date, "long", today)}
-          {group.date === today && <span className="ml-2 text-maroon/65">Today</span>}
+          {group.date === today && <span className="ml-2 text-maroon/75">Today</span>}
         </h2>
       )}
       {group.fits.map((e) => (
         <EventCard key={e.id} event={e} now={now} />
       ))}
       {group.timeUnknown.length > 0 && (
-        <details className="rounded-[28px] bg-canvas px-5 py-3">
-          <summary className="cursor-pointer text-sm font-medium text-maroon/85">
+        <details className="rounded-[28px] bg-canvas px-5">
+          <summary className="cursor-pointer py-3 text-sm font-medium text-maroon/85">
             {group.timeUnknown.length} more with no time announced yet
           </summary>
-          <div className="mt-3 flex flex-col gap-3 pb-2">
+          <div className="mt-1 flex flex-col gap-3 pb-5">
             {group.timeUnknown.map((e) => (
               <EventCard key={e.id} event={e} now={now} />
             ))}

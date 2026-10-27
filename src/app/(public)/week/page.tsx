@@ -15,7 +15,7 @@ export const metadata: Metadata = { title: "Calendar" };
 export default function WeekPage({ searchParams }: PageProps<"/week">) {
   return (
     <div className="mx-auto max-w-3xl px-4 py-6">
-      <Suspense fallback={<div className="h-96 animate-pulse rounded-[28px] bg-maroon/10" aria-label="Loading" />}>
+      <Suspense fallback={<div className="h-96 animate-pulse rounded-[28px] bg-maroon/10" role="status" aria-label="Loading" />}>
         <Week searchParams={searchParams} />
       </Suspense>
     </div>

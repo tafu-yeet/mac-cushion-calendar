@@ -1,19 +1,28 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
 
+import { BackLink } from "@/components/back-link";
 import { clubInitials, RegistrationBadge, ScheduleBadge } from "@/components/event-card";
 import { AddToCalendar } from "@/components/add-to-calendar";
-import { ChevronIcon, ExternalIcon, PinIcon, TicketIcon, UtensilsIcon } from "@/components/icons";
+import { ExternalIcon, PinIcon, TicketIcon, UtensilsIcon } from "@/components/icons";
 import { ShareButton } from "@/components/share-button";
+import { campus } from "@/lib/campus";
 import { categoryOf } from "@/lib/categories";
 import { freeFoodPhrase } from "@/lib/clean";
 import { getEvent, type PublicEvent } from "@/lib/events";
 import { formatDay, formatDuration, formatTime, formatTimeRange, timeAgo, toLocalInputs, todayInCampus } from "@/lib/time";
 
 import { CancelledReport, FeedbackLink } from "../../feedback";
+
+const ONLINE = /\b(online|virtual|zoom|teams|discord|webinar|livestream)\b/i;
+
+/** Google Maps for the place: on campus, searched within the campus so "MUSC 230" finds the Student Centre. */
+function mapLink(e: PublicEvent): string {
+  const place = e.offCampus ? `${e.location}, ${campus.city}` : `${e.location}, ${campus.school}, ${campus.city}`;
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place)}`;
+}
 
 /** "Free pizza · Friday, October 9, 6:00 PM · MUSC 230", for share text and link previews. */
 function summary(e: PublicEvent, today: string): string {
@@ -39,11 +48,8 @@ export async function generateMetadata({ params }: PageProps<"/events/[id]">): P
 export default function EventPage({ params }: PageProps<"/events/[id]">) {
   return (
     <div className="mx-auto max-w-2xl px-4 py-6">
-      <Link href="/" className="mb-4 inline-flex items-center gap-1 rounded-full px-3 py-1 text-sm font-semibold ring-1 ring-maroon/30 hover:bg-panel/60">
-        <ChevronIcon direction="left" className="size-4" />
-        What&apos;s on
-      </Link>
-      <Suspense fallback={<div className="h-96 animate-pulse rounded-[32px] bg-maroon/10" aria-label="Loading" />}>
+      <BackLink className="mb-4 inline-flex min-h-9 items-center gap-1 rounded-full px-3 py-1 text-sm font-semibold ring-1 ring-maroon/30 hover:bg-panel/60" />
+      <Suspense fallback={<div className="h-96 animate-pulse rounded-[32px] bg-maroon/10" role="status" aria-label="Loading" />}>
         {params.then(({ id }) => (
           <EventDetail id={Number(id)} />
         ))}
@@ -149,10 +155,22 @@ async function EventDetail({ id }: { id: number }) {
         </div>
       </div>
 
-      <p className={`mt-6 flex items-start gap-2 border-t pt-5 ${category.tone.line}`}>
+      <div className={`mt-6 flex items-start gap-2 border-t pt-5 ${category.tone.line}`}>
         <PinIcon className="mt-0.5 size-5 shrink-0 opacity-90" />
-        {event.location ?? "Location not announced. Check the club's post."}
-      </p>
+        <p className="min-w-0 flex-1">{event.location ?? "Location not announced. Check the club's post."}</p>
+        {event.location && !ONLINE.test(event.location) && (
+          <a
+            href={mapLink(event)}
+            target="_blank"
+            rel="noreferrer"
+            className="-my-2 inline-flex min-h-11 shrink-0 items-center gap-1 rounded-full px-3 text-sm font-semibold underline underline-offset-2 hover:bg-current/10"
+          >
+            Map
+            <ExternalIcon className="size-3.5" />
+            <span className="sr-only">(opens Google Maps)</span>
+          </a>
+        )}
+      </div>
 
       <Registration event={event} buttonClass={category.tone.button} />
 
@@ -200,7 +218,7 @@ async function EventDetail({ id }: { id: number }) {
           <CancelledReport eventId={event.id} className="text-sm font-medium underline underline-offset-2 opacity-90 hover:opacity-100" />
         )}
       </div>
-      <p className="mt-3 text-xs leading-relaxed opacity-80">
+      <p className="mt-3 text-xs leading-relaxed opacity-90">
         {event.checkedAt && <>Last checked: {timeAgo(event.checkedAt, checkedNow())}. </>}
         Clubs often post last-minute changes in their stories
         {profile ? (

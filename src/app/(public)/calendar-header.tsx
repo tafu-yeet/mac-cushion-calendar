@@ -63,7 +63,7 @@ export function CalendarHeader({
           aria-label={view === "week" ? "This week" : "Today"}
           title={view === "week" ? "This week" : "Today"}
           className={`grid size-9 place-items-center rounded-full transition-colors ${
-            atToday ? "text-maroon/40 ring-1 ring-maroon/20" : "bg-panel text-maroon shadow-sm hover:bg-white"
+            atToday ? "text-maroon/60 ring-1 ring-maroon/20" : "bg-panel text-maroon shadow-sm hover:bg-white"
           }`}
         >
           <TodayIcon className="size-[18px]" />
@@ -71,12 +71,12 @@ export function CalendarHeader({
       </div>
 
       <nav aria-label={view === "week" ? "Weeks" : "Days"} className="flex items-center justify-between rounded-full bg-panel px-2 py-1.5 shadow-sm">
-        <Link href={prev.href} className="flex min-w-0 items-center gap-1 rounded-full px-3 py-1 text-maroon/50 hover:text-maroon">
+        <Link href={prev.href} className="flex min-w-0 items-center gap-1 rounded-full px-3 py-1 text-maroon/75 hover:text-maroon">
           <ChevronIcon direction="left" className="size-4 shrink-0" />
           <span className="truncate text-sm font-medium uppercase tracking-wider sm:text-base">{prev.label}</span>
         </Link>
         <span className="shrink-0 px-2 text-center font-display text-base font-semibold uppercase tracking-wide sm:text-lg">{current}</span>
-        <Link href={next.href} className="flex min-w-0 items-center justify-end gap-1 rounded-full px-3 py-1 text-maroon/50 hover:text-maroon">
+        <Link href={next.href} className="flex min-w-0 items-center justify-end gap-1 rounded-full px-3 py-1 text-maroon/75 hover:text-maroon">
           <span className="truncate text-sm font-medium uppercase tracking-wider sm:text-base">{next.label}</span>
           <ChevronIcon className="size-4 shrink-0" />
         </Link>

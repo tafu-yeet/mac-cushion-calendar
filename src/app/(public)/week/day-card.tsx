@@ -133,7 +133,7 @@ function PhoneDay({ day, dayHref, today, tone, onCampus, offCampus }: DayProps &
         </>
       )}
       {hidden > 0 && (
-        <Link href={dayHref} className="mt-3 inline-flex items-center gap-0.5 text-sm font-semibold underline-offset-2 hover:underline">
+        <Link href={dayHref} className="mt-1 inline-flex min-h-11 items-center gap-0.5 text-sm font-semibold underline-offset-2 hover:underline">
           +{hidden} more on {weekday}
           <ChevronIcon className="size-4" />
         </Link>

@@ -27,7 +27,7 @@ export default function CommunitiesPage({ searchParams }: PageProps<"/communitie
       <p className="mt-3 text-maroon/75">
         Events for your community or program. Events only for a group&apos;s members show here too.
       </p>
-      <Suspense fallback={<div className="mt-6 h-64 animate-pulse rounded-[32px] bg-maroon/10" aria-label="Loading" />}>
+      <Suspense fallback={<div className="mt-6 h-64 animate-pulse rounded-[32px] bg-maroon/10" role="status" aria-label="Loading" />}>
         <Browser searchParams={searchParams} />
       </Suspense>
     </div>
@@ -76,11 +76,11 @@ async function Browser({ searchParams }: { searchParams: PageProps<"/communities
                         ? "bg-maroon text-cream ring-maroon"
                         : n
                           ? "bg-canvas text-maroon ring-maroon/25 hover:bg-butter/70"
-                          : "text-maroon/55 ring-maroon/15 hover:bg-canvas"
+                          : "text-maroon/75 ring-maroon/15 hover:bg-canvas"
                     }`}
                   >
                     {c.label}
-                    <span className={`text-xs tabular-nums ${active ? "text-cream/80" : "text-maroon/60"}`}>{n}</span>
+                    <span className={`text-xs tabular-nums ${active ? "text-cream/80" : "text-maroon/75"}`}>{n}</span>
                   </Link>
                 );
               })}
@@ -103,7 +103,7 @@ async function Browser({ searchParams }: { searchParams: PageProps<"/communities
             <div key={date} className="flex flex-col gap-3">
               <h3 className="mt-2 px-1 font-display text-base font-semibold">
                 {formatDay(date, "long", today)}
-                {date === today && <span className="ml-2 text-maroon/65">Today</span>}
+                {date === today && <span className="ml-2 text-maroon/75">Today</span>}
               </h3>
               {list.map((e) => (
                 <EventCard key={e.id} event={e} now={now} />
