@@ -21,7 +21,8 @@ export default function StatsPage() {
         <h1 className="text-2xl font-semibold tracking-tight">Stats</h1>
         <p className="mt-1 text-sm text-stone-600">
           How often people add events to their calendar from the site (counted when the calendar link or file is
-          handed out). Visitors and page views are in Vercel&apos;s Analytics tab.
+          handed out, once per event per browser a day, so repeat taps count once). Visitors and page views are in
+          Vercel&apos;s Analytics tab.
         </p>
       </div>
       <Suspense fallback={<p className="text-sm text-stone-500">Loading…</p>}>
