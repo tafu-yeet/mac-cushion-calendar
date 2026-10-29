@@ -68,8 +68,9 @@ What that means for how it's built:
    separate event; the same club's waits for a person, since it may be a room
    change or a second session). Copies sort themselves out (a copy of a
    published event, the less complete of two pending copies, a teaser once the
-   dated post arrives, and a date a newer post moved are rejected with a note),
-   and pending events expire when their date passes. Everything else waits as
+   dated post arrives, and a date a newer post moved are rejected with a note;
+   a club's post of an event already listed on Rubric isn't a copy, since the
+   merge joins the two), and pending events expire when their date passes. Everything else waits as
    `pending` at `/admin`. See
    `worker/auto_approve.py`; `AUTO_APPROVE_MIN_CONFIDENCE=none` turns
    auto-approval off.
@@ -83,7 +84,10 @@ What that means for how it's built:
    each field from the more trustworthy source: Rubric for time, place, price
    and tickets; Instagram for free food, description and image. Rubric events
    with no Instagram match publish on their own once they pass a duplicate
-   check and their club is on our list (otherwise they wait). A published
+   check and their club is on our list (otherwise they wait); they're off
+   campus at a street address, on campus at a named campus place. The merge
+   runs every cycle, so a club's post joins its Rubric listing within 15
+   minutes of being published. A published
    Rubric event stays up until a person takes it down: when it starts, when it
    leaves Rubric (flagged, with "Check before you go"), and while an Instagram
    post of it waits for review (they merge once that post is approved).

@@ -73,6 +73,7 @@ BIO_BONUS = 0.15         # the Instagram club's bio links the Rubric event
 PLACE_WEIGHT = {"same": 0.15, "different": -0.3}  # the same room, or another room or building
 MAX_START_GAP_MIN = 60   # starts further apart than this are different events
 CONFLICT_MIN = 15        # times further apart than this need a person
+SAID_SAME = "a person said they're the same"  # their answer in the admin's "Needs a look"
 RUBRIC_ONLY_CONFIDENCE = 0.85
 BOTH_CONFIDENCE = 0.95
 RUBRIC_FIELDS = ("starts_at", "ends_at", "location", "cost", "price", "ticket_url")
@@ -159,7 +160,7 @@ def day_bounds(start: date, end: date) -> tuple[str, str]:
 
 EVENT_COLUMNS = (
     "id, status, name, club_id, hosted_by, starts_at, ends_at, start_time_known, location, has_free_food, "
-    "food_description, cost, price, open_to_all, confidence, reviewed_fields, reviewed_by, conflicts, flags, "
+    "food_description, cost, price, open_to_all, off_campus, confidence, reviewed_fields, reviewed_by, conflicts, flags, "
     "rubric_eid, source, signup_required, food_source, ticket_url, image_url, description, post_id, review_notes, "
     "category, event_type, reason, auto_approved, "
     "posts(posted_at, caption, deleted_at, permalink), clubs(instagram_username, name, links)"
@@ -372,15 +373,27 @@ def rubric_signup(r: dict) -> bool:
     return any(t["amount"] > 0 for t in r["tickets"] or []) or bool(SIGNUP.search(r["description"] or ""))
 
 
+# Somewhere with a street number: "41 Catharine Street North", "875 Main Street West". Not a
+# room ("Room 105, T13", "PG 124, Peter George Centre...") or the campus's own addresses.
+STREET_ADDRESS = re.compile(r"(?:^|,)\s*(?!12[08]0 main)\d+[a-z]?\s+[a-z]")
+# Rubric files a campus place under the campus's streets, with no number: "The Nest Atrium,
+# The Hub, Main Street West, Hamilton". A Hamilton "Hall" with no number is a campus building.
+CAMPUS_HINT = re.compile(r"\b(main street west|main st\.? w|college court|hall)\b")
+
+
 def rubric_off_campus(r: dict) -> bool:
-    """Away from campus, judged from Rubric's address: on campus when it names McMaster,
-    the campus address, a campus building, or somewhere online."""
+    """Away from campus, judged from Rubric's address: off campus at a street address;
+    on campus when it names McMaster, the campus address, a campus building (by code or
+    name) or street, or somewhere online."""
     place = (r.get("address") or r.get("location") or "").lower()
     if not place.strip():
         return False
     if "mcmaster" in place or "1280 main" in place or re.search(r"\b(online|zoom|virtual|teams)\b", place):
         return False
-    return not any(re.search(rf"\b{re.escape(code)}\b", place) for code in CODES)
+    if STREET_ADDRESS.search(place):
+        return True
+    building = any(re.search(rf"\b{re.escape(code)}\b", place) or full.lower() in place for code, full in CODES.items())
+    return not (building or CAMPUS_HINT.search(place))
 
 
 def rubric_only_row(r: dict, club_id: int, society: Society) -> dict:
@@ -470,10 +483,9 @@ def plan(sb: Client, start: date, end: date) -> Plan:
     events = {e["id"]: e for e in fetch_all(lambda a, b: sb.table("events").select(EVENT_COLUMNS)
         .in_("status", ["pending", "approved"]).gte("starts_at", lo).lt("starts_at", hi).range(a, b))}
     societies = load_societies(sb)
-    decided = {
-        (m["rubric_eid"], m["event_id"]): m["status"]
-        for m in sb.table("event_matches").select("rubric_eid, event_id, status").neq("status", "review").execute().data
-    }
+    matches = sb.table("event_matches").select("rubric_eid, event_id, status, decided_by").neq("status", "review").execute().data
+    decided = {(m["rubric_eid"], m["event_id"]): m["status"] for m in matches}
+    said_same = {(m["rubric_eid"], m["event_id"]) for m in matches if m["status"] == "merged" and m["decided_by"]}
     p = Plan(start, end, rubric, events, societies)
 
     instagram = [e for e in events.values() if e["source"] != "rubric"]
@@ -498,7 +510,8 @@ def plan(sb: Client, start: date, end: date) -> Plan:
             forced = e["rubric_eid"] == r["eid"] or decided.get((r["eid"], e["id"])) == "merged"
             scored = score_pair(r, e, societies)
             if forced:
-                pairs.append((1.0, r, e, (scored or (0, {}))[1] | {"decided": "merged before or by a person"}))
+                said = SAID_SAME if (r["eid"], e["id"]) in said_same else "merged before"
+                pairs.append((1.0, r, e, (scored or (0, {}))[1] | {"decided": said}))
             elif scored:
                 pairs.append((scored[0], r, e, scored[1]))
 
@@ -601,11 +614,14 @@ def apply(sb: Client, p: Plan) -> dict[str, int]:
         if ch.conflicts != (e["conflicts"] or {}):
             update["conflicts"] = ch.conflicts
         # A Rubric-only row added on an earlier run gives way to the Instagram event it turned out to be,
-        # but a published one never to an event nobody can see (plan holds those back already).
-        old = sb.table("events").select("id, reviewed_by, status").eq("rubric_eid", r["eid"]).neq("id", e["id"]).execute().data
+        # but a published one never to an event nobody can see (plan holds those back already). One a
+        # person approved gives way too, as the event stays published; one they edited or rejected is
+        # theirs to pair ("Needs a look"), until they say the two are the same.
+        old = sb.table("events").select("id, reviewed_by, reviewed_fields, status").eq("rubric_eid", r["eid"]).neq("id", e["id"]).execute().data
         if old and old[0]["status"] == "approved" and e["status"] != "approved":
             continue
-        if old and not old[0]["reviewed_by"]:
+        approved_as_is = bool(old) and old[0]["status"] == "approved" and not old[0]["reviewed_fields"]
+        if old and (not old[0]["reviewed_by"] or approved_as_is or why.get("decided") == SAID_SAME):
             sb.table("events").delete().eq("id", old[0]["id"]).execute()
         elif old:
             sb.table("event_matches").upsert({"rubric_eid": r["eid"], "event_id": e["id"], "score": score, "reasons": why,
@@ -645,9 +661,9 @@ def apply(sb: Client, p: Plan) -> dict[str, int]:
             continue
         reviewed = set(existing["reviewed_fields"] or [])
         row["flags"] = merged_flags(existing["flags"], set(row["flags"]), existing["reviewed_fields"])
-        # Who can come, and whether it's off campus, are decided once, on adding (a person may change them).
+        # Who can come is decided once, on adding (a person may change it); off campus follows the address.
         update = {k: v for k, v in row.items()
-                  if k not in reviewed and k not in ("open_to_all", "off_campus") and existing.get(k) != v and k in existing}
+                  if k not in reviewed and k != "open_to_all" and existing.get(k) != v and k in existing}
         # A person's approval or rejection stands; the worker only moves what it decided itself.
         if not existing["reviewed_by"] and existing["status"] != "rejected" and existing["status"] != status["status"]:
             update |= status

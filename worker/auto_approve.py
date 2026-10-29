@@ -72,7 +72,7 @@ SERIES_NAME = re.compile(r"\b(day|part|week|session)\s*\d|\(\w+\)|\b(jan|feb|mar
 CAMPUS_PLACE = re.compile(
     r"\b(" + "|".join(re.escape(k) for k in CAMPUS["campusLocations"]) + r"|mcmaster|zoom|online|teams|virtual)\b", re.I
 )
-FIELDS = "id, name, status, reviewed_by, club_id, post_id, starts_at, start_time_known, ends_at, location, price, confidence, hosted_by, posts(posted_at)"
+FIELDS = "id, name, status, reviewed_by, club_id, post_id, source, starts_at, start_time_known, ends_at, location, price, confidence, hosted_by, posts(posted_at)"
 
 
 @dataclass
@@ -109,6 +109,10 @@ def decide(sb: Client, row: dict, verified_by: str | None, club_name: str, poste
         start = _local(row["starts_at"])
         for o in _club_events(sb, row, exclude_id):
             if o["post_id"] == row["post_id"]:
+                continue
+            # The same event's Rubric listing isn't a copy to reject: merge.py joins the two (post
+            # link, free food and all) once this one's published, and keeps the listing up till then.
+            if o["source"] == "rubric":
                 continue
             if not o["starts_at"]:
                 if o["status"] == "pending" and similar_names(row["name"], o["name"]):

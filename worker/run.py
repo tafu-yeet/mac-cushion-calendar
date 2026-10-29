@@ -17,7 +17,7 @@ Usage (from worker/):
     python run.py --log-dir logs   # scheduled runs: append output to logs/YYYY-MM-DD.log
 
 Each full cycle also syncs Rubric (rubric.py, at most hourly) and merges it with
-the Instagram events (merge.py); RUBRIC_MERGE=apply saves the merge.
+the Instagram events (merge.py, every cycle); RUBRIC_MERGE=apply saves the merge.
 
 Each fetch also saves captions a club edited and flags events a new post says
 are off; once a day every event in the next two weeks has its post checked
@@ -303,12 +303,25 @@ def run(args: argparse.Namespace) -> int:
 
 def sync_rubric(sb: Client) -> None:
     """Rubric's listing, at most every RUBRIC_EVERY_MINUTES, then the merge with Instagram's
-    events (a report only, unless RUBRIC_MERGE is "apply")."""
+    events (a report only, unless RUBRIC_MERGE is "apply"). The merge only reads what's
+    stored, so it runs every cycle: a club's post published since the last Rubric sync joins
+    its Rubric listing now, rather than both showing until the next sync."""
     if not RUBRIC_ENABLED:
         return
     last = sb.table("rubric_events").select("last_seen_at").order("last_seen_at", desc=True).limit(1).execute().data
-    if last and datetime.fromisoformat(last[0]["last_seen_at"]) > store.now() - timedelta(minutes=RUBRIC_EVERY_MINUTES):
-        return
+    if not last or datetime.fromisoformat(last[0]["last_seen_at"]) <= store.now() - timedelta(minutes=RUBRIC_EVERY_MINUTES):
+        fetch_rubric(sb)
+    today = datetime.now(LOCAL_TZ).date()
+    p = merge.plan(sb, today, today + timedelta(weeks=6))
+    if RUBRIC_MERGE == "apply":
+        print("  merged with Instagram:", merge.apply(sb, p))
+    else:
+        print(f"  merge not saved (RUBRIC_MERGE=report): {len(p.merged)} matched, {len(p.review)} to check, "
+              f"{len(p.rubric_only)} Rubric only")
+
+
+def fetch_rubric(sb: Client) -> None:
+    """Reads Rubric's listing and links its clubs to ours; a refusal or outage skips it this run."""
     try:
         result = rubric.sync(sb)
     except rubric.RubricBlocked as e:
@@ -322,13 +335,6 @@ def sync_rubric(sb: Client) -> None:
     store.mark_rubric_seen(sb)
     print(f"Rubric: {result.events} events, {len(result.new)} new, {len(result.changed)} changed, "
           f"{len(result.missing)} no longer listed ({result.requests} request(s))")
-    today = datetime.now(LOCAL_TZ).date()
-    p = merge.plan(sb, today, today + timedelta(weeks=6))
-    if RUBRIC_MERGE == "apply":
-        print("  merged with Instagram:", merge.apply(sb, p))
-    else:
-        print(f"  merge not saved (RUBRIC_MERGE=report): {len(p.merged)} matched, {len(p.review)} to check, "
-              f"{len(p.rubric_only)} Rubric only")
 
 
 if __name__ == "__main__":
