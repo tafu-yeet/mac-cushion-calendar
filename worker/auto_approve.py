@@ -112,7 +112,8 @@ def decide(sb: Client, row: dict, verified_by: str | None, club_name: str, poste
                 continue
             # The same event's Rubric listing isn't a copy to reject: merge.py joins the two (post
             # link, free food and all) once this one's published, and keeps the listing up till then.
-            if o["source"] == "rubric":
+            # Nor is a weekly program's entry for the day: it steps aside for the post (series.py).
+            if o["source"] in ("rubric", "series"):
                 continue
             if not o["starts_at"]:
                 if o["status"] == "pending" and similar_names(row["name"], o["name"]):

@@ -13,6 +13,7 @@ import { categoryOf } from "@/lib/categories";
 import { freeFoodPhrase } from "@/lib/clean";
 import { getEvent, type PublicEvent } from "@/lib/events";
 import { formatDay, formatDuration, formatTime, formatTimeRange, timeAgo, toLocalInputs, todayInCampus } from "@/lib/time";
+import { everyDays } from "@/lib/weekly";
 
 import { CancelledReport, FeedbackLink } from "../../feedback";
 
@@ -95,6 +96,19 @@ async function EventDetail({ id }: { id: number }) {
           event.clubName
         )}
       </p>
+      {event.weekly && (
+        <p className="mt-1 text-sm font-semibold">
+          {everyDays(event.weekly.days, true)}, until {formatDay(event.weekly.until, "long", today)}
+          {!event.permalink && event.weekly.sourceUrl && (
+            <>
+              {" · "}
+              <a href={event.weekly.sourceUrl} target="_blank" rel="noreferrer" className="underline underline-offset-2">
+                See the announcement
+              </a>
+            </>
+          )}
+        </p>
+      )}
 
       {event.scheduleStatus !== "scheduled" && (
         <p className={`mt-5 rounded-2xl px-4 py-3 font-semibold ${cancelled ? "bg-red-600 text-white" : "bg-amber-300 text-amber-950"}`}>

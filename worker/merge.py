@@ -488,7 +488,8 @@ def plan(sb: Client, start: date, end: date) -> Plan:
     said_same = {(m["rubric_eid"], m["event_id"]) for m in matches if m["status"] == "merged" and m["decided_by"]}
     p = Plan(start, end, rubric, events, societies)
 
-    instagram = [e for e in events.values() if e["source"] != "rubric"]
+    # A weekly program's days (series.py) take their fields from the program, not from a merge.
+    instagram = [e for e in events.values() if e["source"] not in ("rubric", "series")]
     # Every status: a Rubric-only event a person rejected must stay rejected, not come back.
     rubric_rows = {
         e["rubric_eid"]: e for e in fetch_all(lambda a, b: sb.table("events").select(EVENT_COLUMNS)

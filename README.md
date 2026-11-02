@@ -143,6 +143,15 @@ What that means for how it's built:
    engineering night). `/communities` lists upcoming events per community,
    including events only for that group's members. `python communities.py
    --all` tags everything again.
+10. **Weekly programs** (`worker/series.py`, the admin's Weekly page): things
+   that happen every week, like the Food Collective Centre's free Soup and
+   Bread (Tuesday to Friday) or Indigenous Student Services' Fuel Up Tuesday
+   lunch, which clubs announce once rather than per day. A person enters the
+   days, time, place, food and dates once; each cycle lists every day of it as
+   an event, six weeks ahead, until its last day (skipping dates given, such as
+   reading week). When the club publishes its own post about one of those days
+   (the week's menu), that post is listed instead of the day's entry. Stopping
+   a program takes its upcoming days off the site.
 
 Every request is logged: `fetch_logs` (club, backend, status, bytes) and
 `llm_usage` (tokens and estimated cost; `python usage.py` for totals).

@@ -41,6 +41,9 @@ export type PublicEvent = {
   headsUp: string | null;
   // Who it's for (campus.config.json "communities"): its club's plus its own (worker/communities.py).
   communities: string[];
+  // One day of a weekly program (worker/series.py): the days it runs (ISO, 1 is Monday), its last
+  // day, and the post or page that announced it. Null for one-off events.
+  weekly: { days: number[]; until: string; sourceUrl: string | null } | null;
 };
 
 // The admin's review actions call updateTag(EVENTS_TAG), so approvals show up
@@ -49,7 +52,7 @@ export const EVENTS_TAG = "events";
 
 const COLUMNS = `id, club_id, name, category, event_type, tags, has_free_food, food_description, cost, price, starts_at, ends_at, start_time_known, location, off_campus, hosted_by, open_to_all,
   ticket_url, schedule_status, registration, registration_where, registration_url, checked_at, flags, communities,
-  clubs (name, instagram_username, communities), posts (permalink, deleted_at)`;
+  clubs (name, instagram_username, communities), posts (permalink, deleted_at), event_series (days, ends_on, source_url)`;
 
 type Row = {
   id: number;
@@ -79,6 +82,7 @@ type Row = {
   communities: string[];
   clubs: { name: string; instagram_username: string; communities: string[] } | null;
   posts: { permalink: string; deleted_at: string | null } | null;
+  event_series: { days: number[]; ends_on: string; source_url: string | null } | null;
 };
 
 /**
@@ -129,6 +133,7 @@ function toPublicEvent(r: Row): PublicEvent {
     checkedAt: r.checked_at,
     headsUp: r.schedule_status === "scheduled" ? headsUp(r.flags) : null,
     communities: [...new Set([...(r.clubs?.communities ?? []), ...(r.communities ?? [])])],
+    weekly: r.event_series ? { days: r.event_series.days, until: r.event_series.ends_on, sourceUrl: r.event_series.source_url } : null,
   };
 }
 

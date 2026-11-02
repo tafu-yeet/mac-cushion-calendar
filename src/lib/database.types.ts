@@ -151,6 +151,83 @@ export type Database = {
           },
         ]
       }
+      event_series: {
+        Row: {
+          active: boolean
+          category: string
+          club_id: number
+          cost: string
+          created_at: string
+          days: number[]
+          description: string | null
+          end_time: string | null
+          ends_on: string
+          food_description: string | null
+          has_free_food: boolean
+          id: number
+          location: string | null
+          name: string
+          open_to_all: boolean
+          skip_dates: string[]
+          source_url: string | null
+          start_time: string
+          starts_on: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          category?: string
+          club_id: number
+          cost?: string
+          created_at?: string
+          days: number[]
+          description?: string | null
+          end_time?: string | null
+          ends_on: string
+          food_description?: string | null
+          has_free_food?: boolean
+          id?: number
+          location?: string | null
+          name: string
+          open_to_all?: boolean
+          skip_dates?: string[]
+          source_url?: string | null
+          start_time: string
+          starts_on: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          category?: string
+          club_id?: number
+          cost?: string
+          created_at?: string
+          days?: number[]
+          description?: string | null
+          end_time?: string | null
+          ends_on?: string
+          food_description?: string | null
+          has_free_food?: boolean
+          id?: number
+          location?: string | null
+          name?: string
+          open_to_all?: boolean
+          skip_dates?: string[]
+          source_url?: string | null
+          start_time?: string
+          starts_on?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_series_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       events: {
         Row: {
           auto_approved: boolean
@@ -192,6 +269,7 @@ export type Database = {
           reviewed_by: string | null
           reviewed_fields: string[]
           rubric_eid: number | null
+          series_id: number | null
           schedule_status: string
           signup_required: boolean | null
           source: string
@@ -242,6 +320,7 @@ export type Database = {
           reviewed_by?: string | null
           reviewed_fields?: string[]
           rubric_eid?: number | null
+          series_id?: number | null
           schedule_status?: string
           signup_required?: boolean | null
           source?: string
@@ -292,6 +371,7 @@ export type Database = {
           reviewed_by?: string | null
           reviewed_fields?: string[]
           rubric_eid?: number | null
+          series_id?: number | null
           schedule_status?: string
           signup_required?: boolean | null
           source?: string
@@ -323,6 +403,13 @@ export type Database = {
             isOneToOne: true
             referencedRelation: "rubric_events"
             referencedColumns: ["eid"]
+          },
+          {
+            foreignKeyName: "events_series_id_fkey"
+            columns: ["series_id"]
+            isOneToOne: false
+            referencedRelation: "event_series"
+            referencedColumns: ["id"]
           },
         ]
       }

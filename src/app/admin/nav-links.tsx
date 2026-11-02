@@ -7,6 +7,7 @@ const LINKS = [
   { href: "/admin", label: "Review queue" },
   { href: "/admin/clubs", label: "Clubs" },
   { href: "/admin/feedback", label: "Feedback" },
+  { href: "/admin/weekly", label: "Weekly" },
   { href: "/admin/stats", label: "Stats" },
 ] as const;
 

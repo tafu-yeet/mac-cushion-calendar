@@ -47,6 +47,7 @@ import merge
 import recheck
 import registration
 import rubric
+import series
 import store
 from extractors import ExtractionError, ExtractorUnavailable, TwoStageExtractor, Usage, new_pipeline
 from fetchers import Attempt, FetchError, fetch_posts, print_attempt
@@ -277,6 +278,13 @@ def run(args: argparse.Namespace) -> int:
         pruned = store.prune_images(sb)
         if pruned:
             print(f"{pruned} old post image(s) deleted")
+        # Weekly programs' days, before the merge, so a Rubric listing of one isn't published twice.
+        try:
+            changed = {k: n for k, n in series.run(sb).items() if n}
+            if changed:
+                print("Weekly programs:", changed)
+        except Exception as e:  # noqa: BLE001
+            print(f"Weekly programs stopped ({type(e).__name__}: {e}); they run again next cycle")
         sync_rubric(sb)
         # Once a day: is each event in the next two weeks still on? (flags; never cancels)
         # Either step failing leaves its work for the next cycle; it mustn't end this one.

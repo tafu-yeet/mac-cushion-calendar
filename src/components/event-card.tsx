@@ -4,6 +4,7 @@ import { categoryOf } from "@/lib/categories";
 import type { PublicEvent } from "@/lib/events";
 import { eventStatus, startsInLabel } from "@/lib/status";
 import { campusDate, formatDay, formatDuration, formatTime, toLocalInputs } from "@/lib/time";
+import { everyDays } from "@/lib/weekly";
 
 import { AddToCalendar } from "./add-to-calendar";
 import { ExternalIcon, PinIcon, TicketIcon, UtensilsIcon } from "./icons";
@@ -92,6 +93,7 @@ export function EventCard({ event, now, showDate = false }: { event: PublicEvent
             {off ? <ScheduleBadge status={event.scheduleStatus} /> : <StatusBadge event={event} now={now} className={category.tone.accent} />}
             <HeadsUpBadge event={event} />
             <span className="opacity-90">{category.label}</span>
+            {event.weekly && <span className="opacity-90">{everyDays(event.weekly.days)}</span>}
           </p>
           <h3 className={`mt-1.5 font-display text-2xl font-semibold leading-[1.1] ${event.scheduleStatus === "cancelled" ? "line-through decoration-2" : ""}`}>
             <Link href={`/events/${event.id}`} className="hover:underline">
