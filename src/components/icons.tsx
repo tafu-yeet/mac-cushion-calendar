@@ -79,6 +79,14 @@ export const TodayIcon = (p: IconProps) => (
   </Icon>
 );
 
+export const InstagramIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <rect x="3.5" y="3.5" width="17" height="17" rx="5" />
+    <circle cx="12" cy="12" r="4" />
+    <path d="M17.2 6.8h.01" />
+  </Icon>
+);
+
 export const MenuIcon = (p: IconProps) => (
   <Icon {...p}>
     <path d="M4 7h16M4 12h16M4 17h16" />

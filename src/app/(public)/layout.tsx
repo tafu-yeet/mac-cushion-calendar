@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { ListMemory } from "@/components/back-link";
+import { InstagramIcon } from "@/components/icons";
 import { SiteNav, SiteNavLinks } from "@/components/site-nav";
 import { TourButton } from "@/components/site-tour";
 import { campus } from "@/lib/campus";
@@ -54,6 +55,10 @@ export default function PublicLayout({ children }: LayoutProps<"/">) {
             <FeedbackLink type="idea" className={FOOTER_LINK}>
               Send feedback
             </FeedbackLink>
+            <a href={`https://www.instagram.com/${campus.instagram}/`} target="_blank" rel="noreferrer" className={`${FOOTER_LINK} gap-1.5`}>
+              <InstagramIcon className="size-4" />@{campus.instagram}
+              <span className="sr-only"> on Instagram</span>
+            </a>
           </div>
           <p className="mt-1 text-xs leading-relaxed text-maroon/75">
             A student project, not affiliated with {campus.school}. Events are read from clubs&apos; public Instagram

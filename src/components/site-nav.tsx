@@ -4,8 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 
-import { MenuIcon } from "@/components/icons";
+import { InstagramIcon, MenuIcon } from "@/components/icons";
 import { TourButton } from "@/components/site-tour";
+import { campus } from "@/lib/campus";
 
 const LINKS = [
   { href: "/", label: "What's on", matches: (path: string) => path === "/" },
@@ -98,6 +99,9 @@ function MoreMenu({ here, active }: { here: boolean; active?: string }) {
           <div onClickCapture={() => setOpen(false)}>
             <TourButton className={MENU_ITEM} />
           </div>
+          <a href={`https://www.instagram.com/${campus.instagram}/`} target="_blank" rel="noreferrer" onClick={() => setOpen(false)} className={`${MENU_ITEM} gap-2`}>
+            <InstagramIcon className="size-4" />@{campus.instagram}
+          </a>
         </div>
       )}
     </div>
