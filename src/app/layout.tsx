@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Fredoka, Geist, Geist_Mono, Nunito } from "next/font/google";
 
+import { ScanTracker } from "@/components/scan-tracker";
 import { campus } from "@/lib/campus";
 import { SITE_URL } from "@/lib/site-url";
 
@@ -44,7 +45,11 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} ${fredoka.variable} ${nunito.variable} h-full antialiased`}>
-      <body className="flex min-h-full flex-col font-sans">{children}</body>
+      <body className="flex min-h-full flex-col font-sans">
+        {children}
+        {/* Visits from QR codes (?utm_source=...), for the admin's Scans panel. */}
+        <ScanTracker />
+      </body>
     </html>
   );
 }

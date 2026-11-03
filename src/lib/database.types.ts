@@ -782,6 +782,30 @@ export type Database = {
           },
         ]
       }
+      scans: {
+        Row: {
+          created_at: string
+          id: number
+          path: string
+          user_agent: string | null
+          utm_source: string
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          path: string
+          user_agent?: string | null
+          utm_source: string
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          path?: string
+          user_agent?: string | null
+          utm_source?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
