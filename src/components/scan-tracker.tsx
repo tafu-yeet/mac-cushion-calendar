@@ -8,14 +8,17 @@ const LOGGED = "cushion-scan-logged";
 const SIGNED_IN = /(?:^|;\s*)sb-[^=]+-auth-token(?:\.\d+)?=/;
 
 /**
- * Logs a visit from a QR code (a link with ?utm_source=...) to the scans table,
+ * Logs a visit from a tagged link (?utm_source=..., with utm_medium and utm_content
+ * if it has them), like a poster's QR code or an Instagram bio link, to the scans table,
  * straight to Supabase's REST API with the public key (the table only takes
  * inserts from visitors), so no Supabase library ships to the browser. Admins
  * and automated browsers aren't counted.
  */
 export function ScanTracker() {
   useEffect(() => {
-    const source = new URLSearchParams(window.location.search).get("utm_source")?.trim();
+    const params = new URLSearchParams(window.location.search);
+    const label = (key: string) => params.get(key)?.trim().slice(0, 100) || null;
+    const source = label("utm_source");
     if (!source || navigator.webdriver || SIGNED_IN.test(document.cookie)) return;
     try {
       if (sessionStorage.getItem(LOGGED)) return;
@@ -31,7 +34,9 @@ export function ScanTracker() {
         Prefer: "return=minimal",
       },
       body: JSON.stringify({
-        utm_source: source.slice(0, 100),
+        utm_source: source,
+        utm_medium: label("utm_medium"),
+        utm_content: label("utm_content"),
         path: window.location.pathname.slice(0, 300),
         user_agent: navigator.userAgent.slice(0, 500),
       }),

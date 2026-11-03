@@ -788,6 +788,8 @@ export type Database = {
           id: number
           path: string
           user_agent: string | null
+          utm_content: string | null
+          utm_medium: string | null
           utm_source: string
         }
         Insert: {
@@ -795,6 +797,8 @@ export type Database = {
           id?: number
           path: string
           user_agent?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
           utm_source: string
         }
         Update: {
@@ -802,6 +806,8 @@ export type Database = {
           id?: number
           path?: string
           user_agent?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
           utm_source?: string
         }
         Relationships: []
