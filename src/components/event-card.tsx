@@ -82,6 +82,20 @@ export function HighlightBadge({ event, className }: { event: PublicEvent; class
   );
 }
 
+/** The frame around a highlighted event: a dark band across the top with a gold star, and a border all round. */
+export function HighlightFrame({ event, className = "rounded-[36px]", children }: { event: PublicEvent; className?: string; children: React.ReactNode }) {
+  if (!event.highlighted) return children;
+  return (
+    <div className={`bg-plum p-2 shadow-lg ${className}`}>
+      <p className="flex items-center gap-2 px-3 pt-1 pb-2.5 font-display text-base font-semibold tracking-[0.12em] text-cream uppercase">
+        <StarIcon className="size-6 shrink-0 fill-gold text-gold" />
+        Highlight
+      </p>
+      {children}
+    </div>
+  );
+}
+
 /** Whether a card shows a registration badge: "RSVP" when it's required, "Drop in" when the club said so. */
 export const hasRegistrationBadge = (event: PublicEvent) => event.registration === "required" || event.registration === "drop_in";
 
@@ -107,16 +121,12 @@ export function EventCard({ event, now, showDate = false }: { event: PublicEvent
 
   const off = event.scheduleStatus !== "scheduled";
 
-  return (
-    <article
-      data-seen-event={event.id}
-      className={`rounded-[28px] p-5 ${category.tone.card} ${event.highlighted ? "ring-[3px] ring-plum ring-offset-2 ring-offset-panel" : ""}`}
-    >
+  const card = (
+    <article data-seen-event={event.id} className={`rounded-[28px] p-5 ${category.tone.card}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-medium">
             {off ? <ScheduleBadge status={event.scheduleStatus} /> : <StatusBadge event={event} now={now} className={category.tone.accent} />}
-            <HighlightBadge event={event} className={`px-2 py-0.5 ${category.tone.accent}`} />
             <HeadsUpBadge event={event} />
             <span className="opacity-90">{category.label}</span>
             <RecurringBadge event={event} />
@@ -174,7 +184,8 @@ export function EventCard({ event, now, showDate = false }: { event: PublicEvent
         </span>
       </p>
 
-      <div className="mt-5 flex items-end justify-between gap-3">
+      {/* Long times on a narrow phone: the end drops to its own line rather than running off the card. */}
+      <div className="mt-5 flex flex-wrap items-end justify-between gap-x-3 gap-y-2">
         <div>
           <p className="font-display text-[1.65rem] font-medium leading-none whitespace-nowrap">
             {event.startTimeKnown ? formatTime(event.startsAt) : "Time TBD"}
@@ -183,7 +194,7 @@ export function EventCard({ event, now, showDate = false }: { event: PublicEvent
         </div>
         {duration && <span className={`mb-4 rounded-full px-3 py-1 text-xs font-semibold whitespace-nowrap ${category.tone.chip}`}>{duration}</span>}
         {event.startTimeKnown && event.endsAt && (
-          <div className="text-right">
+          <div className="ml-auto text-right">
             <p className="font-display text-[1.65rem] font-medium leading-none whitespace-nowrap">{formatTime(event.endsAt)}</p>
             <p className="mt-1 text-xs opacity-90">End</p>
           </div>
@@ -221,4 +232,5 @@ export function EventCard({ event, now, showDate = false }: { event: PublicEvent
       </div>
     </article>
   );
+  return <HighlightFrame event={event}>{card}</HighlightFrame>;
 }

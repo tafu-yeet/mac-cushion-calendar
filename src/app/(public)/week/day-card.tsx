@@ -160,7 +160,11 @@ function EventList({ events, tone }: { events: PublicEvent[]; tone: Tone }) {
     <ul className="mt-2 flex flex-col gap-1.5">
       {events.map((e) => (
         <li key={e.id}>
-          <Link href={`/events/${e.id}`} data-seen-event={e.id} className={`flex gap-3 rounded-2xl px-3 py-2 hover:opacity-90 ${tone.chip}`}>
+          <Link
+            href={`/events/${e.id}`}
+            data-seen-event={e.id}
+            className={`flex gap-3 rounded-2xl px-3 py-2 hover:opacity-90 ${tone.chip} ${e.highlighted ? "ring-[3px] ring-plum" : ""}`}
+          >
             <span className="w-16 shrink-0 pt-px text-xs font-bold tabular-nums">
               {e.startTimeKnown ? formatTime(e.startsAt) : "Time TBD"}
             </span>
@@ -217,7 +221,7 @@ function WideDay({ day, dayHref, today, tone, columns }: DayProps & { columns: C
                     key={e.id}
                     href={`/events/${e.id}`}
                     data-seen-event={e.id}
-                    className={`flex flex-col gap-1 rounded-xl px-2 py-1.5 text-[11px] font-semibold leading-tight hover:opacity-90 ${tone.chip}`}
+                    className={`flex flex-col gap-1 rounded-xl px-2 py-1.5 text-[11px] font-semibold leading-tight hover:opacity-90 ${tone.chip} ${e.highlighted ? "ring-[3px] ring-plum" : ""}`}
                   >
                     <span className="flex items-start gap-1.5">
                       <span className={`mt-[3px] size-1.5 shrink-0 rounded-full ${categoryOf(e.category).tone.swatch}`} />

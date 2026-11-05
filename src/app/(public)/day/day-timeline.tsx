@@ -177,7 +177,7 @@ function EventBlock({ event, now, style }: { event: PublicEvent; now: number | n
       href={`/events/${event.id}`}
       data-seen-event={event.id}
       title={[event.name, event.hasFreeFood && freeFoodPhrase(event.foodDescription)].filter(Boolean).join(" · ")}
-      className={`absolute z-10 flex flex-col gap-1 overflow-hidden rounded-2xl px-3 py-2 text-xs leading-tight transition-shadow hover:z-20 hover:shadow-md ${tone.card} ${event.highlighted ? "ring-2 ring-plum" : ""}`}
+      className={`absolute z-10 flex flex-col gap-1 overflow-hidden rounded-2xl px-3 py-2 text-xs leading-tight transition-shadow hover:z-20 hover:shadow-md ${tone.card} ${event.highlighted ? "ring-[3px] ring-plum" : ""}`}
       style={style}
     >
       {event.scheduleStatus !== "scheduled" ? (
@@ -224,7 +224,7 @@ function HourEvents({ items, now, style }: { items: Placed[]; now: number | null
               href={`/events/${event.id}`}
               data-seen-event={event.id}
               title={[event.name, event.hasFreeFood && freeFoodPhrase(event.foodDescription)].filter(Boolean).join(" · ")}
-              className={`flex items-center gap-2 rounded-xl px-2.5 text-xs leading-tight hover:opacity-90 ${tone.card} ${event.highlighted ? "ring-2 ring-plum" : ""}`}
+              className={`flex items-center gap-2 rounded-xl px-2.5 text-xs leading-tight hover:opacity-90 ${tone.card} ${event.highlighted ? "ring-[3px] ring-plum" : ""}`}
               style={{ height: ROW_PX }}
             >
               <span className="w-14 shrink-0 font-medium opacity-90">{formatTime(event.startsAt)}</span>
