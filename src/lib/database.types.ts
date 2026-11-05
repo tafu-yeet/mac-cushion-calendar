@@ -857,10 +857,13 @@ export type Database = {
       event_traction: {
         Row: {
           added: number | null
+          calendar_menu: number | null
           event_id: number | null
           highlighted: boolean | null
+          instagram: number | null
           opened: number | null
           seen: number | null
+          tickets: number | null
         }
         Relationships: [
           {

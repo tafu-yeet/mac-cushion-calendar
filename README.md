@@ -210,13 +210,15 @@ a badge and an outline; on the Day timeline, where place means time, it also
 shows as a card above the timeline. A cancelled event isn't bumped.
 
 To see whether that gets an event more traction, the public pages count, per
-event, when it's seen (at least half of it on screen) and opened (tapped from a
-list), once per event per browser session, with nothing about the person, and
+event, when it's seen (at least half of it on screen), opened (tapped from a
+list), or its Add to calendar, Instagram or tickets button is tapped (cards show
+the whole event, so few people need to open one), once per event per action per
+browser session, with nothing about the person, and
 not for admins or automated browsers (`src/components/engagement-tracker.tsx`,
 the `event_engagement` table). Calendar adds count too. The database notes
 whether the event was highlighted at that moment. `/admin/stats` compares
-highlighted with other events by open rate, and shows each highlighted event's
-numbers.
+highlighted with other events by actions per 100 seen, and shows each highlighted
+event's numbers.
 
 Visitor counts come from Vercel Web Analytics (`<Analytics />` in the public
 layout: no cookies, nothing personal). Turn it on once under the project's

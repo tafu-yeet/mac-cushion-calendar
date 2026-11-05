@@ -195,6 +195,8 @@ export function EventCard({ event, now, showDate = false }: { event: PublicEvent
         {event.permalink && (
           <a
             href={event.permalink}
+            data-tap="instagram"
+            data-tap-event={event.id}
             target="_blank"
             rel="noreferrer"
             className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold ring-1 ring-current/40 hover:bg-current/10"
@@ -206,6 +208,8 @@ export function EventCard({ event, now, showDate = false }: { event: PublicEvent
         {event.rubricUrl && (
           <a
             href={event.rubricUrl}
+            data-tap="tickets"
+            data-tap-event={event.id}
             target="_blank"
             rel="noreferrer"
             className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold ring-1 ring-current/40 hover:bg-current/10"

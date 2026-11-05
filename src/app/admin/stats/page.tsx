@@ -38,16 +38,31 @@ export default function StatsPage() {
   );
 }
 
-type Traction = { event_id: number | null; highlighted: boolean | null; seen: number | null; opened: number | null; added: number | null };
+type Traction = {
+  event_id: number | null;
+  highlighted: boolean | null;
+  seen: number | null;
+  opened: number | null;
+  added: number | null;
+  calendar_menu: number | null;
+  instagram: number | null;
+  tickets: number | null;
+};
 
-const rate = (opened: number, seen: number) => (seen ? `${((opened / seen) * 100).toFixed(1)}%` : "–");
+/** Things people did because of an event: opening it, or tapping its Add to calendar, Instagram or tickets buttons. */
+const actionsOf = (r: Partial<Traction> | undefined) => (r?.opened ?? 0) + (r?.calendar_menu ?? 0) + (r?.instagram ?? 0) + (r?.tickets ?? 0);
+const per100 = (actions: number, seen: number) => (seen ? ((actions / seen) * 100).toFixed(1) : "–");
 
 function totals(rows: Traction[]) {
+  const sum = (key: "seen" | "opened" | "added" | "calendar_menu" | "instagram" | "tickets") => rows.reduce((n, r) => n + (r[key] ?? 0), 0);
   return {
     events: rows.length,
-    seen: rows.reduce((n, r) => n + (r.seen ?? 0), 0),
-    opened: rows.reduce((n, r) => n + (r.opened ?? 0), 0),
-    added: rows.reduce((n, r) => n + (r.added ?? 0), 0),
+    seen: sum("seen"),
+    opened: sum("opened"),
+    calendar_menu: sum("calendar_menu"),
+    instagram: sum("instagram"),
+    tickets: sum("tickets"),
+    added: sum("added"),
   };
 }
 
@@ -88,9 +103,11 @@ async function HighlightTest() {
                 <th className="px-4 py-2 text-right font-medium">Events</th>
                 <th className="px-4 py-2 text-right font-medium">Seen</th>
                 <th className="px-4 py-2 text-right font-medium">Opened</th>
-                <th className="px-4 py-2 text-right font-medium">Open rate</th>
+                <th className="px-4 py-2 text-right font-medium">Calendar menu</th>
+                <th className="px-4 py-2 text-right font-medium">Instagram</th>
+                <th className="px-4 py-2 text-right font-medium">Tickets</th>
+                <th className="px-4 py-2 text-right font-medium">Actions per 100 seen</th>
                 <th className="px-4 py-2 text-right font-medium">Added to calendar</th>
-                <th className="px-4 py-2 text-right font-medium">Added per 100 seen</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-100 tabular-nums">
@@ -100,9 +117,11 @@ async function HighlightTest() {
                   <td className="px-4 py-2 text-right">{g.events}</td>
                   <td className="px-4 py-2 text-right">{g.seen}</td>
                   <td className="px-4 py-2 text-right">{g.opened}</td>
-                  <td className="px-4 py-2 text-right font-semibold">{rate(g.opened, g.seen)}</td>
+                  <td className="px-4 py-2 text-right">{g.calendar_menu}</td>
+                  <td className="px-4 py-2 text-right">{g.instagram}</td>
+                  <td className="px-4 py-2 text-right">{g.tickets}</td>
+                  <td className="px-4 py-2 text-right font-semibold">{per100(actionsOf(g), g.seen)}</td>
                   <td className="px-4 py-2 text-right">{g.added}</td>
-                  <td className="px-4 py-2 text-right">{g.seen ? ((g.added / g.seen) * 100).toFixed(1) : "–"}</td>
                 </tr>
               ))}
             </tbody>
@@ -110,11 +129,12 @@ async function HighlightTest() {
         </div>
         <p className="border-t border-stone-200 px-4 py-3 text-sm text-stone-600">
           {enough
-            ? "Compare the open rate, not the totals: the top spot gets a highlighted event seen more, so its totals rise either way."
+            ? "Compare actions per 100 seen, not the totals: the top spot gets a highlighted event seen more, so its totals rise either way."
             : `Too early to tell: each group needs about ${ENOUGH_SEEN} views before a difference means much.`}{" "}
-          Seen means at least half of it was on screen; opened means tapped from a list. Each counts once per event per
-          browser session, not counting admins. You also pick which events to highlight, so a strong event can look like a
-          strong highlight.
+          Seen means at least half of it was on screen; opened means tapped from a list; actions add up opens and taps on
+          its Calendar, Instagram and Tickets buttons. Each counts once per event per browser session, not counting admins,
+          and adds count from when this tracking began. You also pick which events to highlight, so a strong event can look
+          like a strong highlight.
         </p>
       </section>
 
@@ -135,10 +155,10 @@ async function HighlightTest() {
                   </span>
                   <span className="flex flex-wrap items-center gap-x-3 text-stone-700 tabular-nums">
                     <span>{during?.seen ?? 0} seen</span>
-                    <span>{during?.opened ?? 0} opened</span>
-                    <span className="font-semibold">{rate(during?.opened ?? 0, during?.seen ?? 0)}</span>
+                    <span>{actionsOf(during)} actions</span>
+                    <span className="font-semibold">{per100(actionsOf(during), during?.seen ?? 0)} per 100 seen</span>
                     <span>{during?.added ?? 0} added</span>
-                    {before && (before.seen ?? 0) > 0 && <span className="text-stone-500">before: {rate(before.opened ?? 0, before.seen ?? 0)}</span>}
+                    {before && (before.seen ?? 0) > 0 && <span className="text-stone-500">before: {per100(actionsOf(before), before.seen ?? 0)}</span>}
                     {e.highlighted && <HighlightToggle id={e.id} highlighted />}
                   </span>
                 </li>

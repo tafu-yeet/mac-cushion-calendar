@@ -4,7 +4,10 @@ import { useEffect } from "react";
 
 import { countsAsVisitor } from "@/lib/visitor";
 
-type Row = { event_id: number; action: "seen" | "open" };
+// The buttons marked data-tap (with data-tap-event, the event's id).
+const TAPS = ["calendar_menu", "instagram", "tickets"] as const;
+
+type Row = { event_id: number; action: "seen" | "open" | (typeof TAPS)[number] };
 
 // What this browser session has counted, so scrolling back or a refresh doesn't count again.
 const COUNTED = "cushion-engagement";
@@ -14,7 +17,8 @@ const EVENT_PAGE = /^\/events\/(\d+)$/;
 /**
  * Counts how events do, for the admin's Stats page: "seen" when at least half of
  * an event marked data-seen-event is on screen, "open" when its link is tapped from
- * a list. Once per event per browser session, and nothing about the person. Sent
+ * a list, and taps on its buttons (Add to calendar, Instagram, tickets or sign-up).
+ * Once per event per action per browser session, and nothing about the person. Sent
  * straight to Supabase's REST API with the public key (the table only takes inserts
  * from visitors). Admins and automated browsers aren't counted.
  */
@@ -82,7 +86,15 @@ export function EngagementTracker() {
     added.observe(document.body, { childList: true, subtree: true });
 
     const onClick = (e: MouseEvent) => {
-      const link = e.target instanceof Element ? e.target.closest("a[href^='/events/']") : null;
+      if (!(e.target instanceof Element)) return;
+      const button = e.target.closest<HTMLElement>("[data-tap]");
+      const tap = TAPS.find((t) => t === button?.dataset.tap);
+      if (tap) {
+        count(Number(button?.dataset.tapEvent), tap);
+        send();
+        return;
+      }
+      const link = e.target.closest("a[href^='/events/']");
       const id = EVENT_PAGE.exec(link?.getAttribute("href") ?? "")?.[1];
       if (id && !window.location.pathname.startsWith("/events/")) {
         count(Number(id), "open");

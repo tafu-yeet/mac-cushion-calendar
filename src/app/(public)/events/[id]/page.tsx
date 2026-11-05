@@ -201,6 +201,8 @@ async function EventDetail({ id }: { id: number }) {
         {event.permalink && (
           <a
             href={event.permalink}
+            data-tap="instagram"
+            data-tap-event={event.id}
             target="_blank"
             rel="noreferrer"
             className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold ring-1 ring-current/30 hover:bg-current/10"
@@ -212,6 +214,8 @@ async function EventDetail({ id }: { id: number }) {
         {event.rubricUrl && !(event.registrationWhere === "rubric" && event.registration !== "drop_in" && event.registration !== "unknown") && (
           <a
             href={event.rubricUrl}
+            data-tap="tickets"
+            data-tap-event={event.id}
             target="_blank"
             rel="noreferrer"
             className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold ring-1 ring-current/30 hover:bg-current/10"
@@ -298,7 +302,7 @@ function Registration({ event, buttonClass }: { event: PublicEvent; buttonClass:
         {href && (
           <>
             {" · "}
-            <a href={href} target="_blank" rel="noreferrer" className="font-semibold underline underline-offset-2">
+            <a href={href} data-tap="tickets" data-tap-event={event.id} target="_blank" rel="noreferrer" className="font-semibold underline underline-offset-2">
               RSVP
             </a>
           </>
@@ -314,6 +318,8 @@ function Registration({ event, buttonClass }: { event: PublicEvent; buttonClass:
       {href && where.button && (
         <a
           href={href}
+          data-tap="tickets"
+          data-tap-event={event.id}
           target="_blank"
           rel="noreferrer"
           className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold ${buttonClass}`}

@@ -44,6 +44,8 @@ export function AddToCalendar({ eventId, className }: { eventId: number; classNa
         type="button"
         aria-expanded={open}
         aria-controls={menuId}
+        data-tap="calendar_menu"
+        data-tap-event={eventId}
         onClick={() => setOpen(!open)}
         className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold ${className}`}
       >
