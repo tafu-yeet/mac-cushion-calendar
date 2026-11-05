@@ -82,16 +82,16 @@ export function HighlightBadge({ event, className }: { event: PublicEvent; class
   );
 }
 
-/** The frame around a highlighted event: a dark band across the top with a gold star, and a border all round. */
-export function HighlightFrame({ event, className = "rounded-[36px]", children }: { event: PublicEvent; className?: string; children: React.ReactNode }) {
+/** A highlighted event: a thick dark outline (`className` matches the card's corners), and a "Highlighted" tab on top of it, like a folder's. */
+export function HighlightFrame({ event, className = "rounded-[28px]", children }: { event: PublicEvent; className?: string; children: React.ReactNode }) {
   if (!event.highlighted) return children;
   return (
-    <div className={`bg-plum p-2 shadow-lg ${className}`}>
-      <p className="flex items-center gap-2 px-3 pt-1 pb-2.5 font-display text-base font-semibold tracking-[0.12em] text-cream uppercase">
-        <StarIcon className="size-6 shrink-0 fill-gold text-gold" />
-        Highlight
+    <div className="flex flex-col">
+      <p className="ml-6 flex w-fit items-center gap-1.5 rounded-t-2xl bg-plum px-4 pt-1.5 pb-1 font-display text-sm font-semibold text-cream">
+        <StarIcon className="size-4 shrink-0 fill-gold text-gold" />
+        Highlighted
       </p>
-      {children}
+      <div className={`shadow-lg ring-4 ring-plum ${className}`}>{children}</div>
     </div>
   );
 }

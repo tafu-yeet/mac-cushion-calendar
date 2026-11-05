@@ -255,7 +255,7 @@ async function EventDetail({ id }: { id: number }) {
     </article>
   );
   return (
-    <HighlightFrame event={event} className="rounded-[40px]">
+    <HighlightFrame event={event} className="rounded-[32px]">
       {card}
     </HighlightFrame>
   );
