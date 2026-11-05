@@ -7,7 +7,7 @@ import { EventCard } from "@/components/event-card";
 import { campus } from "@/lib/campus";
 import { COMMUNITY_GROUPS, communityOf } from "@/lib/communities";
 import { getEventsBetween, type PublicEvent } from "@/lib/events";
-import { byStart } from "@/lib/filters";
+import { byStart, highlightedFirst } from "@/lib/filters";
 import { endMs } from "@/lib/status";
 import { addDays, dayStartIso, formatDay, toLocalInputs, todayInCampus } from "@/lib/time";
 
@@ -125,5 +125,5 @@ function groupByDay(events: PublicEvent[]): [string, PublicEvent[]][] {
     const date = toLocalInputs(e.startsAt).date;
     days.set(date, [...(days.get(date) ?? []), e]);
   }
-  return [...days.entries()];
+  return [...days.entries()].map(([date, list]) => [date, highlightedFirst(list)]);
 }

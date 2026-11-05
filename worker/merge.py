@@ -618,11 +618,16 @@ def apply(sb: Client, p: Plan) -> dict[str, int]:
         # but a published one never to an event nobody can see (plan holds those back already). One a
         # person approved gives way too, as the event stays published; one they edited or rejected is
         # theirs to pair ("Needs a look"), until they say the two are the same.
-        old = sb.table("events").select("id, reviewed_by, reviewed_fields, status").eq("rubric_eid", r["eid"]).neq("id", e["id"]).execute().data
+        old = sb.table("events").select("id, reviewed_by, reviewed_fields, status, highlighted, highlighted_at").eq("rubric_eid", r["eid"]).neq("id", e["id"]).execute().data
         if old and old[0]["status"] == "approved" and e["status"] != "approved":
             continue
         approved_as_is = bool(old) and old[0]["status"] == "approved" and not old[0]["reviewed_fields"]
         if old and (not old[0]["reviewed_by"] or approved_as_is or why.get("decided") == SAID_SAME):
+            # Its counts (admin Stats) and any highlight move to the event it joins.
+            for counts in ("calendar_adds", "event_engagement"):
+                sb.table(counts).update({"event_id": e["id"]}).eq("event_id", old[0]["id"]).execute()
+            if old[0]["highlighted"]:
+                update |= {"highlighted": True, "highlighted_at": old[0]["highlighted_at"]}
             sb.table("events").delete().eq("id", old[0]["id"]).execute()
         elif old:
             sb.table("event_matches").upsert({"rubric_eid": r["eid"], "event_id": e["id"], "score": score, "reasons": why,

@@ -2,10 +2,10 @@
 
 import { useEffect } from "react";
 
+import { countsAsVisitor } from "@/lib/visitor";
+
 // Once per browser session, so a refresh or the next page doesn't count again.
 const LOGGED = "cushion-scan-logged";
-// Supabase's session cookie: only admins sign in, so a visitor with one is an admin.
-const SIGNED_IN = /(?:^|;\s*)sb-[^=]+-auth-token(?:\.\d+)?=/;
 
 /**
  * Logs a visit from a tagged link (?utm_source=..., with utm_medium and utm_content
@@ -19,7 +19,7 @@ export function ScanTracker() {
     const params = new URLSearchParams(window.location.search);
     const label = (key: string) => params.get(key)?.trim().slice(0, 100) || null;
     const source = label("utm_source");
-    if (!source || navigator.webdriver || SIGNED_IN.test(document.cookie)) return;
+    if (!source || !countsAsVisitor()) return;
     try {
       if (sessionStorage.getItem(LOGGED)) return;
       sessionStorage.setItem(LOGGED, "1");

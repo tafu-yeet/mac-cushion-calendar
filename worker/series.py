@@ -124,6 +124,8 @@ def run(sb: Client, apply: bool = True, verbose: bool = False) -> dict[str, int]
                     print(f"  aside    {s['name']} {day} (#{covered['id']} “{covered['name']}”)")
                 write("stepped_aside", sb.table("events").update({
                     "status": "rejected", "review_notes": [*(e["review_notes"] or []), STEPPED_ASIDE]}).eq("id", e["id"]))
+                if e["highlighted"] and apply:  # the highlight moves to the post listed instead
+                    sb.table("events").update({"highlighted": True, "highlighted_at": e["highlighted_at"]}).eq("id", covered["id"]).execute()
                 continue
             if not covered and e["status"] == "rejected" and STEPPED_ASIDE in (e["review_notes"] or []):
                 if verbose:

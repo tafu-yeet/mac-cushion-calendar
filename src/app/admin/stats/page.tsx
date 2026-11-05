@@ -4,9 +4,12 @@ import { Suspense } from "react";
 import { requireAdmin } from "@/lib/auth";
 import { addDays, formatDay, toLocalInputs, todayInCampus } from "@/lib/time";
 
+import { HighlightToggle } from "../highlight-toggle";
+
 export const metadata: Metadata = { title: "Stats" };
 
 const CHART_DAYS = 14;
+const ENOUGH_SEEN = 100; // views per group before a difference means much
 const TOP_EVENTS = 15;
 const APPS = [
   { key: "google", label: "Google Calendar" },
@@ -26,8 +29,128 @@ export default function StatsPage() {
         </p>
       </div>
       <Suspense fallback={<p className="text-sm text-stone-500">Loading…</p>}>
+        <HighlightTest />
+      </Suspense>
+      <Suspense fallback={<p className="text-sm text-stone-500">Loading…</p>}>
         <CalendarAdds />
       </Suspense>
+    </div>
+  );
+}
+
+type Traction = { event_id: number | null; highlighted: boolean | null; seen: number | null; opened: number | null; added: number | null };
+
+const rate = (opened: number, seen: number) => (seen ? `${((opened / seen) * 100).toFixed(1)}%` : "–");
+
+function totals(rows: Traction[]) {
+  return {
+    events: rows.length,
+    seen: rows.reduce((n, r) => n + (r.seen ?? 0), 0),
+    opened: rows.reduce((n, r) => n + (r.opened ?? 0), 0),
+    added: rows.reduce((n, r) => n + (r.added ?? 0), 0),
+  };
+}
+
+/** Do highlighted events get more traction? Counted per event, once per browser session (engagement-tracker.tsx). */
+async function HighlightTest() {
+  const { supabase } = await requireAdmin();
+  const rows: Traction[] = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await supabase.from("event_traction").select("*").range(from, from + 999);
+    if (error) return <p className="text-sm text-red-700">Couldn&apos;t load the highlight test: {error.message}</p>;
+    rows.push(...data);
+    if (data.length < 1000) break;
+  }
+  const { data: current } = await supabase.from("events").select("id").eq("highlighted", true);
+  const on = rows.filter((r) => r.highlighted);
+  const off = rows.filter((r) => !r.highlighted);
+  const ids = [...new Set([...(current ?? []).map((e) => e.id), ...on.flatMap((r) => (r.event_id === null ? [] : [r.event_id]))])];
+  const { data: picked } = ids.length
+    ? await supabase.from("events").select("id, name, starts_at, highlighted").in("id", ids).order("starts_at", { ascending: false })
+    : { data: [] };
+  const groups = [
+    { label: "Highlighted", ...totals(on) },
+    { label: "Other events", ...totals(off) },
+  ];
+  const [a, b] = groups;
+  const enough = a.seen >= ENOUGH_SEEN && b.seen >= ENOUGH_SEEN;
+  const today = todayInCampus();
+
+  return (
+    <div className="flex flex-col gap-4">
+      <h2 className="text-lg font-semibold">Highlighted events test</h2>
+      <section className="rounded-xl border border-stone-200 bg-white">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="border-b border-stone-200 text-left text-xs text-stone-600">
+              <tr>
+                <th className="px-4 py-2 font-medium">Group</th>
+                <th className="px-4 py-2 text-right font-medium">Events</th>
+                <th className="px-4 py-2 text-right font-medium">Seen</th>
+                <th className="px-4 py-2 text-right font-medium">Opened</th>
+                <th className="px-4 py-2 text-right font-medium">Open rate</th>
+                <th className="px-4 py-2 text-right font-medium">Added to calendar</th>
+                <th className="px-4 py-2 text-right font-medium">Added per 100 seen</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-stone-100 tabular-nums">
+              {groups.map((g) => (
+                <tr key={g.label}>
+                  <td className="px-4 py-2 font-medium">{g.label}</td>
+                  <td className="px-4 py-2 text-right">{g.events}</td>
+                  <td className="px-4 py-2 text-right">{g.seen}</td>
+                  <td className="px-4 py-2 text-right">{g.opened}</td>
+                  <td className="px-4 py-2 text-right font-semibold">{rate(g.opened, g.seen)}</td>
+                  <td className="px-4 py-2 text-right">{g.added}</td>
+                  <td className="px-4 py-2 text-right">{g.seen ? ((g.added / g.seen) * 100).toFixed(1) : "–"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="border-t border-stone-200 px-4 py-3 text-sm text-stone-600">
+          {enough
+            ? "Compare the open rate, not the totals: the top spot gets a highlighted event seen more, so its totals rise either way."
+            : `Too early to tell: each group needs about ${ENOUGH_SEEN} views before a difference means much.`}{" "}
+          Seen means at least half of it was on screen; opened means tapped from a list. Each counts once per event per
+          browser session, not counting admins. You also pick which events to highlight, so a strong event can look like a
+          strong highlight.
+        </p>
+      </section>
+
+      <section className="rounded-xl border border-stone-200 bg-white">
+        <h3 className="border-b border-stone-200 px-4 py-3 text-sm font-semibold">Events you&apos;ve highlighted</h3>
+        {picked?.length ? (
+          <ul className="divide-y divide-stone-100 text-sm">
+            {picked.map((e) => {
+              const during = on.find((r) => r.event_id === e.id);
+              const before = off.find((r) => r.event_id === e.id);
+              return (
+                <li key={e.id} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-2">
+                  <span className="min-w-0">
+                    <a href={`/events/${e.id}`} target="_blank" rel="noreferrer" className="underline">
+                      {e.name}
+                    </a>
+                    {e.starts_at && <span className="ml-2 text-stone-500">{formatDay(toLocalInputs(e.starts_at).date, "short", today)}</span>}
+                  </span>
+                  <span className="flex flex-wrap items-center gap-x-3 text-stone-700 tabular-nums">
+                    <span>{during?.seen ?? 0} seen</span>
+                    <span>{during?.opened ?? 0} opened</span>
+                    <span className="font-semibold">{rate(during?.opened ?? 0, during?.seen ?? 0)}</span>
+                    <span>{during?.added ?? 0} added</span>
+                    {before && (before.seen ?? 0) > 0 && <span className="text-stone-500">before: {rate(before.opened ?? 0, before.seen ?? 0)}</span>}
+                    {e.highlighted && <HighlightToggle id={e.id} highlighted />}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <p className="px-4 py-6 text-sm text-stone-500">
+            None yet. On the Review queue&apos;s approved tab, press “☆ Highlight” on an event to bump it to the top of its day.
+          </p>
+        )}
+      </section>
     </div>
   );
 }

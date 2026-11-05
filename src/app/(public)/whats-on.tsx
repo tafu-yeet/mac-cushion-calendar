@@ -40,12 +40,15 @@ export function WhatsOn({ events, today, now: serverNow, fromUrl }: { events: Pu
   const dates = picked ? [picked] : Array.from({ length: filters.day === "week" ? 7 : 1 }, (_, i) => addDays(today, first + i));
   const groups: DayGroup[] = dates.map((date) => {
     const onDay = matching.filter((e) => dateOf(e) === date);
-    const near = onDay.filter((e) => !e.offCampus);
+    // Highlighted events top the day, wherever they'd otherwise be listed (a test: see the admin's Stats page).
+    const top = onDay.filter((e) => e.highlighted && inWindow(e, slot) !== false);
+    const rest = onDay.filter((e) => !e.highlighted);
+    const near = rest.filter((e) => !e.offCampus);
     return {
       date,
-      fits: near.filter((e) => inWindow(e, slot) === true),
+      fits: [...top, ...near.filter((e) => inWindow(e, slot) === true)],
       timeUnknown: near.filter((e) => inWindow(e, slot) === "unknown"),
-      offCampus: onDay.filter((e) => e.offCampus && inWindow(e, slot) !== false),
+      offCampus: rest.filter((e) => e.offCampus && inWindow(e, slot) !== false),
     };
   });
   // Cancelled events stay listed, marked, but don't count as things to do.

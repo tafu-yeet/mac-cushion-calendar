@@ -37,6 +37,7 @@ export type Database = {
           app: string
           created_at: string
           event_id: number
+          highlighted: boolean
           id: number
         }
         Insert: {
@@ -49,6 +50,7 @@ export type Database = {
           app?: string
           created_at?: string
           event_id?: number
+          highlighted?: boolean
           id?: never
         }
         Relationships: [
@@ -102,6 +104,38 @@ export type Database = {
           poll_interval_minutes?: number
         }
         Relationships: []
+      }
+      event_engagement: {
+        Row: {
+          action: string
+          created_at: string
+          event_id: number
+          highlighted: boolean
+          id: number
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          event_id: number
+          highlighted?: boolean
+          id?: number
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          event_id?: number
+          highlighted?: boolean
+          id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_engagement_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       event_matches: {
         Row: {
@@ -248,6 +282,8 @@ export type Database = {
           food_description: string | null
           food_source: string | null
           has_free_food: boolean
+          highlighted: boolean
+          highlighted_at: string | null
           hosted_by: string | null
           id: number
           image_url: string | null
@@ -299,6 +335,8 @@ export type Database = {
           food_description?: string | null
           food_source?: string | null
           has_free_food?: boolean
+          highlighted?: boolean
+          highlighted_at?: string | null
           hosted_by?: string | null
           id?: never
           image_url?: string | null
@@ -350,6 +388,8 @@ export type Database = {
           food_description?: string | null
           food_source?: string | null
           has_free_food?: boolean
+          highlighted?: boolean
+          highlighted_at?: string | null
           hosted_by?: string | null
           id?: never
           image_url?: string | null
@@ -814,7 +854,24 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      event_traction: {
+        Row: {
+          added: number | null
+          event_id: number | null
+          highlighted: boolean | null
+          opened: number | null
+          seen: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_engagement_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       [_ in never]: never

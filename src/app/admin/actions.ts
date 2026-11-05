@@ -133,6 +133,14 @@ async function settleConflict(supabase: Supabase, id: number, intent: string): P
   return saveError ? { error: saveError.message } : null;
 }
 
+/** Bumps an event to the top of its day on the site, or stops (a test: see the Stats page). */
+export async function setHighlighted(id: number, highlighted: boolean): Promise<void> {
+  const { supabase } = await requireAdmin();
+  await supabase.from("events").update({ highlighted, highlighted_at: highlighted ? new Date().toISOString() : null }).eq("id", id);
+  updateTag(EVENTS_TAG);
+  refresh();
+}
+
 /** A person's answer to "is this Rubric event the same as this Instagram event?" (worker/merge.py acts on it). */
 export async function decideMatch(formData: FormData): Promise<void> {
   const { supabase, userId } = await requireAdmin();

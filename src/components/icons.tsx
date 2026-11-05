@@ -79,6 +79,21 @@ export const TodayIcon = (p: IconProps) => (
   </Icon>
 );
 
+export const StarIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="m12 3.5 2.6 5.3 5.9.9-4.2 4.1 1 5.8-5.3-2.8-5.3 2.8 1-5.8-4.2-4.1 5.9-.9L12 3.5Z" />
+  </Icon>
+);
+
+export const RepeatIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M17 2.5 20.5 6 17 9.5" />
+    <path d="M3.5 11V9a3 3 0 0 1 3-3h14" />
+    <path d="M7 21.5 3.5 18 7 14.5" />
+    <path d="M20.5 13v2a3 3 0 0 1-3 3h-14" />
+  </Icon>
+);
+
 export const InstagramIcon = (p: IconProps) => (
   <Icon {...p}>
     <rect x="3.5" y="3.5" width="17" height="17" rx="5" />

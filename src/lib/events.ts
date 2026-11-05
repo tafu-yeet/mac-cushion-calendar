@@ -44,6 +44,8 @@ export type PublicEvent = {
   // One day of a weekly program (worker/series.py): the days it runs (ISO, 1 is Monday), its last
   // day, and the post or page that announced it. Null for one-off events.
   weekly: { days: number[]; until: string; sourceUrl: string | null } | null;
+  // An admin's pick, bumped to the top of its day: a test of whether that gets it more traction (admin Stats).
+  highlighted: boolean;
 };
 
 // The admin's review actions call updateTag(EVENTS_TAG), so approvals show up
@@ -51,7 +53,7 @@ export type PublicEvent = {
 export const EVENTS_TAG = "events";
 
 const COLUMNS = `id, club_id, name, category, event_type, tags, has_free_food, food_description, cost, price, starts_at, ends_at, start_time_known, location, off_campus, hosted_by, open_to_all,
-  ticket_url, schedule_status, registration, registration_where, registration_url, checked_at, flags, communities,
+  ticket_url, schedule_status, registration, registration_where, registration_url, checked_at, flags, communities, highlighted,
   clubs (name, instagram_username, communities), posts (permalink, deleted_at), event_series (days, ends_on, source_url)`;
 
 type Row = {
@@ -80,6 +82,7 @@ type Row = {
   checked_at: string | null;
   flags: string[];
   communities: string[];
+  highlighted: boolean;
   clubs: { name: string; instagram_username: string; communities: string[] } | null;
   posts: { permalink: string; deleted_at: string | null } | null;
   event_series: { days: number[]; ends_on: string; source_url: string | null } | null;
@@ -134,6 +137,8 @@ function toPublicEvent(r: Row): PublicEvent {
     headsUp: r.schedule_status === "scheduled" ? headsUp(r.flags) : null,
     communities: [...new Set([...(r.clubs?.communities ?? []), ...(r.communities ?? [])])],
     weekly: r.event_series ? { days: r.event_series.days, until: r.event_series.ends_on, sourceUrl: r.event_series.source_url } : null,
+    // A cancelled event isn't worth bumping.
+    highlighted: r.highlighted && r.schedule_status !== "cancelled",
   };
 }
 

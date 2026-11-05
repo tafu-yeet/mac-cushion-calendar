@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { ListMemory } from "@/components/back-link";
+import { EngagementTracker } from "@/components/engagement-tracker";
 import { InstagramIcon } from "@/components/icons";
 import { SiteNav, SiteNavLinks } from "@/components/site-nav";
 import { TourButton } from "@/components/site-tour";
@@ -45,6 +46,8 @@ export default function PublicLayout({ children }: LayoutProps<"/">) {
         <main className="flex-1">{children}</main>
         {/* Which list an event was opened from, for its page's back link. */}
         <ListMemory />
+        {/* How often each event is seen and opened, for the admin's Stats page. */}
+        <EngagementTracker />
 
         <footer className="mx-auto w-full max-w-5xl px-4 py-8">
           <div className="flex flex-wrap gap-x-5">

@@ -4,7 +4,7 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 
 import { BackLink } from "@/components/back-link";
-import { clubInitials, RegistrationBadge, ScheduleBadge } from "@/components/event-card";
+import { clubInitials, HighlightBadge, RecurringBadge, RegistrationBadge, ScheduleBadge } from "@/components/event-card";
 import { AddToCalendar } from "@/components/add-to-calendar";
 import { ExternalIcon, PinIcon, TicketIcon, UtensilsIcon } from "@/components/icons";
 import { ShareButton } from "@/components/share-button";
@@ -78,7 +78,9 @@ async function EventDetail({ id }: { id: number }) {
       <div className="flex items-start justify-between gap-4">
         <p className="flex flex-wrap items-center gap-2 text-sm font-medium">
           <ScheduleBadge status={event.scheduleStatus} size="lg" />
+          <HighlightBadge event={event} className={`px-2.5 py-0.5 ${category.tone.accent}`} />
           <span className="opacity-90">{category.label}</span>
+          <RecurringBadge event={event} className="px-2.5 py-0.5" />
         </p>
         <span className="grid size-12 shrink-0 place-items-center rounded-full bg-current/15 font-display text-sm font-semibold" title={host} aria-hidden="true">
           {clubInitials(host)}

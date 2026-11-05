@@ -56,7 +56,7 @@ async function Queue({ searchParams }: { searchParams: PageProps<"/admin">["sear
       `id, status, name, event_type, category, cost, price, tags, has_free_food, food_description, starts_at, start_time_known,
        ends_at, location, hosted_by, open_to_all, schedule_status, registration, registration_where, registration_url,
        registration_note, confidence, reason, review_notes, model, auto_approved, club_id, post_id,
-       source, flags, conflicts, ticket_url, image_url, description,
+       source, flags, conflicts, ticket_url, image_url, description, highlighted,
        clubs (name, instagram_username), posts (caption, permalink, posted_at, image_path)`,
     );
   query = filters.attention ? query.or("flags.neq.{},conflicts.neq.{}") : query.eq("status", filters.status);
@@ -99,6 +99,7 @@ async function Queue({ searchParams }: { searchParams: PageProps<"/admin">["sear
       id: r.id,
       postId: r.post_id,
       source: r.source as QueueEvent["source"],
+      highlighted: r.highlighted,
       flags: r.flags,
       conflicts: Object.entries((r.conflicts ?? {}) as Record<string, Omit<Conflict, "field">>).map(([field, c]) => ({ field, ...c })),
       ticketUrl: r.ticket_url,

@@ -36,6 +36,8 @@ export function DayBrowser({
   // Cancelled events stay listed, marked, but don't count.
   const live = selected.events.filter((e) => e.scheduleStatus !== "cancelled");
   const withFood = live.filter((e) => e.hasFreeFood).length;
+  // A timeline can't bump anything: its place is its time. So they also go on top of it, as cards.
+  const highlighted = selected.events.filter((e) => e.highlighted);
 
   const day = (d: string) => calendarHref("day", d === today ? null : d, filters);
   const monday = mondayOf(date);
@@ -91,6 +93,14 @@ export function DayBrowser({
       </nav>
 
       <FilterBar filters={filters} update={update} />
+
+      {highlighted.length > 0 && (
+        <section className="flex flex-col gap-3" aria-label="Highlighted events">
+          {highlighted.map((e) => (
+            <EventCard key={e.id} event={e} now={now} />
+          ))}
+        </section>
+      )}
 
       <section className="rounded-[32px] bg-panel p-4 shadow-sm sm:p-6">
         <h1 className="mb-5 font-display text-xl font-semibold lowercase">{selected.label}</h1>

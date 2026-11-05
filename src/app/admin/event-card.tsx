@@ -6,6 +6,7 @@ import { CATEGORIES } from "@/lib/categories";
 import { formatWhen, weekdayOf } from "@/lib/time";
 
 import { reviewEvent } from "./actions";
+import { HighlightToggle } from "./highlight-toggle";
 import type { Conflict, QueueEvent } from "./queue-types";
 
 const input =
@@ -32,6 +33,7 @@ export function EventCard({ event, siblingIds }: { event: QueueEvent; siblingIds
 
           <div className="flex flex-wrap items-center gap-2 text-xs">
             <SourceBadge source={event.source} />
+            {event.status === "approved" && <HighlightToggle id={event.id} highlighted={event.highlighted} />}
             {event.flags.map((f) => (
               <span key={f} className="rounded-full bg-orange-100 px-2 py-0.5 font-medium text-orange-900">
                 {FLAG_LABELS[f] ?? f}
@@ -222,7 +224,9 @@ function SourceBadge({ source }: { source: QueueEvent["source"] }) {
       ? ["Both", "bg-violet-600 text-white"]
       : source === "rubric"
         ? ["Rubric", "bg-violet-100 text-violet-900"]
-        : ["IG", "bg-pink-100 text-pink-900"];
+        : source === "series"
+          ? ["Weekly", "bg-emerald-100 text-emerald-900"]
+          : ["IG", "bg-pink-100 text-pink-900"];
   return <span className={`rounded-full px-2 py-0.5 font-semibold ${tone}`}>{label}</span>;
 }
 

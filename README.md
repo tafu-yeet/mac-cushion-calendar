@@ -202,6 +202,22 @@ read, and are listed at `/admin/feedback` with a type filter and a Done box.
 Spam guards: a hidden honeypot field, and at most 3 messages per browser per
 hour (a cookie only the server reads).
 
+### Highlighted events (a test)
+
+An admin presses "Highlight" on a published event (the Review queue's approved
+tab). It goes to the top of its day on the home page, Week and Communities, with
+a badge and an outline; on the Day timeline, where place means time, it also
+shows as a card above the timeline. A cancelled event isn't bumped.
+
+To see whether that gets an event more traction, the public pages count, per
+event, when it's seen (at least half of it on screen) and opened (tapped from a
+list), once per event per browser session, with nothing about the person, and
+not for admins or automated browsers (`src/components/engagement-tracker.tsx`,
+the `event_engagement` table). Calendar adds count too. The database notes
+whether the event was highlighted at that moment. `/admin/stats` compares
+highlighted with other events by open rate, and shows each highlighted event's
+numbers.
+
 Visitor counts come from Vercel Web Analytics (`<Analytics />` in the public
 layout: no cookies, nothing personal). Turn it on once under the project's
 Analytics tab in Vercel.

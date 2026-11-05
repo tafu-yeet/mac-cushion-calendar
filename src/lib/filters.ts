@@ -175,6 +175,9 @@ function matchesSearch(e: PublicEvent, q: string): boolean {
 }
 
 /** Earliest first, with a day's time-TBD events after its timed ones. */
+/** Highlighted events first, otherwise in the order given. */
+export const highlightedFirst = (events: PublicEvent[]) => [...events.filter((e) => e.highlighted), ...events.filter((e) => !e.highlighted)];
+
 export function byStart(a: PublicEvent, b: PublicEvent): number {
   // Campus-local "YYYY-MM-DDTHH:MM"; "~" sorts after any time.
   const key = (e: PublicEvent) => {

@@ -7,7 +7,7 @@ import { campusDate, formatDay, formatDuration, formatTime, toLocalInputs } from
 import { everyDays } from "@/lib/weekly";
 
 import { AddToCalendar } from "./add-to-calendar";
-import { ExternalIcon, PinIcon, TicketIcon, UtensilsIcon } from "./icons";
+import { ExternalIcon, PinIcon, RepeatIcon, StarIcon, TicketIcon, UtensilsIcon } from "./icons";
 
 // Words that don't help tell clubs apart in their initials.
 const NAME_FILLER = new Set(["mcmaster", "mac", "the", "of", "and", "at", "for", "university", "&"]);
@@ -60,6 +60,28 @@ export function HeadsUpBadge({ event, size = "sm" }: { event: PublicEvent; size?
   );
 }
 
+/** "Recurring": one day of a weekly program. */
+export function RecurringBadge({ event, className = "px-2 py-0.5 text-xs" }: { event: PublicEvent; className?: string }) {
+  if (!event.weekly) return null;
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full font-semibold ring-1 ring-current/40 ${className}`} title={everyDays(event.weekly.days, true)}>
+      <RepeatIcon className="size-3 shrink-0" />
+      Recurring
+    </span>
+  );
+}
+
+/** "Highlighted": an admin's pick, bumped to the top of its day. */
+export function HighlightBadge({ event, className }: { event: PublicEvent; className: string }) {
+  if (!event.highlighted) return null;
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full font-bold ${className}`}>
+      <StarIcon className="size-3 shrink-0" />
+      Highlighted
+    </span>
+  );
+}
+
 /** Whether a card shows a registration badge: "RSVP" when it's required, "Drop in" when the club said so. */
 export const hasRegistrationBadge = (event: PublicEvent) => event.registration === "required" || event.registration === "drop_in";
 
@@ -86,13 +108,18 @@ export function EventCard({ event, now, showDate = false }: { event: PublicEvent
   const off = event.scheduleStatus !== "scheduled";
 
   return (
-    <article className={`rounded-[28px] p-5 ${category.tone.card}`}>
+    <article
+      data-seen-event={event.id}
+      className={`rounded-[28px] p-5 ${category.tone.card} ${event.highlighted ? "ring-[3px] ring-plum ring-offset-2 ring-offset-panel" : ""}`}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-medium">
             {off ? <ScheduleBadge status={event.scheduleStatus} /> : <StatusBadge event={event} now={now} className={category.tone.accent} />}
+            <HighlightBadge event={event} className={`px-2 py-0.5 ${category.tone.accent}`} />
             <HeadsUpBadge event={event} />
             <span className="opacity-90">{category.label}</span>
+            <RecurringBadge event={event} />
             {event.weekly && <span className="opacity-90">{everyDays(event.weekly.days)}</span>}
           </p>
           <h3 className={`mt-1.5 font-display text-2xl font-semibold leading-[1.1] ${event.scheduleStatus === "cancelled" ? "line-through decoration-2" : ""}`}>

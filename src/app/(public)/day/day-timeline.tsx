@@ -1,7 +1,7 @@
 import Link from "next/link";
 
-import { ScheduleBadge, StatusBadge } from "@/components/event-card";
-import { UtensilsIcon } from "@/components/icons";
+import { HighlightBadge, RecurringBadge, ScheduleBadge, StatusBadge } from "@/components/event-card";
+import { RepeatIcon, StarIcon, UtensilsIcon } from "@/components/icons";
 import { categoryOf } from "@/lib/categories";
 import { freeFoodPhrase } from "@/lib/clean";
 import type { PublicEvent } from "@/lib/events";
@@ -175,8 +175,9 @@ function EventBlock({ event, now, style }: { event: PublicEvent; now: number | n
   return (
     <Link
       href={`/events/${event.id}`}
+      data-seen-event={event.id}
       title={[event.name, event.hasFreeFood && freeFoodPhrase(event.foodDescription)].filter(Boolean).join(" · ")}
-      className={`absolute z-10 flex flex-col gap-1 overflow-hidden rounded-2xl px-3 py-2 text-xs leading-tight transition-shadow hover:z-20 hover:shadow-md ${tone.card}`}
+      className={`absolute z-10 flex flex-col gap-1 overflow-hidden rounded-2xl px-3 py-2 text-xs leading-tight transition-shadow hover:z-20 hover:shadow-md ${tone.card} ${event.highlighted ? "ring-2 ring-plum" : ""}`}
       style={style}
     >
       {event.scheduleStatus !== "scheduled" ? (
@@ -189,6 +190,12 @@ function EventBlock({ event, now, style }: { event: PublicEvent; now: number | n
             <StatusBadge event={event} now={now} className={tone.accent} />
           </span>
         )
+      )}
+      {(event.highlighted || event.weekly) && (
+        <span className="flex flex-wrap gap-1 text-[10px] leading-none">
+          <HighlightBadge event={event} className={`px-1.5 py-0.5 ${tone.accent}`} />
+          <RecurringBadge event={event} className="px-1.5 py-0.5" />
+        </span>
       )}
       <span className={`font-display text-sm font-semibold leading-tight ${event.scheduleStatus === "cancelled" ? "line-through" : ""}`}>
         {event.name}
@@ -215,8 +222,9 @@ function HourEvents({ items, now, style }: { items: Placed[]; now: number | null
           <li key={event.id}>
             <Link
               href={`/events/${event.id}`}
+              data-seen-event={event.id}
               title={[event.name, event.hasFreeFood && freeFoodPhrase(event.foodDescription)].filter(Boolean).join(" · ")}
-              className={`flex items-center gap-2 rounded-xl px-2.5 text-xs leading-tight hover:opacity-90 ${tone.card}`}
+              className={`flex items-center gap-2 rounded-xl px-2.5 text-xs leading-tight hover:opacity-90 ${tone.card} ${event.highlighted ? "ring-2 ring-plum" : ""}`}
               style={{ height: ROW_PX }}
             >
               <span className="w-14 shrink-0 font-medium opacity-90">{formatTime(event.startsAt)}</span>
@@ -232,6 +240,18 @@ function HourEvents({ items, now, style }: { items: Placed[]; now: number | null
                       <StatusBadge event={event} now={now} className={tone.accent} />
                     </span>
                   )
+                )}
+                {event.highlighted && (
+                  <>
+                    <StarIcon className="size-3.5" />
+                    <span className="sr-only">Highlighted</span>
+                  </>
+                )}
+                {event.weekly && (
+                  <>
+                    <RepeatIcon className="size-3.5" />
+                    <span className="sr-only">Recurring</span>
+                  </>
                 )}
                 {event.hasFreeFood && (
                   <>

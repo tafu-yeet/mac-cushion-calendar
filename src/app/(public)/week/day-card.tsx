@@ -1,10 +1,11 @@
 import Link from "next/link";
 
 import { hasRegistrationBadge, HeadsUpBadge, RegistrationBadge } from "@/components/event-card";
-import { ChevronIcon, PinIcon, UtensilsIcon } from "@/components/icons";
+import { ChevronIcon, PinIcon, RepeatIcon, StarIcon, UtensilsIcon } from "@/components/icons";
 import { categoryOf, dayTone, type Tone } from "@/lib/categories";
 import { freeFoodPhrase } from "@/lib/clean";
 import type { PublicEvent } from "@/lib/events";
+import { highlightedFirst } from "@/lib/filters";
 import { dateParts, formatTime, minutesIntoDay, otherYear } from "@/lib/time";
 
 import type { WeekDay } from "./types";
@@ -23,7 +24,7 @@ function hourColumns(onCampus: PublicEvent[], offCampus: PublicEvent[]): Column[
     const hour = Math.floor(minutesIntoDay(e.startsAt) / 60);
     byHour.set(hour, [...(byHour.get(hour) ?? []), e]);
   }
-  const columns: Column[] = [...byHour.entries()].sort(([a], [b]) => a - b).map(([hour, list]) => ({ label: hourLabel(hour), events: list }));
+  const columns: Column[] = [...byHour.entries()].sort(([a], [b]) => a - b).map(([hour, list]) => ({ label: hourLabel(hour), events: highlightedFirst(list) }));
   const untimed = onCampus.filter((e) => !e.startTimeKnown);
   if (untimed.length) columns.push({ label: "Time TBD", events: untimed });
   if (offCampus.length) columns.push({ label: "Off campus", events: offCampus });
@@ -39,13 +40,19 @@ function shortPrice(price: string | null): string {
   return low === high ? money(low) : `${money(low)}–${money(high)}`;
 }
 
-/** Cancelled or postponed, free food, price, and RSVP or drop in, as small badges. */
+/** Highlighted, cancelled or postponed, free food, price, RSVP or drop in, and recurring, as small badges. */
 function Badges({ event, tone, size }: { event: PublicEvent; tone: Tone; size: "chip" | "row" }) {
   const off = event.scheduleStatus !== "scheduled";
-  if (!off && !event.headsUp && !event.hasFreeFood && event.cost !== "paid" && !hasRegistrationBadge(event)) return null;
+  if (!off && !event.headsUp && !event.hasFreeFood && event.cost !== "paid" && !hasRegistrationBadge(event) && !event.weekly && !event.highlighted) return null;
   const text = size === "chip" ? "text-[10px]" : "text-[11px]";
   return (
     <span className={`flex flex-wrap gap-1 ${size === "chip" ? "pl-3" : ""}`}>
+      {event.highlighted && (
+        <span className={`inline-flex items-center gap-0.5 rounded-full px-1.5 py-px font-bold ${text} ${tone.chipBadge}`}>
+          <StarIcon className="size-2.5" />
+          Highlighted
+        </span>
+      )}
       {off && (
         <span className={`rounded-full px-1.5 py-px font-bold uppercase ${text} ${event.scheduleStatus === "cancelled" ? "bg-red-600 text-white" : "bg-amber-300 text-amber-950"}`}>
           {event.scheduleStatus === "cancelled" ? "Cancelled" : "Postponed"}
@@ -67,6 +74,12 @@ function Badges({ event, tone, size }: { event: PublicEvent; tone: Tone; size: "
         </span>
       )}
       <RegistrationBadge event={event} className={`px-1.5 py-px ${text}`} />
+      {event.weekly && (
+        <span className={`inline-flex items-center gap-0.5 rounded-full px-1.5 py-px font-bold ring-1 ring-current/50 ${text}`}>
+          <RepeatIcon className="size-2.5" />
+          Recurring
+        </span>
+      )}
     </span>
   );
 }
@@ -97,8 +110,8 @@ type DayProps = { day: WeekDay; dayHref: string; today: string; tone: Tone };
 function PhoneDay({ day, dayHref, today, tone, onCampus, offCampus }: DayProps & { onCampus: PublicEvent[]; offCampus: PublicEvent[] }) {
   const { weekday, day: dayOfMonth, month } = dateParts(day.date);
   const count = liveCount(day.events);
-  const shownOn = onCampus.slice(0, PHONE_LIMIT);
-  const shownOff = offCampus.slice(0, Math.max(PHONE_LIMIT - shownOn.length, Math.min(offCampus.length, 2)));
+  const shownOn = highlightedFirst(onCampus).slice(0, PHONE_LIMIT);
+  const shownOff = highlightedFirst(offCampus).slice(0, Math.max(PHONE_LIMIT - shownOn.length, Math.min(offCampus.length, 2)));
   const hidden = day.events.length - shownOn.length - shownOff.length;
 
   return (
@@ -147,7 +160,7 @@ function EventList({ events, tone }: { events: PublicEvent[]; tone: Tone }) {
     <ul className="mt-2 flex flex-col gap-1.5">
       {events.map((e) => (
         <li key={e.id}>
-          <Link href={`/events/${e.id}`} className={`flex gap-3 rounded-2xl px-3 py-2 hover:opacity-90 ${tone.chip}`}>
+          <Link href={`/events/${e.id}`} data-seen-event={e.id} className={`flex gap-3 rounded-2xl px-3 py-2 hover:opacity-90 ${tone.chip}`}>
             <span className="w-16 shrink-0 pt-px text-xs font-bold tabular-nums">
               {e.startTimeKnown ? formatTime(e.startsAt) : "Time TBD"}
             </span>
@@ -203,6 +216,7 @@ function WideDay({ day, dayHref, today, tone, columns }: DayProps & { columns: C
                   <Link
                     key={e.id}
                     href={`/events/${e.id}`}
+                    data-seen-event={e.id}
                     className={`flex flex-col gap-1 rounded-xl px-2 py-1.5 text-[11px] font-semibold leading-tight hover:opacity-90 ${tone.chip}`}
                   >
                     <span className="flex items-start gap-1.5">
