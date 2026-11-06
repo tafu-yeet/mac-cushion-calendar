@@ -3,6 +3,7 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 
 import { AutoRefresh } from "@/components/auto-refresh";
+import { campus } from "@/lib/campus";
 import { getEventsBetween } from "@/lib/events";
 import { PICKER_WEEKS, parseFilters, settleDay } from "@/lib/filters";
 import { addDays, dayStartIso, todayInCampus } from "@/lib/time";
@@ -12,7 +13,11 @@ import { WhatsOn } from "./whats-on";
 // Six weeks: everything "Next 7 days" and the day picker can show.
 const DAYS_LOADED = PICKER_WEEKS * 7;
 
-export const metadata: Metadata = { alternates: { canonical: "/" } };
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+  // Proves ownership to Google Search Console, which looks for it on the home page.
+  verification: { google: campus.googleSiteVerification },
+};
 
 export default function HomePage({ searchParams }: PageProps<"/">) {
   return (
