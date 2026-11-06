@@ -206,8 +206,10 @@ hour (a cookie only the server reads).
 
 An admin presses "Highlight" on a published event (the Review queue's approved
 tab). It goes to the top of its day on the home page, Week and Communities, with
-a badge and an outline; on the Day timeline, where place means time, it also
-shows as a card above the timeline. A cancelled event isn't bumped.
+a "Highlighted" tab or badge and a thick outline; on the Day timeline, where place
+means time, it also shows as a card above the timeline. Before its day, the home
+page lists it under "Coming up" above the day's events (two at most, unless someone
+picked a date or their filters rule it out). A cancelled event isn't bumped.
 
 To see whether that gets an event more traction, the public pages count, per
 event, when it's seen (at least half of it on screen), opened (tapped from a

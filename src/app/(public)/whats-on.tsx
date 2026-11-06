@@ -18,6 +18,7 @@ import { addDays, formatDay, toLocalInputs } from "@/lib/time";
 import { MissingEventLink } from "./feedback";
 
 const COMING_UP_COUNT = 6;
+const HIGHLIGHTS_AHEAD = 2; // later days' highlighted events on top of the list, so they're promoted before their day
 
 // fits and timeUnknown are on campus; offCampus is listed in its own section.
 type DayGroup = { date: string; fits: PublicEvent[]; timeUnknown: PublicEvent[]; offCampus: PublicEvent[] };
@@ -56,7 +57,10 @@ export function WhatsOn({ events, today, now: serverNow, fromUrl }: { events: Pu
   const total = groups.reduce((n, g) => n + [...g.fits, ...g.offCampus].filter(on).length, 0);
   const withFood = groups.reduce((n, g) => n + [...g.fits, ...g.offCampus].filter((e) => on(e) && e.hasFreeFood).length, 0);
   const lastShown = groups[groups.length - 1].date;
-  const comingUp = matching.filter((e) => dateOf(e) > lastShown && inWindow(e, slot) !== false).slice(0, COMING_UP_COUNT);
+  const later = matching.filter((e) => dateOf(e) > lastShown && inWindow(e, slot) !== false);
+  // Not on a day someone picked: they asked for that day.
+  const highlightsAhead = picked ? [] : later.filter((e) => e.highlighted).slice(0, HIGHLIGHTS_AHEAD);
+  const comingUp = later.filter((e) => !highlightsAhead.includes(e)).slice(0, COMING_UP_COUNT);
   // Events for one group (members, women, a faith or program) that the filters would show if
   // they weren't hidden by default: say so, so a search for one doesn't look like we missed it.
   const hiddenForGroups = filters.limited
@@ -125,8 +129,17 @@ export function WhatsOn({ events, today, now: serverNow, fromUrl }: { events: Pu
           {total} event{total === 1 ? "" : "s"} {when}
         </p>
 
+        {highlightsAhead.length > 0 && (
+          <Section title="Coming up">
+            {highlightsAhead.map((e) => (
+              <EventCard key={e.id} event={e} now={now} showDate />
+            ))}
+          </Section>
+        )}
+
         {groups.map((g) => (
-          <DaySection key={g.date} group={g} today={today} now={now} showHeading={week} />
+          // With "Coming up" above, the day's own list needs saying whose it is.
+          <DaySection key={g.date} group={g} today={today} now={now} showHeading={week || highlightsAhead.length > 0} />
         ))}
 
         {total === 0 && (
@@ -140,7 +153,7 @@ export function WhatsOn({ events, today, now: serverNow, fromUrl }: { events: Pu
         )}
 
         {total === 0 && comingUp.length > 0 && (
-          <Section title="Coming up">
+          <Section title={highlightsAhead.length > 0 ? "Also coming up" : "Coming up"}>
             {comingUp.map((e) => (
               <EventCard key={e.id} event={e} now={now} showDate />
             ))}
