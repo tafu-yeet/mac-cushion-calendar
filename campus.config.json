@@ -4,6 +4,13 @@
   "school": "McMaster University",
   "schoolShortName": "McMaster",
   "city": "Hamilton, Ontario, Canada",
+  "address": {
+    "streetAddress": "1280 Main Street West",
+    "addressLocality": "Hamilton",
+    "addressRegion": "ON",
+    "postalCode": "L8S 4L8",
+    "addressCountry": "CA"
+  },
   "timezone": "America/Toronto",
   "campusLocations": {
     "MUSC": "McMaster University Student Centre",

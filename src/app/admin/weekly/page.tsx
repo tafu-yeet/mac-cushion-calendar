@@ -9,7 +9,7 @@ import { everyDays } from "@/lib/weekly";
 
 import { ActiveToggle, SeriesForm, type SeriesValues } from "./series-form";
 
-export const metadata: Metadata = { title: "Weekly" };
+export const metadata: Metadata = { title: "Weekly", alternates: { canonical: "/admin/weekly" } };
 
 export default function WeeklyPage({ searchParams }: PageProps<"/admin/weekly">) {
   return (

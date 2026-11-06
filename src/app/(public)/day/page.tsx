@@ -10,7 +10,7 @@ import { addDays, dayStartIso, mondayOf, todayInCampus } from "@/lib/time";
 import { weekDays } from "../week/week-days";
 import { DayBrowser } from "./day-browser";
 
-export const metadata: Metadata = { title: "Day" };
+export const metadata: Metadata = { title: "Day", alternates: { canonical: "/day" } };
 
 export default function DayPage({ searchParams }: PageProps<"/day">) {
   return (

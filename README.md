@@ -202,6 +202,15 @@ read, and are listed at `/admin/feedback` with a type filter and a Done box.
 Spam guards: a hidden honeypot field, and at most 3 messages per browser per
 hour (a cookie only the server reads).
 
+### Search engines
+
+`/sitemap.xml` lists the home page, `/week`, `/communities` and every approved
+event that hasn't ended, built per request. `/robots.txt` allows everything except
+`/admin`. Every page has a canonical tag with a fixed path, so filtered and tagged
+links (`?day=week`, `?utm_source=poster`) count as the page itself. Event pages
+carry schema.org Event data (`src/lib/event-schema.ts`), which gives no end time or
+place the club hasn't announced.
+
 ### Highlighted events (a test)
 
 An admin presses "Highlight" on a published event (the Review queue's approved

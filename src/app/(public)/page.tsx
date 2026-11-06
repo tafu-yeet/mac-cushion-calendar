@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { connection } from "next/server";
 import { Suspense } from "react";
 
@@ -10,6 +11,8 @@ import { WhatsOn } from "./whats-on";
 
 // Six weeks: everything "Next 7 days" and the day picker can show.
 const DAYS_LOADED = PICKER_WEEKS * 7;
+
+export const metadata: Metadata = { alternates: { canonical: "/" } };
 
 export default function HomePage({ searchParams }: PageProps<"/">) {
   return (

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
@@ -14,6 +15,8 @@ import type { Conflict, QueueEvent, QueueGroup } from "./queue-types";
 const STATUSES = ["pending", "approved", "rejected"] as const;
 type Status = (typeof STATUSES)[number];
 const LIMIT = 200;
+
+export const metadata: Metadata = { alternates: { canonical: "/admin" } };
 
 // showUntimed: in the Pending tab, events with no start time are hidden unless asked for. They
 // need no decision: the dated post replaces them, or they expire (worker/auto_approve.py).

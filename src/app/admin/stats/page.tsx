@@ -6,7 +6,7 @@ import { addDays, formatDay, toLocalInputs, todayInCampus } from "@/lib/time";
 
 import { HighlightToggle } from "../highlight-toggle";
 
-export const metadata: Metadata = { title: "Stats" };
+export const metadata: Metadata = { title: "Stats", alternates: { canonical: "/admin/stats" } };
 
 const CHART_DAYS = 14;
 const ENOUGH_SEEN = 100; // views per group before a difference means much

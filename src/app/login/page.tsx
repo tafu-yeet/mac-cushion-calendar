@@ -5,7 +5,7 @@ import { campus } from "@/lib/campus";
 
 import { LoginForm } from "./login-form";
 
-export const metadata: Metadata = { title: "Admin sign in" };
+export const metadata: Metadata = { title: "Admin sign in", alternates: { canonical: "/login" } };
 
 export default function LoginPage({ searchParams }: PageProps<"/login">) {
   return (

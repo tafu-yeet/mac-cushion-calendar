@@ -10,7 +10,7 @@ import { addDays, dayStartIso, mondayOf, todayInCampus } from "@/lib/time";
 import { WeekBrowser } from "./week-browser";
 import { weekDays } from "./week-days";
 
-export const metadata: Metadata = { title: "Calendar" };
+export const metadata: Metadata = { title: "Calendar", alternates: { canonical: "/week" } };
 
 export default function WeekPage({ searchParams }: PageProps<"/week">) {
   return (

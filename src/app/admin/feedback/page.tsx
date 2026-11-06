@@ -8,7 +8,7 @@ import { formatWhen } from "@/lib/time";
 
 import { DoneToggle } from "./done-toggle";
 
-export const metadata: Metadata = { title: "Feedback" };
+export const metadata: Metadata = { title: "Feedback", alternates: { canonical: "/admin/feedback" } };
 
 const SHOWN = 300;
 

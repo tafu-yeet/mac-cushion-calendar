@@ -15,6 +15,7 @@ import { MissingEventLink } from "../feedback";
 
 export const metadata: Metadata = {
   title: "Communities",
+  alternates: { canonical: "/communities" },
   description: `${campus.schoolShortName} events for your community: Pride, your faith, your culture, your program, and more.`,
 };
 

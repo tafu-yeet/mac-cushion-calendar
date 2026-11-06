@@ -6,7 +6,7 @@ import { requireAdmin } from "@/lib/auth";
 import { ClubsTable, type ClubRow } from "./clubs-table";
 import { RubricLinks } from "./rubric-links";
 
-export const metadata: Metadata = { title: "Clubs" };
+export const metadata: Metadata = { title: "Clubs", alternates: { canonical: "/admin/clubs" } };
 
 export default function ClubsPage() {
   return (

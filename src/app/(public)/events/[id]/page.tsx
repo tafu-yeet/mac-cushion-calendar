@@ -11,13 +11,12 @@ import { ShareButton } from "@/components/share-button";
 import { campus } from "@/lib/campus";
 import { categoryOf } from "@/lib/categories";
 import { freeFoodPhrase } from "@/lib/clean";
+import { eventSchemaJson, ONLINE } from "@/lib/event-schema";
 import { getEvent, type PublicEvent } from "@/lib/events";
 import { formatDay, formatDuration, formatTime, formatTimeRange, timeAgo, toLocalInputs, todayInCampus } from "@/lib/time";
 import { everyDays } from "@/lib/weekly";
 
 import { CancelledReport, FeedbackLink } from "../../feedback";
-
-const ONLINE = /\b(online|virtual|zoom|teams|discord|webinar|livestream)\b/i;
 
 /** Google Maps for the place: on campus, searched within the campus so "MUSC 230" finds the Student Centre. */
 function mapLink(e: PublicEvent): string {
@@ -42,6 +41,7 @@ export async function generateMetadata({ params }: PageProps<"/events/[id]">): P
   return {
     title: event.name,
     description,
+    alternates: { canonical: `/events/${event.id}` },
     openGraph: { title: event.name, description, type: "website" },
   };
 }
@@ -255,9 +255,12 @@ async function EventDetail({ id }: { id: number }) {
     </article>
   );
   return (
-    <HighlightFrame event={event} className="rounded-[32px]">
-      {card}
-    </HighlightFrame>
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: eventSchemaJson(event) }} />
+      <HighlightFrame event={event} className="rounded-[32px]">
+        {card}
+      </HighlightFrame>
+    </>
   );
 }
 

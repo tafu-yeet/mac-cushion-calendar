@@ -30,6 +30,17 @@ export function toLocalInputs(iso: string | null, timeZone = TIMEZONE): { date: 
   return { date: `${p.year}-${p.month}-${p.day}`, time: `${p.hour}:${p.minute}` };
 }
 
+/** A stored instant as campus wall-clock time with its offset: "2026-11-10T18:00:00-05:00". */
+export function toOffsetIso(iso: string, timeZone = TIMEZONE): string {
+  const instant = new Date(iso);
+  const p = parts(instant, timeZone);
+  const wall = Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute, +p.second);
+  const minutes = Math.round((wall - instant.getTime()) / 60_000);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const offset = `${minutes < 0 ? "-" : "+"}${pad(Math.floor(Math.abs(minutes) / 60))}:${pad(Math.abs(minutes) % 60)}`;
+  return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}:${p.second}${offset}`;
+}
+
 /** UTC ISO string for a campus wall-clock date and time. */
 export function fromLocalInputs(date: string, time: string, timeZone = TIMEZONE): string {
   const [y, m, d] = date.split("-").map(Number);
