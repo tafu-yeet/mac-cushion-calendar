@@ -206,6 +206,19 @@ async function EventDetail({ id }: { id: number }) {
             <ExternalIcon className="size-3.5" />
           </a>
         )}
+        {!event.permalink && event.addedByHand && profile && (
+          <a
+            href={profile}
+            data-tap="instagram"
+            data-tap-event={event.id}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold ring-1 ring-current/30 hover:bg-current/10"
+          >
+            @{event.clubUsername} on Instagram
+            <ExternalIcon className="size-3.5" />
+          </a>
+        )}
         {event.rubricUrl && !(event.registrationWhere === "rubric" && event.registration !== "drop_in" && event.registration !== "unknown") && (
           <a
             href={event.rubricUrl}

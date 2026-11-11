@@ -6,7 +6,7 @@ export type Conflict = { field: string; rubric: string | boolean | null; instagr
 export type QueueEvent = {
   id: number;
   postId: string | null; // null for an event only Rubric lists
-  source: "instagram" | "rubric" | "both" | "series";
+  source: "instagram" | "rubric" | "both" | "series" | "manual";
   highlighted: boolean; // bumped to the top of its day on the site
   flags: string[]; // see FLAG_LABELS in event-card.tsx
   conflicts: Conflict[];

@@ -226,7 +226,9 @@ function SourceBadge({ source }: { source: QueueEvent["source"] }) {
         ? ["Rubric", "bg-violet-100 text-violet-900"]
         : source === "series"
           ? ["Weekly", "bg-emerald-100 text-emerald-900"]
-          : ["IG", "bg-pink-100 text-pink-900"];
+          : source === "manual"
+            ? ["By hand", "bg-amber-100 text-amber-900"]
+            : ["IG", "bg-pink-100 text-pink-900"];
   return <span className={`rounded-full px-2 py-0.5 font-semibold ${tone}`}>{label}</span>;
 }
 

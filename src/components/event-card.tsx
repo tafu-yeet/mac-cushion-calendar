@@ -96,6 +96,10 @@ export function HighlightFrame({ event, className = "rounded-[28px]", children }
   );
 }
 
+/** The event's Instagram post, or the club's profile for an event added by hand (it has no post). */
+export const instagramLink = (event: PublicEvent) =>
+  event.permalink ?? (event.addedByHand && event.clubUsername ? `https://www.instagram.com/${event.clubUsername}/` : null);
+
 /** Whether a card shows a registration badge: "RSVP" when it's required, "Drop in" when the club said so. */
 export const hasRegistrationBadge = (event: PublicEvent) => event.registration === "required" || event.registration === "drop_in";
 
@@ -118,6 +122,7 @@ export function EventCard({ event, now, showDate = false }: { event: PublicEvent
   const duration = event.startTimeKnown ? formatDuration(event.startsAt, event.endsAt) : null;
   const date = formatDay(toLocalInputs(event.startsAt).date, "short", campusDate(now));
   const host = event.hostedBy ?? event.clubName;
+  const instagram = instagramLink(event);
 
   const off = event.scheduleStatus !== "scheduled";
 
@@ -203,9 +208,9 @@ export function EventCard({ event, now, showDate = false }: { event: PublicEvent
 
       <div className="mt-5 flex flex-wrap gap-2">
         {event.scheduleStatus !== "cancelled" && <AddToCalendar eventId={event.id} className={category.tone.button} />}
-        {event.permalink && (
+        {instagram && (
           <a
-            href={event.permalink}
+            href={instagram}
             data-tap="instagram"
             data-tap-event={event.id}
             target="_blank"

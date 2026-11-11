@@ -29,6 +29,7 @@ export type PublicEvent = {
   clubName: string;
   clubUsername: string;
   permalink: string | null; // the Instagram post; null when there's none, or it was deleted
+  addedByHand: boolean; // events.source "manual": no post, so its Instagram button opens the club's profile
   rubricUrl: string | null; // the event's listing on Rubric, the MSU's club platform (tickets, sign-up)
   // Still on? Cancelled and postponed events stay listed, marked, until their date has passed.
   scheduleStatus: "scheduled" | "cancelled" | "postponed";
@@ -53,7 +54,7 @@ export type PublicEvent = {
 export const EVENTS_TAG = "events";
 
 const COLUMNS = `id, club_id, name, category, event_type, tags, has_free_food, food_description, cost, price, starts_at, ends_at, start_time_known, location, off_campus, hosted_by, open_to_all,
-  ticket_url, schedule_status, registration, registration_where, registration_url, checked_at, flags, communities, highlighted,
+  ticket_url, schedule_status, registration, registration_where, registration_url, checked_at, flags, communities, highlighted, source,
   clubs (name, instagram_username, communities), posts (permalink, deleted_at), event_series (days, ends_on, source_url)`;
 
 type Row = {
@@ -83,6 +84,7 @@ type Row = {
   flags: string[];
   communities: string[];
   highlighted: boolean;
+  source: string;
   clubs: { name: string; instagram_username: string; communities: string[] } | null;
   posts: { permalink: string; deleted_at: string | null } | null;
   event_series: { days: number[]; ends_on: string; source_url: string | null } | null;
@@ -128,6 +130,7 @@ function toPublicEvent(r: Row): PublicEvent {
     clubUsername: r.clubs?.instagram_username ?? "",
     // A deleted post would be a dead link; the event itself still stands.
     permalink: r.posts && !r.posts.deleted_at ? r.posts.permalink : null,
+    addedByHand: r.source === "manual",
     rubricUrl: r.ticket_url,
     scheduleStatus: r.schedule_status as PublicEvent["scheduleStatus"],
     registration: r.registration as PublicEvent["registration"],
