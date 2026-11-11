@@ -1,17 +1,18 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
 
 import { BigDate, DateStats } from "@/components/big-date";
 import type { DayCounts } from "@/components/day-picker";
 import { EventCard } from "@/components/event-card";
 import { FilterBar, useFilters } from "@/components/filter-bar";
-import { ChevronIcon, PinIcon } from "@/components/icons";
+import { ChevronIcon, ExternalIcon, PinIcon } from "@/components/icons";
 import { SiteTour } from "@/components/site-tour";
 import { useNow } from "@/components/use-now";
 import { campus } from "@/lib/campus";
 import type { PublicEvent } from "@/lib/events";
-import { DEFAULT_FILTERS, byStart, inWindow, isNarrowed, matchesFilters, timeWindow, type Filters } from "@/lib/filters";
+import { DEFAULT_FILTERS, byStart, clubsMatching, inWindow, isNarrowed, matchesFilters, timeWindow, type Filters, type TrackedClub } from "@/lib/filters";
 import { endMs } from "@/lib/status";
 import { addDays, formatDay, toLocalInputs } from "@/lib/time";
 
@@ -60,7 +61,9 @@ export function WhatsOn({ events, today, now: serverNow, fromUrl }: { events: Pu
   const later = matching.filter((e) => dateOf(e) > lastShown && inWindow(e, slot) !== false);
   // Not on a day someone picked: they asked for that day.
   const highlightsAhead = picked ? [] : later.filter((e) => e.highlighted).slice(0, HIGHLIGHTS_AHEAD);
-  const comingUp = later.filter((e) => !highlightsAhead.includes(e)).slice(0, COMING_UP_COUNT);
+  // Filtering for a later day also counts the days before it: "Nothing matches" should mean nothing anywhere.
+  const elsewhere = matching.filter((e) => !dates.includes(dateOf(e)) && inWindow(e, slot) !== false);
+  const comingUp = (isNarrowed(filters) ? elsewhere : later).filter((e) => !highlightsAhead.includes(e)).slice(0, COMING_UP_COUNT);
   // Events for one group (members, women, a faith or program) that the filters would show if
   // they weren't hidden by default: say so, so a search for one doesn't look like we missed it.
   const hiddenForGroups = filters.limited
@@ -92,7 +95,23 @@ export function WhatsOn({ events, today, now: serverNow, fromUrl }: { events: Pu
           (e) => dateOf(e) === today && e.startTimeKnown && endMs(e) <= now && on(e) && inWindow(e, slot) === true && matchesFilters(e, filters),
         ).length
       : 0;
-  const when = week ? "in the next 7 days" : over ? `still on today, of ${total + over}` : picked ? `on ${dayName}` : dayName;
+  const dayWords = week ? "in the next 7 days" : picked ? `on ${dayName}` : dayName;
+  const when = over ? `still on today, of ${total + over}` : dayWords;
+
+  // Matches on other days, when this one has none. Only the search term is named: with
+  // other filters on too, "No pizza today" might not be true, so it says "No matches today".
+  const elsewhereCount = elsewhere.filter(on).length;
+  const listed = highlightsAhead.length + comingUp.length;
+  const searched = filters.q.trim();
+  const what = searched && !isNarrowed({ ...filters, q: "" }) ? searched : "matches";
+  const found =
+    elsewhereCount > 0
+      ? {
+          headline: `${over ? "No more" : "No"} ${what} ${dayWords}. ${elsewhereCount} coming up.`,
+          hint: elsewhereCount > listed ? `Here are the next ${listed}.` : "",
+        }
+      : null;
+  const clubs = useClubsMatching(total === 0 && !found ? searched : "");
 
   return (
     <div className="flex flex-col gap-6">
@@ -149,6 +168,8 @@ export function WhatsOn({ events, today, now: serverNow, fromUrl }: { events: Pu
             onClear={() => update({ ...DEFAULT_FILTERS, day: filters.day, date: filters.date })}
             onTomorrow={() => update({ day: "tomorrow", date: "" })}
             hasComingUp={comingUp.length > 0}
+            found={found}
+            clubs={clubs}
           />
         )}
 
@@ -210,33 +231,54 @@ function DaySection({ group, today, now, showHeading }: { group: DayGroup; today
   );
 }
 
+/** Tracked clubs matching a search that found no events. The list loads once, the first time a search needs it. */
+function useClubsMatching(q: string): TrackedClub[] {
+  const [clubs, setClubs] = useState<TrackedClub[]>([]);
+  const asked = useRef(false);
+  const searching = q.length > 0;
+  useEffect(() => {
+    if (!searching || asked.current) return;
+    asked.current = true;
+    fetch("/tracked-clubs")
+      .then((res) => (res.ok ? res.json() : []))
+      .then(setClubs)
+      .catch(() => {}); // a nicety: the empty message stands without it
+  }, [searching]);
+  return clubsMatching(clubs, q);
+}
+
 function EmptyState({
   filters,
   showingToday,
   onClear,
   onTomorrow,
   hasComingUp,
+  found,
+  clubs,
 }: {
   filters: Filters;
   showingToday: boolean;
   onClear: () => void;
   onTomorrow: () => void;
   hasComingUp: boolean;
+  found: { headline: string; hint: string } | null;
+  clubs: TrackedClub[];
 }) {
   const narrowed = isNarrowed(filters);
   const button = "mt-4 rounded-full bg-maroon px-4 py-1.5 text-sm font-medium text-cream hover:bg-plum";
+  const hint = narrowed
+    ? found
+      ? found.hint
+      : "Try another time or category."
+    : hasComingUp
+      ? "Here's what's coming up next."
+      : "Clubs usually post a few days ahead. Check back soon.";
   return (
     <div className="rounded-[28px] bg-canvas px-5 py-10 text-center">
       <p className="text-lg font-semibold text-maroon">
-        {narrowed ? "Nothing matches" : showingToday ? "Nothing else on today" : "Nothing announced yet"}
+        {narrowed ? (found?.headline ?? "Nothing matches") : showingToday ? "Nothing else on today" : "Nothing announced yet"}
       </p>
-      <p className="mt-1 text-sm text-maroon/75">
-        {narrowed
-          ? "Try another time or category."
-          : hasComingUp
-            ? "Here's what's coming up next."
-            : "Clubs usually post a few days ahead. Check back soon."}
-      </p>
+      {hint && <p className="mt-1 text-sm text-maroon/75">{hint}</p>}
       {narrowed ? (
         <button type="button" onClick={onClear} className={button}>
           Clear filters
@@ -247,6 +289,27 @@ function EmptyState({
             See tomorrow
           </button>
         )
+      )}
+      {clubs.length > 0 && (
+        <div className="mt-5 text-sm text-maroon/85">
+          <p>Looking for a club? Check its Instagram:</p>
+          <ul className="mt-1.5 flex flex-col items-center gap-1">
+            {clubs.map((c) => (
+              <li key={c.username}>
+                <a
+                  href={`https://www.instagram.com/${c.username}/`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex min-h-6 items-center gap-1 font-semibold text-maroon underline underline-offset-2 hover:text-plum"
+                >
+                  {c.name}
+                  <ExternalIcon className="size-3.5 shrink-0" />
+                  <span className="sr-only">(opens Instagram)</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </div>
   );

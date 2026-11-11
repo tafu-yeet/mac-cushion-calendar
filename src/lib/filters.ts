@@ -174,6 +174,16 @@ function matchesSearch(e: PublicEvent, q: string): boolean {
   return words.every((w) => text.includes(w));
 }
 
+/** A club the worker follows, for pointing a search that found no events at its Instagram. */
+export type TrackedClub = { name: string; username: string };
+
+/** Up to 3 tracked clubs with every word of the search in their name or handle. */
+export function clubsMatching(clubs: TrackedClub[], q: string): TrackedClub[] {
+  const words = fold(q).split(/\s+/).filter(Boolean);
+  if (q.trim().length < 3) return []; // too short to mean a club: "ma" is in half of them
+  return clubs.filter((c) => words.every((w) => fold(`${c.name} ${c.username}`).includes(w))).slice(0, 3);
+}
+
 /** Earliest first, with a day's time-TBD events after its timed ones. */
 /** Highlighted events first, otherwise in the order given. */
 export const highlightedFirst = (events: PublicEvent[]) => [...events.filter((e) => e.highlighted), ...events.filter((e) => !e.highlighted)];

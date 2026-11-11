@@ -26,7 +26,7 @@ export function StatusBadge({ event, now, className }: { event: PublicEvent; now
   if (status.kind === "live") {
     return (
       <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 font-semibold ${className}`}>
-        <span className="size-1.5 animate-pulse rounded-full bg-current" />
+        <span className="size-1.5 rounded-full bg-current motion-safe:animate-pulse" />
         On now
       </span>
     );
@@ -157,7 +157,7 @@ export function EventCard({ event, now, showDate = false }: { event: PublicEvent
         )}
       </p>
 
-      {(event.hasFreeFood || event.cost === "paid" || !event.openToAll || hasRegistrationBadge(event)) && (
+      {(event.hasFreeFood || event.cost !== "unknown" || !event.openToAll || hasRegistrationBadge(event)) && (
         <div className="mt-3 flex flex-wrap gap-2 text-sm font-medium">
           {event.hasFreeFood && (
             <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 ${category.tone.accent}`}>
@@ -165,10 +165,10 @@ export function EventCard({ event, now, showDate = false }: { event: PublicEvent
               <span className="first-letter:uppercase">{event.foodDescription ?? "Free food"}</span>
             </span>
           )}
-          {event.cost === "paid" && (
+          {event.cost !== "unknown" && (
             <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 ring-1 ring-current/40">
               <TicketIcon className="size-4 shrink-0" />
-              {event.price ?? "Paid entry"}
+              {event.cost === "free" ? "Free" : (event.price ?? "Paid entry")}
             </span>
           )}
           <RegistrationBadge event={event} className="px-3 py-1" />

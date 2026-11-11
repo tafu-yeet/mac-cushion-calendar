@@ -228,6 +228,13 @@ export function FilterBar({
         </Panel>
       )}
 
+      {/* Outside the panel, so it stays up if the menu is closed with the range still backwards. */}
+      {filters.time === "custom" && filters.from >= filters.to && (
+        <p role="alert" className="rounded-2xl bg-blush px-4 py-2.5 text-sm font-semibold text-maroon">
+          The end time has to be after the start time. Check From and To.
+        </p>
+      )}
+
       {open === "type" && (
         <Panel menu="type" title="What kind of event?" onDone={close}>
           <div className="flex flex-wrap gap-1.5">

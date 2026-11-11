@@ -133,23 +133,19 @@ async function EventDetail({ id }: { id: number }) {
         </p>
       )}
 
-      {(event.hasFreeFood || event.cost === "paid" || event.registration === "drop_in") && (
-        <div className="mt-5 flex flex-wrap gap-2 font-medium">
-          {event.hasFreeFood && (
-            <span className={`inline-flex items-center gap-2 rounded-full px-4 py-1.5 ${category.tone.accent}`}>
-              <UtensilsIcon className="size-5 shrink-0" />
-              <span className="first-letter:uppercase">{event.foodDescription ?? "Free food"}</span>
-            </span>
-          )}
-          {event.cost === "paid" && (
-            <span className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 ring-1 ring-current/30">
-              <TicketIcon className="size-5 shrink-0" />
-              {event.price ?? "Paid entry: check the post for the price"}
-            </span>
-          )}
-          {event.registration === "drop_in" && <RegistrationBadge event={event} className="px-4 py-1.5" />}
-        </div>
-      )}
+      <div className="mt-5 flex flex-wrap gap-2 font-medium">
+        {event.hasFreeFood && (
+          <span className={`inline-flex items-center gap-2 rounded-full px-4 py-1.5 ${category.tone.accent}`}>
+            <UtensilsIcon className="size-5 shrink-0" />
+            <span className="first-letter:uppercase">{event.foodDescription ?? "Free food"}</span>
+          </span>
+        )}
+        <span className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 ring-1 ring-current/30">
+          <TicketIcon className="size-5 shrink-0" />
+          {event.cost === "free" ? "Free" : event.cost === "paid" ? (event.price ?? "Paid entry: check the post for the price") : "Cost not listed"}
+        </span>
+        {event.registration === "drop_in" && <RegistrationBadge event={event} className="px-4 py-1.5" />}
+      </div>
 
       <div className="mt-8">
         <p className="text-sm font-medium opacity-90">{formatDay(date, "long", today)}</p>

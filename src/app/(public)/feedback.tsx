@@ -11,19 +11,38 @@ import { sendFeedback } from "./feedback-actions";
 // screens. It only opens from a link (FeedbackLink), never by itself.
 
 type Opening = { type: FeedbackType; event?: { id: number; name: string } };
+/** What someone typed before dismissing the form. Held in memory only, so a full page load clears it. */
+type Draft = { chosen: FeedbackType; message: string; contact: string };
 
 const OpenFeedback = createContext<((opening: Opening) => void) | null>(null);
 
+// One draft per event, so words about one event can't be sent as a report on another.
+const draftKey = (event: Opening["event"]) => event?.id ?? "general";
+
 /** Holds the form for every page under it; FeedbackLinks open it. */
 export function FeedbackProvider({ children }: { children: React.ReactNode }) {
-  // A new key per opening, so each one starts with a fresh form.
-  const [opening, setOpening] = useState<(Opening & { key: number }) | null>(null);
-  const open = useCallback((o: Opening) => setOpening({ ...o, key: Date.now() }), []);
+  // A new key per opening, so each one starts from its draft or a fresh form.
+  const [opening, setOpening] = useState<(Opening & { key: number; draft?: Draft }) | null>(null);
+  const drafts = useRef(new Map<number | string, Draft>());
+  const open = useCallback((o: Opening) => setOpening({ ...o, key: Date.now(), draft: drafts.current.get(draftKey(o.event)) }), []);
+  const saveDraft = useCallback((key: number | string, draft: Draft | null) => {
+    if (draft) drafts.current.set(key, draft);
+    else drafts.current.delete(key);
+  }, []);
 
   return (
     <OpenFeedback value={open}>
       {children}
-      {opening && <FeedbackSheet key={opening.key} type={opening.type} event={opening.event} onClosed={() => setOpening(null)} />}
+      {opening && (
+        <FeedbackSheet
+          key={opening.key}
+          type={opening.type}
+          event={opening.event}
+          draft={opening.draft}
+          onDraftChange={saveDraft}
+          onClosed={() => setOpening(null)}
+        />
+      )}
     </OpenFeedback>
   );
 }
@@ -39,19 +58,27 @@ export function FeedbackLink({ type, event, className, children }: Opening & { c
   );
 }
 
-function FeedbackSheet({ type, event, onClosed }: Opening & { onClosed: () => void }) {
+function FeedbackSheet({
+  type,
+  event,
+  draft,
+  onDraftChange,
+  onClosed,
+}: Opening & { draft?: Draft; onDraftChange: (key: number | string, draft: Draft | null) => void; onClosed: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const pressedBackdrop = useRef(false);
   const titleId = useId();
   const [state, action, pending] = useActionState(sendFeedback, null);
-  const [chosen, setChosen] = useState<FeedbackType>(type);
-  const [message, setMessage] = useState("");
-  const [contact, setContact] = useState("");
+  const [chosen, setChosen] = useState<FeedbackType>(draft?.chosen ?? type);
+  const [message, setMessage] = useState(draft?.message ?? "");
+  const [contact, setContact] = useState(draft?.contact ?? "");
   // Said on Send rather than by the browser, whose bubble doesn't always show in a dialog (or for only spaces).
   const [askedForMessage, setAskedForMessage] = useState(false);
   const messageBox = useRef<HTMLTextAreaElement>(null);
   const messageError = useId();
   const missingMessage = askedForMessage && !message.trim();
+  const sent = state?.status === "sent";
+  const eventKey = draftKey(event);
 
   // Opens as a modal (focus stays inside, Escape closes it) and stops the page scrolling behind.
   useEffect(() => {
@@ -59,10 +86,19 @@ function FeedbackSheet({ type, event, onClosed }: Opening & { onClosed: () => vo
     const html = document.documentElement;
     const before = html.style.overflow;
     html.style.overflow = "hidden";
+    // Back or Forward moves on from the page it was opened for. The modal blocks every link, so that's the only way to navigate.
+    const closeOnNavigate = () => dialog.current?.close();
+    window.addEventListener("popstate", closeOnNavigate);
     return () => {
       html.style.overflow = before;
+      window.removeEventListener("popstate", closeOnNavigate);
     };
   }, []);
+
+  // Kept as it's typed, so however the form closes nothing is lost. Once sent, there's nothing to keep.
+  useEffect(() => {
+    onDraftChange(eventKey, !sent && (message.trim() || contact.trim()) ? { chosen, message, contact } : null);
+  }, [onDraftChange, eventKey, sent, chosen, message, contact]);
 
   const close = () => dialog.current?.close();
   const placeholder = FEEDBACK_TYPES.find((t) => t.key === chosen)?.placeholder;
