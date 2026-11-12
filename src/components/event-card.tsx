@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { categoryOf } from "@/lib/categories";
 import type { PublicEvent } from "@/lib/events";
+import { signUpFirst } from "@/lib/registration";
 import { eventStatus, startsInLabel } from "@/lib/status";
 import { campusDate, formatDay, formatDuration, formatTime, toLocalInputs } from "@/lib/time";
 import { everyDays } from "@/lib/weekly";
@@ -103,9 +104,18 @@ export const instagramLink = (event: PublicEvent) =>
 /** Whether a card shows a registration badge: "RSVP" when it's required, "Drop in" when the club said so. */
 export const hasRegistrationBadge = (event: PublicEvent) => event.registration === "required" || event.registration === "drop_in";
 
-export function RegistrationBadge({ event, className }: { event: PublicEvent; className: string }) {
+export function RegistrationBadge({ event, className, isToday = false }: { event: PublicEvent; className: string; isToday?: boolean }) {
   if (event.registration === "required") {
-    return <span className={`rounded-full bg-current/15 font-bold ${className}`} title="Registration required">RSVP</span>;
+    // On the day, spots may be gone: say it plainly so nobody walks over for nothing.
+    return isToday && signUpFirst(event) ? (
+      <span className={`rounded-full bg-current/15 font-bold ${className}`} title="Registration required: check sign-up is still open before you go">
+        Sign-up needed
+      </span>
+    ) : (
+      <span className={`rounded-full bg-current/15 font-bold ${className}`} title="Registration required">
+        RSVP
+      </span>
+    );
   }
   if (event.registration === "drop_in") {
     return <span className={`rounded-full ring-1 ring-current/40 ${className}`}>Drop in</span>;
@@ -176,7 +186,7 @@ export function EventCard({ event, now, showDate = false }: { event: PublicEvent
               {event.cost === "free" ? "Free" : (event.price ?? "Paid entry")}
             </span>
           )}
-          <RegistrationBadge event={event} className="px-3 py-1" />
+          <RegistrationBadge event={event} className="px-3 py-1" isToday={toLocalInputs(event.startsAt).date === campusDate(now)} />
           {!event.openToAll && <span className="rounded-full px-3 py-1 ring-1 ring-current/40">Members or group only</span>}
         </div>
       )}

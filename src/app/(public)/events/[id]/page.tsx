@@ -13,6 +13,7 @@ import { categoryOf } from "@/lib/categories";
 import { freeFoodPhrase } from "@/lib/clean";
 import { eventSchemaJson, ONLINE } from "@/lib/event-schema";
 import { getEvent, type PublicEvent } from "@/lib/events";
+import { registrationLink, signUpFirst } from "@/lib/registration";
 import { formatDay, formatDuration, formatTime, formatTimeRange, timeAgo, toLocalInputs, todayInCampus } from "@/lib/time";
 import { everyDays } from "@/lib/weekly";
 
@@ -183,7 +184,7 @@ async function EventDetail({ id }: { id: number }) {
         )}
       </div>
 
-      <Registration event={event} buttonClass={category.tone.button} />
+      <Registration event={event} buttonClass={category.tone.button} isToday={date === today} />
 
       {!event.openToAll && (
         <p className="mt-4 rounded-2xl bg-current/10 px-4 py-2.5 text-sm">
@@ -286,24 +287,8 @@ const WHERE = {
   other: { label: "see the club's post for how", button: "See how" },
 } as const;
 
-function registrationLink(event: PublicEvent): string | null {
-  switch (event.registrationWhere) {
-    case "rubric":
-      return event.registrationUrl ?? event.rubricUrl;
-    case "link_in_bio":
-      // The specific link from the club's bio or Linktree when we found it (worker/bio_links.py), else the profile.
-      return event.registrationUrl ?? (event.clubUsername ? `https://www.instagram.com/${event.clubUsername}/` : null);
-    case "at_the_door":
-      return null;
-    case "qr_code":
-      return event.permalink;
-    default:
-      return event.registrationUrl ?? event.permalink;
-  }
-}
-
 /** Required: "Registration required: [where]" with a button. Recommended: a lighter note. Otherwise nothing. */
-function Registration({ event, buttonClass }: { event: PublicEvent; buttonClass: string }) {
+function Registration({ event, buttonClass, isToday }: { event: PublicEvent; buttonClass: string; isToday: boolean }) {
   if (event.registration !== "required" && event.registration !== "recommended") return null;
   const known = event.registrationWhere ? WHERE[event.registrationWhere] : { label: "check the club's post for how", button: "See the post" };
   // A "link in bio" we resolved to the actual sign-up link opens it directly.
@@ -330,6 +315,8 @@ function Registration({ event, buttonClass }: { event: PublicEvent; buttonClass:
     <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-current/10 px-4 py-3">
       <p className="text-sm">
         <span className="font-bold">Registration required:</span> {where.label}
+        {/* Found on the day: spots may be gone, so say so rather than let someone walk over for nothing. */}
+        {isToday && signUpFirst(event) && <span className="mt-0.5 block">It&apos;s today, so check sign-up is still open before you go.</span>}
       </p>
       {href && where.button && (
         <a
