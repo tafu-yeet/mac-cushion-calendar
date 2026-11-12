@@ -13,6 +13,7 @@ const LINKS = [
   { href: "/week", label: "Calendar", matches: (path: string) => path === "/week" || path === "/day" },
   // No room beside the wordmark on phones: there it's in the More menu.
   { href: "/communities", label: "Communities", matches: (path: string) => path === "/communities", wide: true },
+  { href: "/clubs", label: "Clubs", matches: (path: string) => path === "/clubs" || path.startsWith("/clubs/"), wide: true },
 ] as const;
 
 /** The nav with the current page highlighted. Reads the URL, so render it inside <Suspense>. */
@@ -39,7 +40,7 @@ export function SiteNavLinks({ active }: { active?: string }) {
           {label}
         </Link>
       ))}
-      <MoreMenu here={active === "/communities"} active={active} />
+      <MoreMenu here={!!active && (active === "/communities" || active === "/clubs" || active.startsWith("/clubs/"))} active={active} />
     </nav>
   );
 }
@@ -93,8 +94,11 @@ function MoreMenu({ here, active }: { here: boolean; active?: string }) {
       </button>
       {open && (
         <div id={menuId} className="absolute right-0 top-full z-40 mt-2 flex w-52 flex-col rounded-2xl bg-panel p-1.5 text-maroon shadow-lg ring-1 ring-maroon/15">
-          <Link href="/communities" aria-current={here ? "page" : undefined} onClick={() => setOpen(false)} className={MENU_ITEM}>
+          <Link href="/communities" aria-current={active === "/communities" ? "page" : undefined} onClick={() => setOpen(false)} className={MENU_ITEM}>
             Communities
+          </Link>
+          <Link href="/clubs" aria-current={active === "/clubs" ? "page" : undefined} onClick={() => setOpen(false)} className={MENU_ITEM}>
+            Clubs
           </Link>
           <div onClickCapture={() => setOpen(false)}>
             <TourButton className={MENU_ITEM} />

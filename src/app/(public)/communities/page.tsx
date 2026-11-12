@@ -6,10 +6,10 @@ import { Suspense } from "react";
 import { EventCard } from "@/components/event-card";
 import { campus } from "@/lib/campus";
 import { COMMUNITY_GROUPS, communityOf } from "@/lib/communities";
-import { getEventsBetween, type PublicEvent } from "@/lib/events";
-import { byStart, highlightedFirst } from "@/lib/filters";
+import { getEventsBetween } from "@/lib/events";
+import { byStart, groupByDay } from "@/lib/filters";
 import { endMs } from "@/lib/status";
-import { addDays, dayStartIso, formatDay, toLocalInputs, todayInCampus } from "@/lib/time";
+import { addDays, dayStartIso, formatDay, todayInCampus } from "@/lib/time";
 
 import { MissingEventLink } from "../feedback";
 
@@ -118,13 +118,4 @@ async function Browser({ searchParams }: { searchParams: PageProps<"/communities
       )}
     </div>
   );
-}
-
-function groupByDay(events: PublicEvent[]): [string, PublicEvent[]][] {
-  const days = new Map<string, PublicEvent[]>();
-  for (const e of events) {
-    const date = toLocalInputs(e.startsAt).date;
-    days.set(date, [...(days.get(date) ?? []), e]);
-  }
-  return [...days.entries()].map(([date, list]) => [date, highlightedFirst(list)]);
 }

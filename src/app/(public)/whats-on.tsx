@@ -7,7 +7,7 @@ import { BigDate, DateStats } from "@/components/big-date";
 import type { DayCounts } from "@/components/day-picker";
 import { EventCard } from "@/components/event-card";
 import { FilterBar, useFilters } from "@/components/filter-bar";
-import { ChevronIcon, ExternalIcon, PinIcon } from "@/components/icons";
+import { ChevronIcon, PinIcon } from "@/components/icons";
 import { SiteTour } from "@/components/site-tour";
 import { useNow } from "@/components/use-now";
 import { campus } from "@/lib/campus";
@@ -292,20 +292,16 @@ function EmptyState({
       )}
       {clubs.length > 0 && (
         <div className="mt-5 text-sm text-maroon/85">
-          <p>Looking for a club? Check its Instagram:</p>
+          <p>Looking for a club? See its page:</p>
           <ul className="mt-1.5 flex flex-col items-center gap-1">
             {clubs.map((c) => (
               <li key={c.username}>
-                <a
-                  href={`https://www.instagram.com/${c.username}/`}
-                  target="_blank"
-                  rel="noreferrer"
+                <Link
+                  href={`/clubs/${c.username}`}
                   className="inline-flex min-h-6 items-center gap-1 font-semibold text-maroon underline underline-offset-2 hover:text-plum"
                 >
                   {c.name}
-                  <ExternalIcon className="size-3.5 shrink-0" />
-                  <span className="sr-only">(opens Instagram)</span>
-                </a>
+                </Link>
               </li>
             ))}
           </ul>

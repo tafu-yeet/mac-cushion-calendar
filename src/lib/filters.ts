@@ -188,6 +188,16 @@ export function clubsMatching(clubs: TrackedClub[], q: string): TrackedClub[] {
 /** Highlighted events first, otherwise in the order given. */
 export const highlightedFirst = (events: PublicEvent[]) => [...events.filter((e) => e.highlighted), ...events.filter((e) => !e.highlighted)];
 
+/** Events (already in order) grouped by their campus-local day, highlighted ones first within each day. */
+export function groupByDay(events: PublicEvent[]): [string, PublicEvent[]][] {
+  const days = new Map<string, PublicEvent[]>();
+  for (const e of events) {
+    const date = toLocalInputs(e.startsAt).date;
+    days.set(date, [...(days.get(date) ?? []), e]);
+  }
+  return [...days.entries()].map(([date, list]) => [date, highlightedFirst(list)]);
+}
+
 export function byStart(a: PublicEvent, b: PublicEvent): number {
   // Campus-local "YYYY-MM-DDTHH:MM"; "~" sorts after any time.
   const key = (e: PublicEvent) => {

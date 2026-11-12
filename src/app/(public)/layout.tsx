@@ -55,6 +55,9 @@ export default function PublicLayout({ children }: LayoutProps<"/">) {
             <Link href="/communities" className={FOOTER_LINK}>
               Communities
             </Link>
+            <Link href="/clubs" className={FOOTER_LINK}>
+              Clubs
+            </Link>
             <FeedbackLink type="idea" className={FOOTER_LINK}>
               Send feedback
             </FeedbackLink>
