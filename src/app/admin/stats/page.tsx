@@ -2,13 +2,14 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { requireAdmin } from "@/lib/auth";
-import { addDays, formatDay, toLocalInputs, todayInCampus } from "@/lib/time";
+import { addDays, formatDay, mondayOf, toLocalInputs, todayInCampus } from "@/lib/time";
 
 import { HighlightToggle } from "../highlight-toggle";
 
 export const metadata: Metadata = { title: "Stats", alternates: { canonical: "/admin/stats" } };
 
 const CHART_DAYS = 14;
+const VISITOR_WEEKS = 8;
 const ENOUGH_SEEN = 100; // views per group before a difference means much
 const TOP_EVENTS = 15;
 const APPS = [
@@ -23,17 +24,141 @@ export default function StatsPage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Stats</h1>
         <p className="mt-1 text-sm text-stone-600">
-          How often people add events to their calendar from the site (counted when the calendar link or file is
-          handed out, once per event per browser a day, so repeat taps count once). Visitors and page views are in
-          Vercel&apos;s Analytics tab.
+          Who comes back, which events get traction, and how often people add events to their calendar. Page views
+          are in Vercel&apos;s Analytics tab.
         </p>
       </div>
+      <Suspense fallback={<p className="text-sm text-stone-500">Loading…</p>}>
+        <Visitors />
+      </Suspense>
       <Suspense fallback={<p className="text-sm text-stone-500">Loading…</p>}>
         <HighlightTest />
       </Suspense>
       <Suspense fallback={<p className="text-sm text-stone-500">Loading…</p>}>
         <CalendarAdds />
       </Suspense>
+    </div>
+  );
+}
+
+/** Weekly visitors and whether they come back (visit-tracker.tsx; weeks start on Monday, campus time). */
+async function Visitors() {
+  const { supabase } = await requireAdmin();
+  const [active, retention, perVisitor] = await Promise.all([
+    supabase.from("weekly_active").select("*").order("week", { ascending: false }).limit(VISITOR_WEEKS),
+    supabase.from("weekly_retention").select("*").order("cohort_week", { ascending: false }).limit(VISITOR_WEEKS),
+    supabase.from("engagement_per_visitor").select("*").order("week", { ascending: false }).limit(VISITOR_WEEKS),
+  ]);
+  const error = active.error ?? retention.error ?? perVisitor.error;
+  if (error) {
+    // The views come with the visitor_tracking migration; before it's applied they don't exist.
+    const missing = error.code === "PGRST205" || error.code === "42P01";
+    return (
+      <p className={`text-sm ${missing ? "text-stone-500" : "text-red-700"}`}>
+        {missing ? "Visitor counting isn't switched on yet." : `Couldn't load visitors: ${error.message}`}
+      </p>
+    );
+  }
+
+  const weeks = active.data ?? [];
+  const cohorts = retention.data ?? [];
+  const today = todayInCampus();
+  const label = (week: string | null) => (week ? formatDay(week, "short", today) : "–");
+  const share = (part: number, whole: number) => (whole ? `${Math.round((part / whole) * 100)}%` : "–");
+  const percent = (v: number | null) => (v === null ? "not yet" : `${v}%`);
+  const thisWeek = weeks.find((w) => w.week === mondayOf(today));
+  const latest = cohorts.find((c) => c.week_1_pct !== null); // newest group with an answer
+  const per = new Map((perVisitor.data ?? []).map((r) => [r.week, r]));
+
+  return (
+    <div className="flex flex-col gap-4">
+      <h2 className="text-lg font-semibold">Visitors</h2>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <Figure value={thisWeek?.visitors ?? 0} label="Visitors this week" />
+        <Figure value={thisWeek?.new_visitors ?? 0} label="New this week" />
+        <Figure
+          value={share(thisWeek?.returning_visitors ?? 0, thisWeek?.visitors ?? 0)}
+          label={`Returning this week (${thisWeek?.returning_visitors ?? 0})`}
+        />
+        <Figure
+          value={latest ? `${latest.week_1_pct}%` : "–"}
+          label={latest ? `Came back the next week, of the ${latest.new_visitors} new the week of ${label(latest.cohort_week)}` : "Came back the next week: first answer a week after counting starts"}
+        />
+      </div>
+
+      {weeks.length ? (
+        <div className="grid gap-4 lg:grid-cols-2">
+          <section className="rounded-xl border border-stone-200 bg-white">
+            <h3 className="border-b border-stone-200 px-4 py-3 text-sm font-semibold">Each week</h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="border-b border-stone-200 text-left text-xs text-stone-600">
+                  <tr>
+                    <th className="px-4 py-2 font-medium">Week of</th>
+                    <th className="px-4 py-2 text-right font-medium">Visitors</th>
+                    <th className="px-4 py-2 text-right font-medium">New</th>
+                    <th className="px-4 py-2 text-right font-medium">Returning</th>
+                    <th className="px-4 py-2 text-right font-medium">Opens each</th>
+                    <th className="px-4 py-2 text-right font-medium">Adds each</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-stone-100 tabular-nums">
+                  {weeks.map((w) => (
+                    <tr key={w.week}>
+                      <td className="px-4 py-2 font-medium">{label(w.week)}</td>
+                      <td className="px-4 py-2 text-right">{w.visitors}</td>
+                      <td className="px-4 py-2 text-right">{w.new_visitors}</td>
+                      <td className="px-4 py-2 text-right">
+                        {w.returning_visitors} <span className="text-stone-500">({share(w.returning_visitors ?? 0, w.visitors ?? 0)})</span>
+                      </td>
+                      <td className="px-4 py-2 text-right">{per.get(w.week)?.opens_per_visitor ?? "–"}</td>
+                      <td className="px-4 py-2 text-right">{per.get(w.week)?.calendar_adds_per_visitor ?? "–"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section className="rounded-xl border border-stone-200 bg-white">
+            <h3 className="border-b border-stone-200 px-4 py-3 text-sm font-semibold">Did new visitors come back?</h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="border-b border-stone-200 text-left text-xs text-stone-600">
+                  <tr>
+                    <th className="px-4 py-2 font-medium">New the week of</th>
+                    <th className="px-4 py-2 text-right font-medium">New</th>
+                    <th className="px-4 py-2 text-right font-medium">1 week later</th>
+                    <th className="px-4 py-2 text-right font-medium">2 weeks</th>
+                    <th className="px-4 py-2 text-right font-medium">4 weeks</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-stone-100 tabular-nums">
+                  {cohorts.map((c) => (
+                    <tr key={c.cohort_week}>
+                      <td className="px-4 py-2 font-medium">{label(c.cohort_week)}</td>
+                      <td className="px-4 py-2 text-right">{c.new_visitors}</td>
+                      <td className="px-4 py-2 text-right">{percent(c.week_1_pct)}</td>
+                      <td className="px-4 py-2 text-right">{percent(c.week_2_pct)}</td>
+                      <td className="px-4 py-2 text-right">{percent(c.week_4_pct)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      ) : (
+        <p className="text-sm text-stone-500">No visits counted yet.</p>
+      )}
+
+      <p className="text-sm text-stone-600">
+        A visitor is one browser, counted once a day; admins and automated browsers aren&apos;t counted. New means its
+        first visit was that week. “1 week later” is the share of that week&apos;s new visitors who came back at any
+        point the following Monday to Sunday, and fills in as that week goes. Someone who clears their browser or
+        switches phones counts as new again, so the real return rate is a little higher. Opens and adds each are per
+        visitor that week.
+      </p>
     </div>
   );
 }
@@ -265,7 +390,7 @@ async function CalendarAdds() {
   );
 }
 
-function Figure({ value, label }: { value: number; label: string }) {
+function Figure({ value, label }: { value: number | string; label: string }) {
   return (
     <div className="rounded-xl border border-stone-200 bg-white p-4">
       <p className="text-2xl font-semibold tabular-nums">{value}</p>

@@ -39,12 +39,14 @@ export type Database = {
           event_id: number
           highlighted: boolean
           id: number
+          visitor_id: string | null
         }
         Insert: {
           app: string
           created_at?: string
           event_id: number
           id?: never
+          visitor_id?: string | null
         }
         Update: {
           app?: string
@@ -52,6 +54,7 @@ export type Database = {
           event_id?: number
           highlighted?: boolean
           id?: never
+          visitor_id?: string | null
         }
         Relationships: [
           {
@@ -112,6 +115,7 @@ export type Database = {
           event_id: number
           highlighted: boolean
           id: number
+          visitor_id: string | null
         }
         Insert: {
           action: string
@@ -119,6 +123,7 @@ export type Database = {
           event_id: number
           highlighted?: boolean
           id?: number
+          visitor_id?: string | null
         }
         Update: {
           action?: string
@@ -126,6 +131,7 @@ export type Database = {
           event_id?: number
           highlighted?: boolean
           id?: number
+          visitor_id?: string | null
         }
         Relationships: [
           {
@@ -852,8 +858,46 @@ export type Database = {
         }
         Relationships: []
       }
+      visits: {
+        Row: {
+          created_at: string
+          id: number
+          is_new: boolean
+          path: string | null
+          referrer_source: string | null
+          visitor_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: never
+          is_new?: boolean
+          path?: string | null
+          referrer_source?: string | null
+          visitor_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: never
+          is_new?: boolean
+          path?: string | null
+          referrer_source?: string | null
+          visitor_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
+      engagement_per_visitor: {
+        Row: {
+          calendar_adds_per_visitor: number | null
+          instagram_per_visitor: number | null
+          opens_per_visitor: number | null
+          tickets_per_visitor: number | null
+          visitors: number | null
+          week: string | null
+        }
+        Relationships: []
+      }
       event_traction: {
         Row: {
           added: number | null
@@ -874,6 +918,25 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      weekly_active: {
+        Row: {
+          new_visitors: number | null
+          returning_visitors: number | null
+          visitors: number | null
+          week: string | null
+        }
+        Relationships: []
+      }
+      weekly_retention: {
+        Row: {
+          cohort_week: string | null
+          new_visitors: number | null
+          week_1_pct: number | null
+          week_2_pct: number | null
+          week_4_pct: number | null
+        }
+        Relationships: []
       }
     }
     Functions: {
