@@ -4,7 +4,7 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 
 import { BackLink } from "@/components/back-link";
-import { clubInitials, HighlightFrame, RecurringBadge, RegistrationBadge, ScheduleBadge } from "@/components/event-card";
+import { clubInitials, ClubLink, HighlightFrame, RecurringBadge, RegistrationBadge, ScheduleBadge } from "@/components/event-card";
 import { AddToCalendar } from "@/components/add-to-calendar";
 import { ExternalIcon, PinIcon, TicketIcon, UtensilsIcon } from "@/components/icons";
 import { ShareButton } from "@/components/share-button";
@@ -92,10 +92,10 @@ async function EventDetail({ id }: { id: number }) {
       <p className="mt-3 opacity-90">
         {event.hostedBy ? (
           <>
-            {event.hostedBy} · shared by {event.clubName}
+            {event.hostedBy} · shared by <ClubLink event={event} />
           </>
         ) : (
-          event.clubName
+          <ClubLink event={event} />
         )}
       </p>
       {event.weekly && (

@@ -101,6 +101,16 @@ export function HighlightFrame({ event, className = "rounded-[28px]", children }
 export const instagramLink = (event: PublicEvent) =>
   event.permalink ?? (event.addedByHand && event.clubUsername ? `https://www.instagram.com/${event.clubUsername}/` : null);
 
+/** The posting club's name, linking to its page (its other events, and Subscribe). */
+export function ClubLink({ event }: { event: PublicEvent }) {
+  if (!event.clubUsername) return <>{event.clubName}</>;
+  return (
+    <Link href={`/clubs/${event.clubUsername}`} className="underline decoration-current/35 underline-offset-2 hover:decoration-current">
+      {event.clubName}
+    </Link>
+  );
+}
+
 /** Whether a card shows a registration badge: "RSVP" when it's required, "Drop in" when the club said so. */
 export const hasRegistrationBadge = (event: PublicEvent) => event.registration === "required" || event.registration === "drop_in";
 
@@ -165,10 +175,10 @@ export function EventCard({ event, now, showDate = false }: { event: PublicEvent
       <p className="mt-1 text-sm opacity-90">
         {event.hostedBy ? (
           <>
-            {event.hostedBy} · shared by {event.clubName}
+            {event.hostedBy} · shared by <ClubLink event={event} />
           </>
         ) : (
-          event.clubName
+          <ClubLink event={event} />
         )}
       </p>
 

@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { connection } from "next/server";
 
+import { getClubs } from "@/lib/clubs";
 import { getEventsBetween } from "@/lib/events";
 import { SITE_URL } from "@/lib/site-url";
 import { endMs } from "@/lib/status";
@@ -16,11 +17,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const today = todayInCampus();
   const events = await getEventsBetween(dayStartIso(today), dayStartIso(addDays(today, DAYS_AHEAD)));
   const upcoming = events.filter((e) => !(e.startTimeKnown && endMs(e) <= now));
+  // Only clubs with something coming up: an empty club page has nothing for a search to find.
+  const posting = new Set(upcoming.map((e) => e.clubId));
+  const clubs = (await getClubs()).filter((c) => posting.has(c.id));
 
   return [
     { url: SITE_URL },
     { url: `${SITE_URL}/week` },
     { url: `${SITE_URL}/communities` },
+    { url: `${SITE_URL}/clubs` },
     ...upcoming.map((e) => ({ url: `${SITE_URL}/events/${e.id}` })),
+    ...clubs.map((c) => ({ url: `${SITE_URL}/clubs/${c.username}` })),
   ];
 }

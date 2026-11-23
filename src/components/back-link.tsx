@@ -45,6 +45,7 @@ function label(href: string): string {
   if (path === "/") return "What's on";
   if (path === "/week" || path === "/day") return "Calendar";
   if (path === "/communities") return "Communities";
+  if (path === "/clubs") return "Clubs";
   return "Back";
 }
 

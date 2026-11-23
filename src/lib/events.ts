@@ -181,6 +181,24 @@ export async function getEventsBetween(fromIso: string, toIso: string): Promise<
   return collapseCopies((data as Row[]).map(toPublicEvent));
 }
 
+/** One club's approved events starting from fromIso, earliest first: its page and its calendar feed. */
+export async function getClubEvents(clubId: number, fromIso: string): Promise<PublicEvent[]> {
+  "use cache";
+  cacheLife("minutes");
+  cacheTag(EVENTS_TAG);
+
+  const { data, error } = await createPublicClient()
+    .from("events")
+    .select(COLUMNS)
+    .eq("status", "approved")
+    .eq("club_id", clubId)
+    .gte("starts_at", fromIso)
+    .order("starts_at")
+    .limit(300);
+  if (error) throw new Error(`Couldn't load club ${clubId}'s events: ${error.message}`);
+  return collapseCopies((data as Row[]).map(toPublicEvent));
+}
+
 /** One approved event, or null if it doesn't exist or isn't public. */
 export async function getEvent(id: number): Promise<PublicEvent | null> {
   "use cache";

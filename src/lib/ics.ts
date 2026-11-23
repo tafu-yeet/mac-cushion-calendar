@@ -64,28 +64,52 @@ export function calendarDescription(event: PublicEvent, eventUrl: string): strin
     .join("\n");
 }
 
-export function eventToIcs(event: PublicEvent, eventUrl: string, now = new Date()): string {
+/** One event's VEVENT lines. A subscribed calendar keeps cancelled and postponed events, so they say so. */
+function vevent(event: PublicEvent, eventUrl: string, now: Date): string[] {
   const span = calendarSpan(event);
   const when = span.allDay
     ? [`DTSTART;VALUE=DATE:${span.day.replace(/-/g, "")}`, `DTEND;VALUE=DATE:${span.nextDay.replace(/-/g, "")}`]
     : [`DTSTART:${utc(span.start)}`, `DTEND:${utc(span.end)}`];
-
-  const lines = [
-    "BEGIN:VCALENDAR",
-    "VERSION:2.0",
-    `PRODID:-//${campus.siteName}//EN`,
-    "CALSCALE:GREGORIAN",
-    "METHOD:PUBLISH",
+  const off = event.scheduleStatus === "cancelled" ? "Cancelled: " : event.scheduleStatus === "postponed" ? "Postponed: " : "";
+  return [
     "BEGIN:VEVENT",
     `UID:event-${event.id}@mac-cushion-calendar`,
     `DTSTAMP:${utc(now)}`,
     ...when,
-    `SUMMARY:${text(event.name)}`,
+    `SUMMARY:${text(off + event.name)}`,
     `DESCRIPTION:${text(calendarDescription(event, eventUrl))}`,
     ...(event.location ? [`LOCATION:${text(event.location)}`] : []),
     `URL:${eventUrl}`,
+    ...(event.scheduleStatus === "cancelled" ? ["STATUS:CANCELLED"] : []),
     "END:VEVENT",
-    "END:VCALENDAR",
   ];
+}
+
+function calendarFile(header: string[], body: string[]): string {
+  const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", `PRODID:-//${campus.siteName}//EN`, "CALSCALE:GREGORIAN", "METHOD:PUBLISH", ...header, ...body, "END:VCALENDAR"];
   return lines.map(fold).join("\r\n") + "\r\n";
+}
+
+export function eventToIcs(event: PublicEvent, eventUrl: string, now = new Date()): string {
+  return calendarFile([], vevent(event, eventUrl, now));
+}
+
+/**
+ * A calendar to subscribe to (a club's events): calendar apps fetch it again every few
+ * hours, so new events show up and changed ones update by their UID.
+ */
+export function feedToIcs(
+  feed: { name: string; description: string },
+  events: PublicEvent[],
+  urlFor: (event: PublicEvent) => string,
+  now = new Date(),
+): string {
+  const header = [
+    `X-WR-CALNAME:${text(feed.name)}`,
+    `X-WR-CALDESC:${text(feed.description)}`,
+    // How often to check for changes; apps treat it as a hint (Google takes up to a day regardless).
+    "REFRESH-INTERVAL;VALUE=DURATION:PT6H",
+    "X-PUBLISHED-TTL:PT6H",
+  ];
+  return calendarFile(header, events.flatMap((e) => vevent(e, urlFor(e), now)));
 }
