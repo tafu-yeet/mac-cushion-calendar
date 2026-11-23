@@ -50,14 +50,16 @@ TIEBREAK_MODEL = env("TIEBREAK_MODEL", "claude-opus-5-5")
 CHECK_EFFORT = env("CHECK_EFFORT", "medium")
 
 # Events at or above these confidences are published without review when the
-# check agreed and nothing similar is known (see auto_approve.py). Free food
-# needs more: both models can wrongly assume food is free, while for other
-# events the risk is the date, which the check covers. "none" for the first
-# sends every event to the review queue.
-# 0.85 since 2026-10-19: Haiku 5.5 rates clear free food 0.85 where Haiku 4.5 said 0.9.
-_auto = env("AUTO_APPROVE_MIN_CONFIDENCE", "0.85")
+# check agreed and nothing similar is known (see auto_approve.py). "none" for
+# the first sends every event to the review queue.
+# 0.6 for both since 2026-11-19 (was 0.85 with free food, 0.75 without): of the
+# events a person reviewed that only confidence had held (dated, timed, no review
+# notes, rechecked, not a collab), every one at 0.6 or more was approved, free
+# food included (21 of 21 between 0.6 and 0.85). Confidence barely predicts a
+# rejection; the review notes and the copy and collab checks are what catch them.
+_auto = env("AUTO_APPROVE_MIN_CONFIDENCE", "0.6")
 AUTO_APPROVE_MIN_CONFIDENCE = None if _auto.lower() == "none" else float(_auto)
-AUTO_APPROVE_OTHER_MIN_CONFIDENCE = float(env("AUTO_APPROVE_OTHER_MIN_CONFIDENCE", "0.75"))
+AUTO_APPROVE_OTHER_MIN_CONFIDENCE = float(env("AUTO_APPROVE_OTHER_MIN_CONFIDENCE", "0.6"))
 
 # How posts are read: "batch" sends them through the Message Batches API (half
 # price, answers within minutes to an hour; batch_reader.py), "now" calls the

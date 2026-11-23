@@ -28,8 +28,26 @@
     "DBAC": "David Braley Athletic Centre",
     "HSC": "Health Sciences Centre",
     "Mills": "Mills Memorial Library",
-    "Thode": "H.G. Thode Library of Science and Engineering"
+    "Thode": "H.G. Thode Library of Science and Engineering",
+    "HH": "Hamilton Hall",
+    "CNH": "Chester New Hall",
+    "GSB": "General Sciences Building",
+    "UH": "University Hall",
+    "GH": "Gilmour Hall",
+    "PC": "Psychology Building",
+    "LSB": "Life Sciences Building",
+    "NRB": "Nuclear Research Building",
+    "DSB": "DeGroote School of Business",
+    "MCCD": "McLean Centre for Collaborative Discovery",
+    "IWC": "Ivor Wynne Centre",
+    "Innis": "Innis Library"
   },
+  "campusPlaces": [
+    "Bridges Cafe", "Bridges Café", "The Phoenix", "Ron Joyce Stadium", "Burridge Gym", "CIBC Hall",
+    "Convocation Hall", "L.R. Wilson", "LR Wilson", "Student Wellness Centre", "Hedden Hall", "Mary E. Keyes",
+    "Les Prince Hall", "Wallingford Hall", "Bates Residence", "Moulton Hall", "Brandon Hall", "Edwards Hall",
+    "Matthews Hall", "Whidden Hall", "Woodstock Hall", "McKay Hall"
+  ],
   "rubric": {
     "universityId": "187",
     "countryCode": "CA",
