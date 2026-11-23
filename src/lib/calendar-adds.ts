@@ -3,6 +3,7 @@ import "server-only";
 import { after, type NextRequest, type NextResponse } from "next/server";
 
 import { createPublicClient } from "@/lib/supabase/public";
+import { isVisitorId, VISITOR_KEY } from "@/lib/visitor";
 
 export type CalendarAddApp = "google" | "outlook" | "ics";
 
@@ -13,7 +14,8 @@ const COUNTED_FOR_S = 24 * 60 * 60;
 /**
  * Counts one "Add to calendar" for the admin Stats page: once per event per browser a day
  * (a cookie on `response`), so double taps and repeated tests don't inflate it. Call it from
- * the route that answers the add; a failure only loses the count, never the add.
+ * the route that answers the add; a failure only loses the count, never the add. It carries
+ * the browser's anonymous visitor id from its cookie when it has one (src/lib/visitor.ts).
  */
 export function countCalendarAdd(request: NextRequest, response: NextResponse, eventId: number, app: CalendarAddApp): void {
   const cookie = `cushion-added-${eventId}`;
@@ -27,9 +29,12 @@ export function countCalendarAdd(request: NextRequest, response: NextResponse, e
     path: "/",
     maxAge: COUNTED_FOR_S,
   });
+  const visitorId = request.cookies.get(VISITOR_KEY)?.value;
   // Counted once the response is on its way.
   after(async () => {
-    const { error } = await createPublicClient().from("calendar_adds").insert({ event_id: eventId, app });
+    const { error } = await createPublicClient()
+      .from("calendar_adds")
+      .insert({ event_id: eventId, app, visitor_id: isVisitorId(visitorId) ? visitorId : null });
     if (error) console.error(`Couldn't count a calendar add: ${error.message}`);
   });
 }

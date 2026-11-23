@@ -60,13 +60,16 @@ What that means for how it's built:
    disagreements become review notes (`worker/extractors/two_stage.py`).
 4. **Review:** an event publishes itself when Sonnet read it the same way as
    Haiku (or, where they disagreed, an Opus tie-breaker sided with Sonnet), it
-   has a start time, the confidence is 0.85+ with free food or 0.75+ without,
-   and it isn't another club's event or an off-campus collab. Where and when
+   has a start time, the confidence is 0.6+,
+   and it isn't another club's event or an off-campus collab (campus means a
+   building or place in `campus.config.json`). Sonnet finding free food Haiku
+   missed doesn't hold an event back; other review notes do. Where and when
    decide what's a copy before the name does (`worker/places.py`): the same
    room at about the same time is one event whatever it's called, and a similar
    name in another room or building, or hours apart, isn't (another club's is a
    separate event; the same club's waits for a person, since it may be a room
-   change or a second session). Copies sort themselves out (a copy of a
+   change or a second session). Copies sort themselves out (another club's
+   copy of a published event with nearly the same name and start, a copy of a
    published event, the less complete of two pending copies, a teaser once the
    dated post arrives, and a date a newer post moved are rejected with a note;
    a club's post of an event already listed on Rubric isn't a copy, since the

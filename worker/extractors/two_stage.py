@@ -142,6 +142,10 @@ def merge(first: list[ExtractedEvent], first_model: str, second: list[ExtractedE
 # Notes a tie-breaker can settle: where the two readings put an event, and whether it exists.
 DISAGREEMENT_NOTE = re.compile(r"^(\w+ said .*; using \w+'s\.|Only \w+ found this event.*)$")
 FOOD_DISPUTE_NOTE = re.compile(r"^\w+ found free food .*; \w+ found none\. Check the post\.$")
+# The check found free food the first pass missed. Its reading is the one used, so this is a note for the
+# record, not a disagreement: it doesn't hold an event back (auto_approve.py). People approved 15 of 16 such
+# events by hand before 2026-11-22, keeping the free food every time.
+FOOD_FIND_NOTE = re.compile(r"^\w+ found free food that \w+ missed\.$")
 
 
 def settleable(fe) -> bool:

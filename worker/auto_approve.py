@@ -11,16 +11,24 @@ the review queue:
   teasers that a fuller post follows);
 - it's run by the posting club, or co-run with a club on our list, or held on
   campus or online (an off-campus collab can be another school's event);
+  campus is any building or place in campus.config.json, by code or name;
 - no other club's event looks like the same one: the same room at about the
   same time, a similar name the same day (unless it's somewhere else or hours
   apart), or a repost naming this club as host.
+
+Review notes hold an event back, except two kinds: the check finding free food
+the first pass missed (its reading is the one used), and this module's own
+"Not published automatically" notes, which are worked out afresh every time.
 
 Two events are one event when they're in the same room at about the same time,
 whatever their names; similar names count only when the places and times don't
 say otherwise (two clubs' "Halloween Social"s in different buildings are two
 events). See same_event and places.py.
 
-Copies sort themselves out instead of waiting for a person. Within one club
+Copies sort themselves out instead of waiting for a person. Another club's
+copy of a published event is rejected when it has nearly the same name and
+start, and isn't somewhere else (and doesn't add free food the published one
+lacks); other lookalikes from another club wait for a person. Within one club
 (never between two events from the same post, which the model split on
 purpose), and except that a similar name in another room or hours apart waits
 for a person (a moved event, or a second session):
@@ -55,7 +63,7 @@ from types import SimpleNamespace
 
 from supabase import Client
 
-from extractors.two_stage import settle, settleable
+from extractors.two_stage import FOOD_FIND_NOTE, settle, settleable
 from places import place_match
 from settings import AUTO_APPROVE_MIN_CONFIDENCE, AUTO_APPROVE_OTHER_MIN_CONFIDENCE, CAMPUS, LOCAL_TZ
 
@@ -69,10 +77,13 @@ UNDATED_EXPIRE_DAYS = 14
 FILLER = {"mcmaster", "mac", "the", "a", "an", "of", "at", "and", "x", "with", "club", "society", "association"}
 # Names that number their own dates ("Day 2", "(Friday)", "Oct 24") are a series, never a moved date.
 SERIES_NAME = re.compile(r"\b(day|part|week|session)\s*\d|\(\w+\)|\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w* \d", re.I)
+_CAMPUS_NAMES = [*CAMPUS["campusLocations"], *CAMPUS["campusLocations"].values(), *CAMPUS.get("campusPlaces", [])]
 CAMPUS_PLACE = re.compile(
-    r"\b(" + "|".join(re.escape(k) for k in CAMPUS["campusLocations"]) + r"|mcmaster|zoom|online|teams|virtual)\b", re.I
+    r"\b(" + "|".join(re.escape(k) for k in _CAMPUS_NAMES) + r"|mcmaster|zoom|online|teams|virtual)\b", re.I
 )
-FIELDS = "id, name, status, reviewed_by, club_id, post_id, source, starts_at, start_time_known, ends_at, location, price, confidence, hosted_by, posts(posted_at)"
+AUTO_HOLD_NOTE = "Not published automatically:"  # this module's own holds, worked out afresh every time
+FIELDS = ("id, name, status, reviewed_by, club_id, post_id, source, starts_at, start_time_known, ends_at, location, price, "
+          "confidence, hosted_by, has_free_food, posts(posted_at)")
 
 
 @dataclass
@@ -96,8 +107,12 @@ def review(sb: Client, row: dict, verified_by: str | None, club_name: str, poste
         row.update(status="approved", auto_approved=True, reviewed_at=now_iso)
     elif decision.action == "reject":
         row.update(status="rejected", reviewed_at=now_iso)
-    if decision.note and decision.note not in row["review_notes"]:
-        row["review_notes"] = [*row["review_notes"], decision.note]
+    notes = row["review_notes"]
+    if decision.action != "hold" or decision.note:  # an earlier hold's note is out of date now
+        notes = [n for n in notes if not n.startswith(AUTO_HOLD_NOTE)]
+    if decision.note and decision.note not in notes:
+        notes = [*notes, decision.note]
+    row["review_notes"] = notes
     return decision
 
 
@@ -149,6 +164,9 @@ def decide(sb: Client, row: dict, verified_by: str | None, club_name: str, poste
     if reason:
         return Decision("hold", reason, reject_others=others)
     other = _other_club_lookalike(sb, row, club_name, exclude_id)
+    if other is not None and other["status"] == "approved" and _published_twin(row, other):
+        return Decision("reject", "copy of another club's published event",
+                        f"Rejected automatically: a copy of “{other['name']}” (#{other['id']}), already published by another club.")
     if other is not None:
         note = None
         if other["status"] != "pending":
@@ -171,7 +189,7 @@ def blocker(sb: Client, row: dict, verified_by: str | None, today: date) -> str 
         return "confidence below the bar"
     if not verified_by or row["model"] != verified_by:
         return "not rechecked"
-    if row["review_notes"]:
+    if any(not FOOD_FIND_NOTE.match(n) and not n.startswith(AUTO_HOLD_NOTE) for n in row["review_notes"]):
         return "has review notes"
     if row.get("schedule_status", "scheduled") != "scheduled":
         return f"the post says it's {row['schedule_status']}"
@@ -274,6 +292,18 @@ def same_event(a: dict, b: dict, same_club: bool) -> bool | None:
     if _apart(a, b):
         return None if same_club else False
     return True
+
+
+def _published_twin(row: dict, other: dict) -> bool:
+    """Whether another club's published event is plainly this one: nearly the same name, starting
+    within SAME_SLOT_MIN, not somewhere else, and this copy adds no free food it lacks."""
+    gap = _gap_minutes(row, other)
+    return (
+        gap is not None and gap <= SAME_SLOT_MIN
+        and place_match(row["location"], other["location"]) != "different"
+        and name_similarity(row["name"], other["name"]) >= NEAR_IDENTICAL_NAMES
+        and (bool(other.get("has_free_food")) or not row["has_free_food"])
+    )
 
 
 def _moved(row: dict, other: dict) -> bool:

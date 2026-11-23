@@ -10,6 +10,7 @@ import { EngagementTracker } from "@/components/engagement-tracker";
 import { InstagramIcon } from "@/components/icons";
 import { SiteNav, SiteNavLinks } from "@/components/site-nav";
 import { TourButton } from "@/components/site-tour";
+import { VisitTracker } from "@/components/visit-tracker";
 import { campus } from "@/lib/campus";
 
 import { FeedbackLink, FeedbackProvider } from "./feedback";
@@ -48,6 +49,8 @@ export default function PublicLayout({ children }: LayoutProps<"/">) {
         <ListMemory />
         {/* How often each event is seen and opened, for the admin's Stats page. */}
         <EngagementTracker />
+        {/* Anonymous visitors, once a day each, for weekly visitor and retention counts. */}
+        <VisitTracker />
 
         <footer className="mx-auto w-full max-w-5xl px-4 py-8">
           <div className="flex flex-wrap gap-x-5">
