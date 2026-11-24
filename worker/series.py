@@ -25,7 +25,7 @@ from supabase import Client
 
 from auto_approve import same_event
 from rubric import fetch_all
-from settings import LOCAL_TZ
+from settings import LOCAL_TZ, never_listed
 
 AHEAD_WEEKS = 6  # as far ahead as the site lists events
 STEPPED_ASIDE = "The club's own post for this day is listed instead."
@@ -94,7 +94,8 @@ def run(sb: Client, apply: bool = True, verbose: bool = False) -> dict[str, int]
             query.execute()
 
     for s in programs:
-        wanted = {d: event_row(s, d) for d in (days_of(s, today, end) if s["active"] else [])}
+        listed_ok = s["active"] and not never_listed(s["name"])  # a program on the never-list is stopped
+        wanted = {d: event_row(s, d) for d in (days_of(s, today, end) if listed_ok else [])}
         mine = {datetime.fromisoformat(e["starts_at"]).astimezone(LOCAL_TZ).date(): e for e in listed if e["series_id"] == s["id"]}
 
         # Days it no longer runs: the program stopped, ended sooner, skips or drops that day.

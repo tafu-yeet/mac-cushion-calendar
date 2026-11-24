@@ -41,7 +41,7 @@ from extractors.two_stage import same_place
 from fetchers import BlockedError, print_attempt
 from fetchers.profile_page import fetch_post_page
 from rubric import fetch_all
-from settings import LOCAL_TZ, MAX_POST_AGE_DAYS, WORKER_DIR
+from settings import LOCAL_TZ, MAX_POST_AGE_DAYS, WORKER_DIR, never_listed
 
 DAYS_AHEAD = 14
 STATE_FILE = WORKER_DIR / "cache" / "recheck.json"
@@ -106,6 +106,8 @@ def scan(sb: Client, club: dict, posts: list[dict]) -> list[tuple[int, str]]:
         events = [e for e in upcoming_events(sb, club["id"]) if e["post_id"] != post["id"] or post.get("previous_caption")]
         # The events the post names, when it names any; otherwise all of the club's coming ones.
         named = [e for e in events if word_overlap(e["name"], caption) >= 0.6 or e["name"].lower() in caption.lower()]
+        if not named and never_listed(caption[max(0, m.start() - 80):m.end() + 80]):
+            continue  # what's off is a program we don't list (settings.NEVER_LIST), not the club's other events
         start = max(0, m.start() - 60)
         quote = " ".join(caption[start:m.end() + 60].split())
         for e in named or events:
