@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { NEXT_COOKIE, PENDING_MAX_AGE_S, SIGNUP_DIGEST_COOKIE, safeNext } from "@/lib/auth-links";
+import { campus } from "@/lib/campus";
 import { finishSignIn } from "@/lib/finish-sign-in";
 import { requestOrigin } from "@/lib/request-origin";
 import { createClient } from "@/lib/supabase/server";
@@ -66,6 +67,7 @@ export async function signInStep(prev: SignInState, formData: FormData): Promise
   const start = (error: string): SignInState => ({ step: "start", email, error });
 
   if (intent === "google") {
+    if (!campus.signIn.google) return start("Sign in with your email below.");
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: `${origin}/auth/callback` },

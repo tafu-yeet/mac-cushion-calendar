@@ -25,9 +25,13 @@
     "toolUrl": "https://timetabletooutlook.mcmaster.ca"
   },
   "email": {
-    "from": "Mac Cushion Calendar <hello@maccushion.ca>",
-    "contact": "hello@maccushion.ca",
+    "from": "Mac Cushion Calendar <info@maccushion.ca>",
+    "contact": "info@maccushion.ca",
     "mailingAddress": ""
+  },
+  "signIn": {
+    "note": "Turn google on only after Supabase has a Google client (Authentication > Sign In / Providers > Google). While it's off the sign-in page has no Google button, and email codes and passwords work for everyone.",
+    "google": false
   },
   "campusLocations": {
     "MUSC": "McMaster University Student Centre",

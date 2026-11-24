@@ -84,6 +84,7 @@ async function SignInFromRequest({ searchParams }: { searchParams: PageProps<"/s
   return (
     <SignInForm
       next={next}
+      google={campus.signIn.google}
       inAppBrowser={IN_APP_BROWSER.test(h.get("user-agent") ?? "")}
       error={error ? ERRORS[error] : undefined}
     />

@@ -8,7 +8,7 @@ import { DIGEST_CONSENT_WORDING } from "@/lib/auth-links";
 
 import { signInStep } from "./actions";
 
-type Props = { next: string; inAppBrowser: boolean; error?: string };
+type Props = { next: string; google: boolean; inAppBrowser: boolean; error?: string };
 
 /** The sign-in form, restarted from scratch by "Use a different email". */
 export function SignInForm(props: Props) {
@@ -16,7 +16,7 @@ export function SignInForm(props: Props) {
   return <SignInSteps key={attempt} {...props} error={attempt === 0 ? props.error : undefined} onRestart={() => setAttempt((a) => a + 1)} />;
 }
 
-function SignInSteps({ next, inAppBrowser, error, onRestart }: Props & { onRestart: () => void }) {
+function SignInSteps({ next, google, inAppBrowser, error, onRestart }: Props & { onRestart: () => void }) {
   const [state, action, pending] = useActionState(signInStep, null);
   const [usePassword, setUsePassword] = useState(false);
   const message = state?.error ?? (state ? undefined : error);
@@ -70,7 +70,7 @@ function SignInSteps({ next, inAppBrowser, error, onRestart }: Props & { onResta
     <form action={action} className="flex flex-col gap-4">
       <input type="hidden" name="next" value={next} />
 
-      {inAppBrowser ? (
+      {!google ? null : inAppBrowser ? (
         <p className={NOTE}>
           Google sign-in doesn&apos;t work inside Instagram&apos;s browser, so use your email below. Or open this page
           in Safari or Chrome (tap <span className="font-semibold">···</span> then{" "}

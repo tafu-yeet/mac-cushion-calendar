@@ -209,7 +209,9 @@ hour (a cookie only the server reads).
 ### Member accounts
 
 Browsing never needs an account. Signing in (`/sign-in`, the same page for members and
-the admin) is Google, a 6-digit emailed code, or an optional password; the email also
+the admin) is a 6-digit emailed code, an optional password, or Google (only once
+`campus.config.json` "signIn.google" is on, which needs a Google client set up in
+Supabase's Google provider; off, the page has no Google button); the email also
 carries a link that lands on `/auth/confirm`, which waits for a tap because school email
 scanners open links on their own. Google's sign-in doesn't work in Instagram's in-app
 browser, so there the page shows only the email code, with a note on opening the page

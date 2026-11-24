@@ -35,7 +35,7 @@ export default function PrivacyPage() {
       <section className={CARD}>
         <h2 className={H2}>if you make an account</h2>
         <ul className={`${P} list-disc pl-5`}>
-          <li>Your email address, and your name if you give one or sign in with Google.</li>
+          <li>Your email address, and your name if you give one{campus.signIn.google ? " or sign in with Google" : ""}.</li>
           <li>The clubs you follow, what you said you&apos;re into, and the events you asked to be reminded about.</li>
           <li>
             Your class schedule as weekly busy times only (day, start and end) until your term ends. Not course names, rooms or
@@ -64,8 +64,8 @@ export default function PrivacyPage() {
       <section className={CARD}>
         <h2 className={H2}>who handles it</h2>
         <p className={P}>
-          Accounts and data live in Supabase; the site runs on Vercel; emails go out through Resend; Google handles &ldquo;Continue
-          with Google&rdquo; if you use it. We don&apos;t sell or share your data with anyone else, and there are no ads.
+          Accounts and data live in Supabase; the site runs on Vercel; emails go out through Resend
+          {campus.signIn.google ? <>; Google handles &ldquo;Continue with Google&rdquo; if you use it</> : null}. We don&apos;t sell or share your data with anyone else, and there are no ads.
         </p>
       </section>
 

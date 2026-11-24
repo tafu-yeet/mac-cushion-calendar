@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useActionState } from "react";
 
 import { ALERT, BUTTON, INPUT, LABEL, LINK_BUTTON, NOTE } from "@/components/member-styles";
+import { campus } from "@/lib/campus";
 
 import { setPassword } from "../actions";
 
@@ -22,7 +23,7 @@ export function PasswordForm({ email, reset }: { email: string | null; reset: bo
   return (
     <form action={action} className="flex flex-col gap-4">
       <p className="text-base leading-relaxed">
-        {reset ? "Pick a new password." : "Optional: codes and Google work without one."} It&apos;s for {email ?? "your account"}.
+        {reset ? "Pick a new password." : `Optional: ${campus.signIn.google ? "codes and Google work" : "codes work"} without one.`} It&apos;s for {email ?? "your account"}.
       </p>
       {/* For password managers: which account this password belongs to. */}
       <input type="email" name="username" value={email ?? ""} autoComplete="username" readOnly hidden />
