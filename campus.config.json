@@ -31,7 +31,7 @@
   },
   "signIn": {
     "note": "Turn google on only after Supabase has a Google client (Authentication > Sign In / Providers > Google). While it's off the sign-in page has no Google button, and email codes and passwords work for everyone.",
-    "google": false
+    "google": true
   },
   "campusLocations": {
     "MUSC": "McMaster University Student Centre",
