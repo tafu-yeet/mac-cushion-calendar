@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -14,6 +15,22 @@ load_dotenv(WORKER_DIR / ".env")
 
 CAMPUS = json.loads((WORKER_DIR.parent / "campus.config.json").read_text(encoding="utf-8"))
 LOCAL_TZ = ZoneInfo(CAMPUS["timezone"])
+
+
+def _program(name: str) -> re.Pattern[str]:
+    """A program's name however a post writes it: any case, spaced, hyphenated or run together
+    (#FuelUpTuesday), with or without a final s."""
+    words = re.findall(r"[a-z0-9]+", name.lower())
+    return re.compile(r"(?<![a-z0-9])" + r"[\W_]*".join(words) + r"s?(?![a-z0-9])", re.IGNORECASE)
+
+
+# Programs a club asked us to stop listing (campus.config.json "neverList").
+NEVER_LIST = [_program(name) for name in CAMPUS.get("neverList", {}).get("names", [])]
+
+
+def never_listed(*texts: str | None) -> bool:
+    """Whether any of these texts names a program on the never-list."""
+    return any(p.search(t) for t in texts if t for p in NEVER_LIST)
 
 
 def env(name: str, default: str | None = None) -> str | None:

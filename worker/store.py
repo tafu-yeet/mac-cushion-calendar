@@ -15,7 +15,7 @@ from extractors import FinalEvent, PostResult, Usage
 from fetchers import Attempt, Post
 from settings import (
     KEEP_IMAGES_DAYS, LOCAL_TZ, MAX_POST_AGE_DAYS, POST_IMAGE_BUCKET, QUIET_POLL_HOURS, SKIP_REELS, SLOW_POLL_HOURS,
-    require,
+    never_listed, require,
 )
 
 IMAGE_TIMEOUT_S = 30
@@ -301,7 +301,8 @@ def save_extraction(sb: Client, post: dict, result: PostResult) -> list[dict]:
     """
     # Re-running a post replaces its unreviewed events instead of duplicating them.
     sb.table("events").delete().eq("post_id", post["id"]).eq("status", "pending").execute()
-    rows = [_event_row(post, fe) for fe in result.events]
+    # A program a club asked us to stop listing never comes out of any post (settings.NEVER_LIST).
+    rows = [r for r in (_event_row(post, fe) for fe in result.events) if not never_listed(r["name"], r["food_description"])]
     # Each is compared with events already saved, not with this post's others (the model split those).
     club_name = (post.get("clubs") or {}).get("name", "")
     replaced: list[tuple[int, str]] = []

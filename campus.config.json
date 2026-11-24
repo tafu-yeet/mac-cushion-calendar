@@ -60,6 +60,10 @@
     "macreconline.ca",
     "libcal.mcmaster.ca"
   ],
+  "neverList": {
+    "note": "Programs a club asked us to stop listing. The worker never saves an event named for one, from any post (its own post, a week's schedule, the text on an image) or weekly program, and a cancellation of one doesn't flag the club's other events. Case, spaces, hyphens, a hashtag or a final s don't matter.",
+    "names": ["Fuel Up Tuesday"]
+  },
   "communities": [
     {
       "key": "pride",
