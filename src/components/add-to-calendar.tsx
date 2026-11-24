@@ -59,6 +59,7 @@ export function AddToCalendar({ eventId, className }: { eventId: number; classNa
               <a
                 href={choice.app === "ics" ? `/events/${eventId}/calendar.ics` : `/events/${eventId}/add/${choice.app}`}
                 {...(choice.app === "ics" ? {} : { target: "_blank", rel: "noreferrer" })}
+                data-calendar-add={eventId}
                 onClick={() => setOpen(false)}
                 className="flex flex-col rounded-xl px-3 py-2 hover:bg-butter/70"
               >

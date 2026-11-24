@@ -32,6 +32,9 @@ export default function StatsPage() {
         <Visitors />
       </Suspense>
       <Suspense fallback={<p className="text-sm text-stone-500">Loading…</p>}>
+        <Members />
+      </Suspense>
+      <Suspense fallback={<p className="text-sm text-stone-500">Loading…</p>}>
         <HighlightTest />
       </Suspense>
       <Suspense fallback={<p className="text-sm text-stone-500">Loading…</p>}>
@@ -386,6 +389,83 @@ async function CalendarAdds() {
           <p className="px-4 py-6 text-sm text-stone-500">Nobody has added an event yet. Counting started Oct 26.</p>
         )}
       </section>
+    </div>
+  );
+}
+
+type MemberTotals = {
+  members: number;
+  founding: number;
+  onboarded: number;
+  digest: number;
+  club_posts: number;
+  reminders: number;
+  follows: number;
+  following_anyone: number;
+  with_schedule: number;
+  emails_sent_7d: number;
+  emails_failed_7d: number;
+  weeks: { week: string; active: number; came_back: number; joined: number }[];
+};
+
+/**
+ * Signed-in members, counted by account (member_days): totals only, never anyone's rows. A member
+ * isn't also counted as a visitor above, and the admin isn't counted at all.
+ */
+async function Members() {
+  const { supabase } = await requireAdmin();
+  const { data, error } = await supabase.rpc("member_totals");
+  if (error) {
+    const missing = error.code === "PGRST202" || error.code === "42883";
+    return (
+      <p className={`text-sm ${missing ? "text-stone-500" : "text-red-700"}`}>
+        {missing ? "Member accounts aren't switched on yet." : `Couldn't load members: ${error.message}`}
+      </p>
+    );
+  }
+  const t = data as unknown as MemberTotals;
+  const today = todayInCampus();
+  const share = (part: number) => (t.members ? `${Math.round((part / t.members) * 100)}%` : "–");
+  return (
+    <div className="flex flex-col gap-4">
+      <h2 className="text-lg font-semibold">Members</h2>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <Figure value={t.members} label={`Members (${t.founding} founding)`} />
+        <Figure value={share(t.following_anyone)} label={`Follow a club (${t.follows} follows)`} />
+        <Figure value={share(t.digest)} label={`Get Sunday picks (${t.digest})`} />
+        <Figure value={share(t.with_schedule)} label={`Added a schedule (${t.with_schedule})`} />
+        <Figure value={share(t.onboarded)} label="Finished or skipped the welcome" />
+        <Figure value={t.club_posts} label="Get club-post emails" />
+        <Figure value={t.reminders} label="Reminders set" />
+        <Figure value={t.emails_failed_7d ? `${t.emails_sent_7d} (${t.emails_failed_7d} failed)` : t.emails_sent_7d} label="Emails sent, last 7 days" />
+      </div>
+      {t.weeks.length > 0 && (
+        <section className="rounded-xl border border-stone-200 bg-white">
+          <h3 className="border-b border-stone-200 px-4 py-3 text-sm font-semibold">Each week</h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="border-b border-stone-200 text-left text-xs text-stone-600">
+                <tr>
+                  <th className="px-4 py-2 font-medium">Week of</th>
+                  <th className="px-4 py-2 text-right font-medium">Active members</th>
+                  <th className="px-4 py-2 text-right font-medium">Back from the week before</th>
+                  <th className="px-4 py-2 text-right font-medium">Joined</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-stone-100 tabular-nums">
+                {t.weeks.map((w) => (
+                  <tr key={w.week}>
+                    <td className="px-4 py-2 font-medium">{formatDay(w.week, "short", today)}</td>
+                    <td className="px-4 py-2 text-right">{w.active}</td>
+                    <td className="px-4 py-2 text-right">{w.came_back}</td>
+                    <td className="px-4 py-2 text-right">{w.joined}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
     </div>
   );
 }

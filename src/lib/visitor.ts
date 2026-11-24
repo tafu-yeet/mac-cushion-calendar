@@ -1,8 +1,37 @@
-// Supabase's session cookie: only admins sign in, so a visitor with one is an admin.
+// Supabase's session cookie, whole or in numbered chunks.
 const SIGNED_IN = /(?:^|;\s*)sb-[^=]+-auth-token(?:\.\d+)?=/;
 
-/** Whether this browser's visits count in the site's stats: not an admin's, or an automated browser's. Browser only. */
-export const countsAsVisitor = () => !navigator.webdriver && !SIGNED_IN.test(document.cookie);
+/**
+ * Set on an admin's browser when they sign in or open an admin page, and kept after they sign
+ * out, so the admin's own browsing never shows up in Stats. Not secret: it only skips counting.
+ */
+export const ADMIN_BROWSER_COOKIE = "mcc_admin";
+const ADMIN_BROWSER = /(?:^|;\s*)mcc_admin=1/;
+
+const isAutomated = () => !!navigator.webdriver;
+const isSignedIn = () => SIGNED_IN.test(document.cookie);
+const isAdminBrowser = () => ADMIN_BROWSER.test(document.cookie);
+
+/**
+ * Whether this browser counts as an anonymous visitor (visits, scans). Signed-in members are
+ * counted by account instead (member_days), so nobody is counted twice; admins and automated
+ * browsers aren't counted at all. Browser only.
+ */
+export const countsAsVisitor = () => !isAutomated() && !isSignedIn() && !isAdminBrowser();
+
+/** Whether this browser's event views and taps count: everyone's but admins' and automated browsers'. Browser only. */
+export const countsEventTaps = () => !isAutomated() && !isAdminBrowser();
+
+/** Marks this browser as an admin's (see ADMIN_BROWSER_COOKIE). Browser only. */
+export function markAdminBrowser(): void {
+  try {
+    if (isAdminBrowser()) return;
+    const secure = location.protocol === "https:" ? "; secure" : "";
+    document.cookie = `${ADMIN_BROWSER_COOKIE}=1; path=/; max-age=${400 * 24 * 60 * 60}; samesite=lax${secure}`;
+  } catch {
+    // Cookies blocked: nothing to mark.
+  }
+}
 
 // ── The anonymous visitor id ──────────────────────────────────────────────────────────
 // A random id this browser makes up on its first visit, so the site can count weekly

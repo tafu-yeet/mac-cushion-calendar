@@ -113,3 +113,29 @@ export const CloseIcon = (p: IconProps) => (
     <path d="M6 6l12 12M18 6L6 18" />
   </Icon>
 );
+
+export const PlusIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M12 5v14M5 12h14" />
+  </Icon>
+);
+
+export const CheckIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M5 12.5l4.5 4.5L19 7.5" />
+  </Icon>
+);
+
+export const BellIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15L6 16z" />
+    <path d="M10 20.5a2 2 0 0 0 4 0" />
+  </Icon>
+);
+
+export const UserIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="12" cy="8" r="4" />
+    <path d="M4.5 20a7.5 7.5 0 0 1 15 0" />
+  </Icon>
+);

@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 
-import { countsAsVisitor, visitor } from "@/lib/visitor";
+import { countsEventTaps, visitor } from "@/lib/visitor";
 
 // The buttons marked data-tap (with data-tap-event, the event's id).
 const TAPS = ["calendar_menu", "instagram", "tickets"] as const;
@@ -21,11 +21,11 @@ const EVENT_PAGE = /^\/events\/(\d+)$/;
  * Once per event per action per browser session, with the anonymous visitor id
  * (src/lib/visitor.ts) and nothing else about the person. Sent
  * straight to Supabase's REST API with the public key (the table only takes inserts
- * from visitors). Admins and automated browsers aren't counted.
+ * from visitors, and never says who's signed in). Admins and automated browsers aren't counted.
  */
 export function EngagementTracker() {
   useEffect(() => {
-    if (!countsAsVisitor()) return;
+    if (!countsEventTaps()) return;
     let counted: Set<string>;
     try {
       counted = new Set(JSON.parse(sessionStorage.getItem(COUNTED) ?? "[]") as string[]);

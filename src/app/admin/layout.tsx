@@ -3,7 +3,8 @@ import Link from "next/link";
 
 import { campus } from "@/lib/campus";
 
-import { signOut } from "../login/actions";
+import { signOut } from "../(public)/sign-in/actions";
+import { AdminMarker } from "./admin-marker";
 import { NavLinks } from "./nav-links";
 
 export const metadata: Metadata = { title: "Admin" };
@@ -29,6 +30,7 @@ export default function AdminLayout({ children }: LayoutProps<"/admin">) {
         </div>
       </header>
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">{children}</main>
+      <AdminMarker />
     </div>
   );
 }

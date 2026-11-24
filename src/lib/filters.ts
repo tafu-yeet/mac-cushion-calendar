@@ -1,9 +1,12 @@
 // What the public pages filter by, kept in the URL so a filtered view can be
 // shared: ?day=tomorrow&time=evening&cat=social,arts&food=1&free=1&all=1&q=karaoke
-// (day can also be a date picked from the calendar: ?day=2026-10-17)
+// (day can also be a date picked from the calendar: ?day=2026-10-17). Members also get
+// &follow=1 (followed clubs only) and &fits=1 (only events that fit their class schedule);
+// for anyone signed out those two do nothing.
 
 import { categoryOf, isCategory, type Category } from "@/lib/categories";
 import type { PublicEvent } from "@/lib/events";
+import { activeBlocks, clashesWithSchedule, type BusyBlock } from "@/lib/schedule";
 import { ASSUMED_LENGTH_MINUTES } from "@/lib/status";
 import { addDays, minutesIntoDay, toLocalInputs } from "@/lib/time";
 
@@ -29,6 +32,8 @@ export type Filters = {
   food: boolean; // only events with free food
   freeEntry: boolean; // only events that cost nothing to attend
   limited: boolean; // also show events limited to a group
+  followed: boolean; // members: only clubs they follow
+  fits: boolean; // members: hide events that clash with their classes
   q: string;
 };
 
@@ -42,11 +47,13 @@ export const DEFAULT_FILTERS: Filters = {
   food: false,
   freeEntry: false,
   limited: false,
+  followed: false,
+  fits: false,
   q: "",
 };
 
 /** The URL keys these filters own; anything else in the URL (like the week's start) is left alone. */
-export const FILTER_KEYS = ["day", "time", "from", "to", "cat", "food", "free", "all", "q"] as const;
+export const FILTER_KEYS = ["day", "time", "from", "to", "cat", "food", "free", "all", "follow", "fits", "q"] as const;
 
 type Params = Record<string, string | string[] | undefined>;
 const HHMM = /^([01]\d|2[0-4]):[0-5]\d$/;
@@ -74,6 +81,8 @@ export function parseFilters(params: Params): Filters {
     food: get("food") === "1",
     freeEntry: get("free") === "1",
     limited: get("all") === "1",
+    followed: get("follow") === "1",
+    fits: get("fits") === "1",
     q: get("q").slice(0, 100),
   };
 }
@@ -100,6 +109,8 @@ export function filterParams(f: Filters): Record<string, string> {
   if (f.food) out.food = "1";
   if (f.freeEntry) out.free = "1";
   if (f.limited) out.all = "1";
+  if (f.followed) out.follow = "1";
+  if (f.fits) out.fits = "1";
   if (f.q.trim()) out.q = f.q.trim();
   return out;
 }
@@ -110,7 +121,7 @@ export function sameFilters(a: Filters, b: Filters): boolean {
 
 /** True when anything narrows the list, apart from the day. */
 export function isNarrowed(f: Filters): boolean {
-  return !!(f.time || f.categories.length || f.food || f.freeEntry || f.limited || f.q.trim());
+  return !!(f.time || f.categories.length || f.food || f.freeEntry || f.limited || f.followed || f.fits || f.q.trim());
 }
 
 /** The chosen time window in minutes after midnight, or null for any time. */
@@ -140,12 +151,21 @@ export function inWindow(e: PublicEvent, slot: [number, number] | null): boolean
   return start < slot[1] && end > slot[0];
 }
 
-/** Every filter except day and time, which the pages apply themselves. */
-export function matchesFilters(e: PublicEvent, f: Filters): boolean {
+/** A signed-in member's follows and class blocks, for the two members' filters. */
+export type Personal = { follows: ReadonlySet<number>; busy: BusyBlock[]; today: string };
+
+/**
+ * Every filter except day and time, which the pages apply themselves. The members' filters
+ * (followed clubs, fits my schedule) apply only with `personal`: signed out, they do nothing.
+ */
+export function matchesFilters(e: PublicEvent, f: Filters, personal?: Personal | null): boolean {
   if (f.categories.length && !f.categories.includes(e.category)) return false;
   if (f.food && !e.hasFreeFood) return false;
   if (f.freeEntry && e.cost !== "free") return false;
-  if (!f.limited && !e.openToAll) return false;
+  if (personal && f.followed && !personal.follows.has(e.clubId)) return false;
+  // A followed club's members-only events are for its members: "Followed clubs" shows those too.
+  if (!f.limited && !e.openToAll && !(personal && f.followed)) return false;
+  if (personal && f.fits && clashesWithSchedule(e, activeBlocks(personal.busy, personal.today))) return false;
   return matchesSearch(e, f.q);
 }
 

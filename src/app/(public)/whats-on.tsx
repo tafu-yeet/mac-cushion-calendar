@@ -10,9 +10,11 @@ import { FilterBar, useFilters } from "@/components/filter-bar";
 import { ChevronIcon, PinIcon } from "@/components/icons";
 import { SiteTour } from "@/components/site-tour";
 import { useNow } from "@/components/use-now";
+import { usePersonal } from "@/components/use-personal";
 import { campus } from "@/lib/campus";
 import type { PublicEvent } from "@/lib/events";
 import { DEFAULT_FILTERS, byStart, clubsMatching, inWindow, isNarrowed, matchesFilters, timeWindow, type Filters, type TrackedClub } from "@/lib/filters";
+import { rankForMember } from "@/lib/member-types";
 import { endMs } from "@/lib/status";
 import { addDays, formatDay, toLocalInputs } from "@/lib/time";
 
@@ -28,13 +30,15 @@ type DayGroup = { date: string; fits: PublicEvent[]; timeUnknown: PublicEvent[];
 export function WhatsOn({ events, today, now: serverNow, fromUrl }: { events: PublicEvent[]; today: string; now: number; fromUrl: Filters }) {
   const [filters, update] = useFilters(fromUrl);
   const now = useNow(serverNow);
+  // Signed in: their follows and classes for the members' filters, and their interests first.
+  const { personal, mine, interests } = usePersonal(today);
   const slot = timeWindow(filters);
   const dateOf = (e: PublicEvent) => toLocalInputs(e.startsAt).date;
 
   // Today's timed events drop off once they're over; time-TBD ones stay all day.
   const matching = events
     .filter((e) => !(dateOf(e) === today && e.startTimeKnown && endMs(e) <= now))
-    .filter((e) => matchesFilters(e, filters))
+    .filter((e) => matchesFilters(e, filters, personal))
     .sort(byStart);
 
   const picked = filters.day === "date" ? filters.date : null;
@@ -48,7 +52,8 @@ export function WhatsOn({ events, today, now: serverNow, fromUrl }: { events: Pu
     const near = rest.filter((e) => !e.offCampus);
     return {
       date,
-      fits: [...top, ...near.filter((e) => inWindow(e, slot) === true)],
+      // A member's interests (and free food, if they picked it) first, each part by start time.
+      fits: [...top, ...rankForMember(near.filter((e) => inWindow(e, slot) === true), interests)],
       timeUnknown: near.filter((e) => inWindow(e, slot) === "unknown"),
       offCampus: rest.filter((e) => e.offCampus && inWindow(e, slot) !== false),
     };
@@ -74,7 +79,7 @@ export function WhatsOn({ events, today, now: serverNow, fromUrl }: { events: Pu
           dates.includes(dateOf(e)) &&
           inWindow(e, slot) !== false &&
           !(dateOf(e) === today && e.startTimeKnown && endMs(e) <= now) &&
-          matchesFilters(e, { ...filters, limited: true }),
+          matchesFilters(e, { ...filters, limited: true }, personal),
       ).length;
 
   // What the calendar picker marks: per day, what you could go to with these filters.
@@ -92,7 +97,7 @@ export function WhatsOn({ events, today, now: serverNow, fromUrl }: { events: Pu
   const over =
     !week && shown === today
       ? events.filter(
-          (e) => dateOf(e) === today && e.startTimeKnown && endMs(e) <= now && on(e) && inWindow(e, slot) === true && matchesFilters(e, filters),
+          (e) => dateOf(e) === today && e.startTimeKnown && endMs(e) <= now && on(e) && inWindow(e, slot) === true && matchesFilters(e, filters, personal),
         ).length
       : 0;
   const dayWords = week ? "in the next 7 days" : picked ? `on ${dayName}` : dayName;
@@ -142,7 +147,7 @@ export function WhatsOn({ events, today, now: serverNow, fromUrl }: { events: Pu
           </Link>
         </div>
 
-        <FilterBar filters={filters} update={update} when={{ today, counts }} />
+        <FilterBar filters={filters} update={update} when={{ today, counts }} mine={mine} />
 
         <p className="sr-only" aria-live="polite">
           {total} event{total === 1 ? "" : "s"} {when}

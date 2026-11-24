@@ -3,9 +3,11 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 
 import { AutoRefresh } from "@/components/auto-refresh";
+import { MemberSeed } from "@/components/member-provider";
 import { campus } from "@/lib/campus";
 import { getEventsBetween } from "@/lib/events";
 import { PICKER_WEEKS, parseFilters, settleDay } from "@/lib/filters";
+import { getMember } from "@/lib/member";
 import { addDays, dayStartIso, todayInCampus } from "@/lib/time";
 
 import { WhatsOn } from "./whats-on";
@@ -38,17 +40,18 @@ async function loadFeed(searchParams: PageProps<"/">["searchParams"]) {
   const usual = addDays(today, DAYS_LOADED);
   // A link to a day past the picker's range loads up to that day.
   const end = filters.day === "date" && filters.date >= usual ? addDays(filters.date, 1) : usual;
-  const events = await getEventsBetween(dayStartIso(today), dayStartIso(end));
-  return { events, today, now, filters };
+  // Signed out, getMember() returns at once without asking Supabase (no session cookie).
+  const [events, member] = await Promise.all([getEventsBetween(dayStartIso(today), dayStartIso(end)), getMember()]);
+  return { events, today, now, filters, member };
 }
 
 async function Feed({ searchParams }: { searchParams: PageProps<"/">["searchParams"] }) {
-  const { events, today, now, filters } = await loadFeed(searchParams);
+  const { events, today, now, filters, member } = await loadFeed(searchParams);
   return (
-    <>
+    <MemberSeed member={member}>
       <AutoRefresh minutes={5} />
       <WhatsOn events={events} today={today} now={now} fromUrl={filters} />
-    </>
+    </MemberSeed>
   );
 }
 

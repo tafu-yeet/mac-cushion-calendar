@@ -7,6 +7,7 @@ import { BackLink } from "@/components/back-link";
 import { clubInitials, ClubLink, HighlightFrame, RecurringBadge, RegistrationBadge, ScheduleBadge } from "@/components/event-card";
 import { AddToCalendar } from "@/components/add-to-calendar";
 import { ExternalIcon, PinIcon, TicketIcon, UtensilsIcon } from "@/components/icons";
+import { FollowButton, RemindButton } from "@/components/member-actions";
 import { ShareButton } from "@/components/share-button";
 import { campus } from "@/lib/campus";
 import { categoryOf } from "@/lib/categories";
@@ -199,6 +200,8 @@ async function EventDetail({ id }: { id: number }) {
             href={event.permalink}
             data-tap="instagram"
             data-tap-event={event.id}
+            data-club-id={event.clubId}
+            data-club-name={event.clubName}
             target="_blank"
             rel="noreferrer"
             className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold ring-1 ring-current/30 hover:bg-current/10"
@@ -212,6 +215,8 @@ async function EventDetail({ id }: { id: number }) {
             href={profile}
             data-tap="instagram"
             data-tap-event={event.id}
+            data-club-id={event.clubId}
+            data-club-name={event.clubName}
             target="_blank"
             rel="noreferrer"
             className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold ring-1 ring-current/30 hover:bg-current/10"
@@ -234,6 +239,10 @@ async function EventDetail({ id }: { id: number }) {
           </a>
         )}
         <ShareButton title={event.name} text={summary(event, today)} />
+        {event.scheduleStatus === "scheduled" && (
+          <RemindButton eventId={event.id} startsAt={event.startsAt} timeKnown={event.startTimeKnown} now={checkedNow()} className="ring-1 ring-current/30 hover:bg-current/10" />
+        )}
+        <FollowButton clubId={event.clubId} clubName={event.clubName} className="ring-1 ring-current/30 hover:bg-current/10" />
       </div>
       <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2">
         <FeedbackLink

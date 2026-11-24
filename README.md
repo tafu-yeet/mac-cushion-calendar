@@ -190,7 +190,8 @@ Needs Node 20+ and `.env.local` (copy `.env.example`).
 
 ```
 npm install
-npm run dev        # http://localhost:3000/admin
+npm run dev        # http://localhost:3000 (admin: /admin)
+npm test           # unit tests (Vitest)
 ```
 
 
@@ -204,6 +205,40 @@ Messages land in the `feedback` table, which visitors can add to but never
 read, and are listed at `/admin/feedback` with a type filter and a Done box.
 Spam guards: a hidden honeypot field, and at most 3 messages per browser per
 hour (a cookie only the server reads).
+
+### Member accounts
+
+Browsing never needs an account. Signing in (`/sign-in`, the same page for members and
+the admin) is Google, a 6-digit emailed code, or an optional password; the email also
+carries a link that lands on `/auth/confirm`, which waits for a tap because school email
+scanners open links on their own. Google's sign-in doesn't work in Instagram's in-app
+browser, so there the page shows only the email code, with a note on opening the page
+in Safari or Chrome. Every route ends at `/auth/finish`, which applies the sign-up box
+and any club picked before signing in, then shows the welcome survey once.
+
+Members can follow clubs (cards, event and club pages), pick interests (they go first
+in the feed, within each day), set "Remind me" on events, and save their class schedule
+(`/account/schedule`: an .ics file read in the browser, or a tap grid). Only weekly busy
+blocks are stored (weekday, start, end, the term's last day: `campus.config.json`
+"terms"), and they stop applying after it. The feed's members-only chips are "Followed
+clubs" and "Fits my schedule" (15 minutes' buffer, `src/lib/schedule.ts`).
+
+Signed-out visitors cost nothing extra: the proxy only runs when a session cookie is
+present (or on the sign-in pages), and `getMember()` returns before touching Supabase
+without one. Every member table has row level security limited to the member's own rows;
+admins see totals on Stats (`public.member_totals`). Signed-in members count by account
+(`member_days`), not as anonymous visitors.
+
+Emails (Resend): Sunday picks from 6 PM, a daily "new from clubs you follow", and
+reminders an hour before. All are off until ticked, every consent is logged with its
+wording (`email_consents`), and every email has a one-tap unsubscribe link and
+List-Unsubscribe headers. pg_cron calls `/api/cron/email` every 15 minutes; each email
+claims a row in `email_sends` first, so nothing is sent twice. The job refuses to send
+until `campus.config.json` has `email.mailingAddress` (CASL).
+
+Tests: `npm test` (schedule overlap, feed ranking, digest selection, unsubscribe, .ics
+reading). Row level security is checked by `supabase/tests/member_rls.sql`, which runs
+in a transaction and rolls back.
 
 ### Search engines
 

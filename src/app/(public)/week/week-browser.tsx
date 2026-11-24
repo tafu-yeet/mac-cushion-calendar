@@ -1,6 +1,7 @@
 "use client";
 
 import { FilterBar, useFilters } from "@/components/filter-bar";
+import { usePersonal } from "@/components/use-personal";
 import { byStart, matchesFilters, type Filters } from "@/lib/filters";
 import { addDays } from "@/lib/time";
 
@@ -26,14 +27,15 @@ export function WeekBrowser({
   fromUrl: Filters;
 }) {
   const [filters, update] = useFilters(fromUrl);
-  const shown = days.map((d) => ({ ...d, events: d.events.filter((e) => matchesFilters(e, filters)).sort(byStart) }));
+  const { personal, mine } = usePersonal(today);
+  const shown = days.map((d) => ({ ...d, events: d.events.filter((e) => matchesFilters(e, filters, personal)).sort(byStart) }));
   // Cancelled events stay listed, marked, but don't count.
   const live = shown.flatMap((d) => d.events).filter((e) => e.scheduleStatus !== "cancelled");
   const count = live.length;
   const withFood = live.filter((e) => e.hasFreeFood).length;
   const hiddenForGroups = filters.limited
     ? 0
-    : days.flatMap((d) => d.events).filter((e) => !e.openToAll && matchesFilters(e, { ...filters, limited: true })).length;
+    : days.flatMap((d) => d.events).filter((e) => !e.openToAll && matchesFilters(e, { ...filters, limited: true }, personal)).length;
 
   const week = (start: string) => calendarHref("week", start === thisMonday ? null : start, filters);
   const day = (date: string) => calendarHref("day", date === today ? null : date, filters);
@@ -65,7 +67,7 @@ export function WeekBrowser({
         </p>
       </div>
 
-      <FilterBar filters={filters} update={update} />
+      <FilterBar filters={filters} update={update} mine={mine} />
 
       <div className="flex flex-col gap-3">
         {shown.map((d) => (

@@ -6,6 +6,7 @@ import { BigDate, DateStats } from "@/components/big-date";
 import { EventCard } from "@/components/event-card";
 import { FilterBar, useFilters } from "@/components/filter-bar";
 import { useNow } from "@/components/use-now";
+import { usePersonal } from "@/components/use-personal";
 import { byStart, matchesFilters, type Filters } from "@/lib/filters";
 import { addDays, dateParts, mondayOf } from "@/lib/time";
 
@@ -29,7 +30,8 @@ export function DayBrowser({
 }) {
   const [filters, update] = useFilters(fromUrl);
   const now = useNow(serverNow);
-  const shown = days.map((d) => ({ ...d, events: d.events.filter((e) => matchesFilters(e, filters)).sort(byStart) }));
+  const { personal, mine } = usePersonal(today);
+  const shown = days.map((d) => ({ ...d, events: d.events.filter((e) => matchesFilters(e, filters, personal)).sort(byStart) }));
   const selected = shown.find((d) => d.date === date) ?? shown[0];
   const timed = selected.events.filter((e) => e.startTimeKnown);
   const untimed = selected.events.filter((e) => !e.startTimeKnown);
@@ -92,7 +94,7 @@ export function DayBrowser({
         })}
       </nav>
 
-      <FilterBar filters={filters} update={update} />
+      <FilterBar filters={filters} update={update} mine={mine} />
 
       {highlighted.length > 0 && (
         <section className="flex flex-col gap-3" aria-label="Highlighted events">

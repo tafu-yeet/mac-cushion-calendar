@@ -13,6 +13,22 @@
     "addressCountry": "CA"
   },
   "timezone": "America/Toronto",
+  "terms": [
+    { "name": "Fall 2026", "classesStart": "2026-09-08", "classesEnd": "2026-12-10" },
+    { "name": "Winter 2027", "classesStart": "2027-01-04", "classesEnd": "2027-04-07" },
+    { "name": "Spring 2027", "classesStart": "2027-05-03", "classesEnd": "2027-06-18" },
+    { "name": "Summer 2027", "classesStart": "2027-06-28", "classesEnd": "2027-08-13" }
+  ],
+  "scheduleExport": {
+    "note": "Mosaic has no calendar download. McMaster’s Timetable to Outlook copies your classes into Outlook; export that calendar as an .ics file (or export from Google Calendar: Settings, Import & export, Export).",
+    "toolName": "Timetable to Outlook",
+    "toolUrl": "https://timetabletooutlook.mcmaster.ca"
+  },
+  "email": {
+    "from": "Mac Cushion Calendar <hello@maccushion.ca>",
+    "contact": "hello@maccushion.ca",
+    "mailingAddress": ""
+  },
   "campusLocations": {
     "MUSC": "McMaster University Student Centre",
     "JHE": "John Hodgins Engineering Building",

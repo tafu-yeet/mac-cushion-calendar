@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 import { CATEGORIES, categoryOf, type Category } from "@/lib/categories";
@@ -19,7 +20,8 @@ import {
 import { addDays, formatDay } from "@/lib/time";
 
 import { DayPicker, type DayCounts } from "./day-picker";
-import { ChevronIcon, ClockIcon, SearchIcon, TodayIcon, UtensilsIcon } from "./icons";
+import { CheckIcon, ChevronIcon, ClockIcon, SearchIcon, TodayIcon, UtensilsIcon } from "./icons";
+import type { MineChips } from "./use-personal";
 
 /**
  * Filters that start from the URL and write every change back to it without a
@@ -53,16 +55,19 @@ type Menu = "day" | "time" | "type" | "more";
  * Search, then one dropdown per kind of filter, each labelled with what's
  * chosen: the day (a preset or a date from the calendar) and "I'm free" time
  * window when `when` is given, event types, and more (cost, members-only).
- * Free food stays a one-tap chip. The open menu's options appear under the row.
+ * Free food stays a one-tap chip. The open menu's options appear under the row. Signed-in
+ * members (`mine`) also get "Followed clubs" and "Fits my schedule".
  */
 export function FilterBar({
   filters,
   update,
   when,
+  mine,
 }: {
   filters: Filters;
   update: Update;
   when?: { today: string; counts: DayCounts };
+  mine?: MineChips | null;
 }) {
   const [open, setOpen] = useState<Menu | null>(null);
   const bar = useRef<HTMLDivElement>(null);
@@ -139,6 +144,27 @@ export function FilterBar({
             </>
           )}
         </MenuButton>
+        {mine && (
+          <>
+            <Chip active={filters.followed} onClick={() => update({ followed: !filters.followed })}>
+              {filters.followed && <CheckIcon className="size-3.5" />}
+              Followed clubs
+            </Chip>
+            {mine.hasSchedule && !mine.expired ? (
+              <Chip active={filters.fits} onClick={() => update({ fits: !filters.fits })} describedBy="fits-hint">
+                {filters.fits && <CheckIcon className="size-3.5" />}
+                Fits my schedule
+              </Chip>
+            ) : (
+              <Link
+                href="/account/schedule"
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium text-maroon border border-dashed border-maroon/45 hover:bg-maroon/5"
+              >
+                Fits my schedule: add classes
+              </Link>
+            )}
+          </>
+        )}
         {isNarrowed(filters) && (
           <button
             type="button"
@@ -149,6 +175,21 @@ export function FilterBar({
           </button>
         )}
       </div>
+
+      {mine?.hasSchedule && !mine.expired && (
+        <p id="fits-hint" className="sr-only">
+          Hides events that overlap your classes, with 15 minutes to get there.
+        </p>
+      )}
+      {mine?.expired && (
+        <p className="rounded-2xl bg-butter/60 px-4 py-2.5 text-sm text-maroon">
+          Your class schedule ended with the term.{" "}
+          <Link href="/account/schedule" className="font-semibold underline underline-offset-2">
+            Add the new one
+          </Link>{" "}
+          to use &ldquo;Fits my schedule&rdquo; again.
+        </p>
+      )}
 
       {open === "day" && when && (
         <Panel menu="day" title="Which day are you free?" onDone={close}>

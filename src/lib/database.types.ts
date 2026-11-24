@@ -858,6 +858,219 @@ export type Database = {
         }
         Relationships: []
       }
+      busy_blocks: {
+        Row: {
+          created_at: string
+          end_minute: number
+          id: number
+          source: string
+          start_minute: number
+          term_ends_on: string
+          user_id: string
+          weekday: number
+        }
+        Insert: {
+          created_at?: string
+          end_minute: number
+          id?: never
+          source: string
+          start_minute: number
+          term_ends_on: string
+          user_id: string
+          weekday: number
+        }
+        Update: {
+          created_at?: string
+          end_minute?: number
+          id?: never
+          source?: string
+          start_minute?: number
+          term_ends_on?: string
+          user_id?: string
+          weekday?: number
+        }
+        Relationships: []
+      }
+      club_follows: {
+        Row: {
+          club_id: number
+          created_at: string
+          user_id: string
+        }
+        Insert: {
+          club_id: number
+          created_at?: string
+          user_id: string
+        }
+        Update: {
+          club_id?: number
+          created_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      email_consents: {
+        Row: {
+          granted_at: string
+          id: number
+          source: string
+          type: string
+          user_id: string
+          withdrawn_at: string | null
+          withdrawn_source: string | null
+          wording: string | null
+        }
+        Insert: {
+          granted_at?: string
+          id?: never
+          source: string
+          type: string
+          user_id: string
+          withdrawn_at?: string | null
+          withdrawn_source?: string | null
+          wording?: string | null
+        }
+        Update: {
+          granted_at?: string
+          id?: never
+          source?: string
+          type?: string
+          user_id?: string
+          withdrawn_at?: string | null
+          withdrawn_source?: string | null
+          wording?: string | null
+        }
+        Relationships: []
+      }
+      email_sends: {
+        Row: {
+          created_at: string
+          dedupe_key: string
+          error: string | null
+          event_ids: number[]
+          id: number
+          kind: string
+          provider_id: string | null
+          sent_at: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          dedupe_key: string
+          error?: string | null
+          event_ids?: number[]
+          id?: never
+          kind: string
+          provider_id?: string | null
+          sent_at?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          dedupe_key?: string
+          error?: string | null
+          event_ids?: number[]
+          id?: never
+          kind?: string
+          provider_id?: string | null
+          sent_at?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      event_reminders: {
+        Row: {
+          created_at: string
+          event_id: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_id: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          event_id?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      member_days: {
+        Row: {
+          day: string
+          user_id: string
+        }
+        Insert: {
+          day: string
+          user_id: string
+        }
+        Update: {
+          day?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          email_club_posts: boolean
+          email_digest: boolean
+          email_reminders: boolean
+          email_token: string
+          founding_member: boolean
+          id: string
+          member_number: number | null
+          onboarded_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          email_club_posts?: boolean
+          email_digest?: boolean
+          email_reminders?: boolean
+          email_token?: string
+          founding_member?: boolean
+          id: string
+          member_number?: number | null
+          onboarded_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          email_club_posts?: boolean
+          email_digest?: boolean
+          email_reminders?: boolean
+          email_token?: string
+          founding_member?: boolean
+          id?: string
+          member_number?: number | null
+          onboarded_at?: string | null
+        }
+        Relationships: []
+      }
+      user_interests: {
+        Row: {
+          created_at: string
+          interest: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          interest: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          interest?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       visits: {
         Row: {
           created_at: string
@@ -940,7 +1153,27 @@ export type Database = {
       }
     }
     Functions: {
-      [_ in never]: never
+      email_recipients: {
+        Args: never
+        Returns: {
+          display_name: string
+          email: string
+          email_club_posts: boolean
+          email_digest: boolean
+          email_reminders: boolean
+          email_token: string
+          user_id: string
+        }[]
+      }
+      member_totals: { Args: never; Returns: Json }
+      set_email_choice: {
+        Args: { choice: string; enabled: boolean; how: string; shown?: string }
+        Returns: undefined
+      }
+      unsubscribe: {
+        Args: { choice: string; how: string; token: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never

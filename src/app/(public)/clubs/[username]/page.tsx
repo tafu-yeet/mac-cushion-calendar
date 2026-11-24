@@ -6,6 +6,7 @@ import { Suspense } from "react";
 
 import { clubInitials, EventCard } from "@/components/event-card";
 import { ChevronIcon, ExternalIcon, InstagramIcon } from "@/components/icons";
+import { FollowButton } from "@/components/member-actions";
 import { SubscribeButton } from "@/components/subscribe-button";
 import { campus } from "@/lib/campus";
 import { CLUB_PAST_DAYS, getClub } from "@/lib/clubs";
@@ -104,8 +105,11 @@ async function ClubDetail({ username }: { username: string }) {
               className="bg-maroon text-cream hover:bg-plum"
             />
           )}
+          <FollowButton clubId={club.id} clubName={club.name} className="min-h-10 bg-gold px-4 text-maroon hover:bg-butter" />
           <a
             href={`https://www.instagram.com/${club.username}/`}
+            data-club-id={club.id}
+            data-club-name={club.name}
             target="_blank"
             rel="noreferrer"
             className="inline-flex min-h-10 items-center gap-1.5 rounded-full px-4 text-sm font-semibold text-maroon ring-1 ring-maroon/30 hover:bg-canvas"

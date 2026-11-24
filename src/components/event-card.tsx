@@ -9,6 +9,7 @@ import { everyDays } from "@/lib/weekly";
 
 import { AddToCalendar } from "./add-to-calendar";
 import { ExternalIcon, PinIcon, RepeatIcon, StarIcon, TicketIcon, UtensilsIcon } from "./icons";
+import { FollowButton, RemindButton } from "./member-actions";
 
 // Words that don't help tell clubs apart in their initials.
 const NAME_FILLER = new Set(["mcmaster", "mac", "the", "of", "and", "at", "for", "university", "&"]);
@@ -233,6 +234,8 @@ export function EventCard({ event, now, showDate = false }: { event: PublicEvent
             href={instagram}
             data-tap="instagram"
             data-tap-event={event.id}
+            data-club-id={event.clubId}
+            data-club-name={event.clubName}
             target="_blank"
             rel="noreferrer"
             className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold ring-1 ring-current/40 hover:bg-current/10"
@@ -254,6 +257,10 @@ export function EventCard({ event, now, showDate = false }: { event: PublicEvent
             <ExternalIcon className="size-3.5" />
           </a>
         )}
+        {event.scheduleStatus === "scheduled" && (
+          <RemindButton eventId={event.id} startsAt={event.startsAt} timeKnown={event.startTimeKnown} now={now} className="ring-1 ring-current/40 hover:bg-current/10" />
+        )}
+        <FollowButton clubId={event.clubId} clubName={event.clubName} className="ring-1 ring-current/40 hover:bg-current/10" />
       </div>
     </article>
   );

@@ -8,6 +8,8 @@ import { Suspense } from "react";
 import { ListMemory } from "@/components/back-link";
 import { EngagementTracker } from "@/components/engagement-tracker";
 import { InstagramIcon } from "@/components/icons";
+import { IntentPrompts } from "@/components/intent-prompts";
+import { MemberSync } from "@/components/member-provider";
 import { SiteNav, SiteNavLinks } from "@/components/site-nav";
 import { TourButton } from "@/components/site-tour";
 import { VisitTracker } from "@/components/visit-tracker";
@@ -51,6 +53,12 @@ export default function PublicLayout({ children }: LayoutProps<"/">) {
         <EngagementTracker />
         {/* Anonymous visitors, once a day each, for weekly visitor and retention counts. */}
         <VisitTracker />
+        {/* Signed out: one nudge a session to follow a club or make an account, after an Instagram tap or a calendar add. */}
+        <Suspense>
+          <IntentPrompts />
+          {/* Signing in or out without a page reload: the header and cards catch up on the next page. */}
+          <MemberSync />
+        </Suspense>
 
         <footer className="mx-auto w-full max-w-5xl px-4 py-8">
           <div className="flex flex-wrap gap-x-5">
@@ -64,6 +72,9 @@ export default function PublicLayout({ children }: LayoutProps<"/">) {
             <FeedbackLink type="idea" className={FOOTER_LINK}>
               Send feedback
             </FeedbackLink>
+            <Link href="/privacy" className={FOOTER_LINK}>
+              Privacy
+            </Link>
             <a href={`https://www.instagram.com/${campus.instagram}/`} target="_blank" rel="noreferrer" className={`${FOOTER_LINK} gap-1.5`}>
               <InstagramIcon className="size-4" />@{campus.instagram}
               <span className="sr-only"> on Instagram</span>

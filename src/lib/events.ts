@@ -216,3 +216,17 @@ export async function getEvent(id: number): Promise<PublicEvent | null> {
   if (error) throw new Error(`Couldn't load event ${id}: ${error.message}`);
   return data ? toPublicEvent(data as Row) : null;
 }
+
+/** These approved events, by id, earliest first (for member emails: not cached, so a cancellation shows at once). */
+export async function getEventsByIds(ids: number[]): Promise<PublicEvent[]> {
+  if (!ids.length) return [];
+  const { data, error } = await createPublicClient()
+    .from("events")
+    .select(COLUMNS)
+    .in("id", ids.slice(0, 500))
+    .eq("status", "approved")
+    .not("starts_at", "is", null)
+    .order("starts_at");
+  if (error) throw new Error(`Couldn't load events by id: ${error.message}`);
+  return (data as Row[]).map(toPublicEvent);
+}

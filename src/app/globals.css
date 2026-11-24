@@ -32,3 +32,15 @@ body {
   background: var(--color-stone-50);
   color: var(--color-stone-900);
 }
+
+/* The signed-out nudge (src/components/intent-prompts.tsx) slides up into place. */
+@keyframes rise {
+  from {
+    transform: translateY(12px);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}

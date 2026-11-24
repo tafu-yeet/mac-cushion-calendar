@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 /**
  * Refreshes the Supabase session cookie on every matched request and sends
- * signed-out visitors from /admin to /login. This is only a convenience
+ * signed-out visitors from /admin to the sign-in page. This is only a convenience
  * redirect: every admin page and action checks the session itself.
  */
 export async function updateSession(request: NextRequest) {
@@ -34,8 +34,8 @@ export async function updateSession(request: NextRequest) {
 
   if (!data?.claims && request.nextUrl.pathname.startsWith("/admin")) {
     const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    url.search = "";
+    url.pathname = "/sign-in";
+    url.search = "?next=/admin";
     return NextResponse.redirect(url);
   }
 
