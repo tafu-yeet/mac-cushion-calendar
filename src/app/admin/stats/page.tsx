@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { requireAdmin } from "@/lib/auth";
-import { addDays, formatDay, mondayOf, toLocalInputs, todayInCampus } from "@/lib/time";
+import { addDays, formatDay, mondayOf, startOfTodayIso, timeAgo, toLocalInputs, todayInCampus } from "@/lib/time";
 
 import { HighlightToggle } from "../highlight-toggle";
 
@@ -303,7 +303,15 @@ async function HighlightTest() {
   );
 }
 
-type Add = { event_id: number; app: string; created_at: string; events: { name: string; starts_at: string | null } | null };
+// The page renders per request (requireAdmin reads cookies), so reading the clock is fine here.
+const requestTime = () => Date.now();
+
+type Add = {
+  event_id: number;
+  app: string;
+  created_at: string;
+  events: { name: string; starts_at: string | null; status: string } | null;
+};
 
 async function CalendarAdds() {
   const { supabase } = await requireAdmin();
@@ -311,7 +319,7 @@ async function CalendarAdds() {
   for (let from = 0; ; from += 1000) {
     const { data, error } = await supabase
       .from("calendar_adds")
-      .select("event_id, app, created_at, events(name, starts_at)")
+      .select("event_id, app, created_at, events(name, starts_at, status)")
       .order("created_at", { ascending: false })
       .range(from, from + 999);
     if (error) return <p className="text-sm text-red-700">Couldn&apos;t load calendar adds: {error.message}</p>;
@@ -327,12 +335,22 @@ async function CalendarAdds() {
     count: rows.filter((r) => dayOf(r.created_at) === date).length,
   }));
   const busiest = Math.max(1, ...days.map((d) => d.count));
-  const byEvent = new Map<number, { name: string; count: number }>();
+  // Listed events still to come, most added first; on a tie, the one added most recently (rows
+  // are newest first, so the first add seen is the latest). Past events drop off, or a few early
+  // favourites would hold the list for the whole term; so do events taken off the site since.
+  const fromToday = Date.parse(startOfTodayIso());
+  const byEvent = new Map<number, { name: string; count: number; latest: string }>();
   for (const r of rows) {
-    const e = byEvent.get(r.event_id) ?? { name: r.events?.name ?? `#${r.event_id}`, count: 0 };
+    if (!r.events?.starts_at || r.events.status !== "approved" || Date.parse(r.events.starts_at) < fromToday) continue;
+    const e = byEvent.get(r.event_id) ?? { name: r.events.name, count: 0, latest: r.created_at };
     byEvent.set(r.event_id, { ...e, count: e.count + 1 });
   }
-  const top = [...byEvent.entries()].sort(([, a], [, b]) => b.count - a.count).slice(0, TOP_EVENTS);
+  const top = [...byEvent.entries()]
+    .sort(([, a], [, b]) => b.count - a.count || b.latest.localeCompare(a.latest))
+    .slice(0, TOP_EVENTS);
+  const latest = rows.slice(0, TOP_EVENTS);
+  const nowMs = requestTime();
+  const appLabel = (key: string) => APPS.find((a) => a.key === key)?.label.replace(/ \(\.ics\)$/, "") ?? key;
 
   return (
     <div className="flex flex-col gap-4">
@@ -372,23 +390,45 @@ async function CalendarAdds() {
         </section>
       </div>
 
-      <section className="rounded-xl border border-stone-200 bg-white">
-        <h3 className="border-b border-stone-200 px-4 py-3 text-sm font-semibold">Most added events</h3>
-        {top.length ? (
-          <ol className="divide-y divide-stone-100 text-sm">
-            {top.map(([id, e]) => (
-              <li key={id} className="flex justify-between gap-3 px-4 py-2">
-                <a href={`/events/${id}`} target="_blank" rel="noreferrer" className="underline">
-                  {e.name}
-                </a>
-                <span className="font-medium tabular-nums">{e.count}</span>
-              </li>
-            ))}
-          </ol>
-        ) : (
-          <p className="px-4 py-6 text-sm text-stone-500">Nobody has added an event yet. Counting started Oct 26.</p>
-        )}
-      </section>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <section className="rounded-xl border border-stone-200 bg-white">
+          <h3 className="border-b border-stone-200 px-4 py-3 text-sm font-semibold">Most added, still to come</h3>
+          {top.length ? (
+            <ol className="divide-y divide-stone-100 text-sm">
+              {top.map(([id, e]) => (
+                <li key={id} className="flex justify-between gap-3 px-4 py-2">
+                  <a href={`/events/${id}`} target="_blank" rel="noreferrer" className="underline">
+                    {e.name}
+                  </a>
+                  <span className="font-medium tabular-nums">{e.count}</span>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p className="px-4 py-6 text-sm text-stone-500">No upcoming event has been added yet.</p>
+          )}
+        </section>
+
+        <section className="rounded-xl border border-stone-200 bg-white">
+          <h3 className="border-b border-stone-200 px-4 py-3 text-sm font-semibold">Latest adds</h3>
+          {latest.length ? (
+            <ol className="divide-y divide-stone-100 text-sm">
+              {latest.map((r, i) => (
+                <li key={`${r.event_id}-${r.created_at}-${i}`} className="flex justify-between gap-3 px-4 py-2">
+                  <a href={`/events/${r.event_id}`} target="_blank" rel="noreferrer" className="underline">
+                    {r.events?.name ?? `#${r.event_id}`}
+                  </a>
+                  <span className="shrink-0 text-right text-xs text-stone-500">
+                    {appLabel(r.app)} · {timeAgo(r.created_at, nowMs)}
+                  </span>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p className="px-4 py-6 text-sm text-stone-500">Nobody has added an event yet. Counting started Oct 26.</p>
+          )}
+        </section>
+      </div>
     </div>
   );
 }
