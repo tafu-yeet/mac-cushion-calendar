@@ -213,8 +213,10 @@ the admin) is Google, a 6-digit emailed code, or an optional password; the email
 carries a link that lands on `/auth/confirm`, which waits for a tap because school email
 scanners open links on their own. Google's sign-in doesn't work in Instagram's in-app
 browser, so there the page shows only the email code, with a note on opening the page
-in Safari or Chrome. Every route ends at `/auth/finish`, which applies the sign-up box
-and any club picked before signing in, then shows the welcome survey once.
+in Safari or Chrome. Every route ends in `finishSignIn()` (`src/lib/finish-sign-in.ts`;
+Google's return trip reaches it through `/auth/finish`), which applies the sign-up box
+and any club picked before signing in, then shows the welcome survey once. The sign-in
+emails' templates are in `supabase/templates/`, pasted into Supabase's dashboard.
 
 Members can follow clubs (cards, event and club pages), pick interests (they go first
 in the feed, within each day), set "Remind me" on events, and save their class schedule
