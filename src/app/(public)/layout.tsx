@@ -32,10 +32,10 @@ export default function PublicLayout({ children }: LayoutProps<"/">) {
       <div className="flex flex-1 flex-col bg-canvas font-body text-maroon">
         <header className="sticky top-0 z-30 bg-canvas/85 backdrop-blur">
           <div className="mx-auto flex max-w-5xl items-center justify-between gap-2 px-4 py-3 sm:gap-3">
-            <Link href="/" className="flex items-center gap-2.5" aria-label={`${campus.siteName}: what's on`}>
+            <Link href="/" className="flex shrink-0 items-center gap-2.5" aria-label={`${campus.siteName}: what's on`}>
               <Image src="/logo-mark.png" alt="" width={36} height={36} className="size-9 rounded-full" priority />
-              {/* The narrowest phones keep the logo alone, so the nav fits. */}
-              <span className="font-display text-[15px] font-semibold leading-[0.95] whitespace-nowrap max-[389px]:hidden sm:text-lg sm:leading-none">
+              {/* Phones keep the logo alone, so the nav and its Sign in button fit. */}
+              <span className="font-display text-[15px] font-semibold leading-[0.95] whitespace-nowrap max-[419px]:hidden sm:text-lg sm:leading-none">
                 {firstLine}
                 <br className="sm:hidden" /> {secondLine}
               </span>
