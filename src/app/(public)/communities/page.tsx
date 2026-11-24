@@ -4,10 +4,12 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 
 import { EventCard } from "@/components/event-card";
+import { MembersOnly } from "@/components/members-only";
 import { campus } from "@/lib/campus";
 import { COMMUNITY_GROUPS, communityOf } from "@/lib/communities";
 import { getEventsBetween } from "@/lib/events";
 import { byStart, groupByDay } from "@/lib/filters";
+import { getMember } from "@/lib/member";
 import { endMs } from "@/lib/status";
 import { addDays, dayStartIso, formatDay, todayInCampus } from "@/lib/time";
 
@@ -51,7 +53,18 @@ async function load(searchParams: PageProps<"/communities">["searchParams"]) {
 }
 
 async function Browser({ searchParams }: { searchParams: PageProps<"/communities">["searchParams"] }) {
-  const { now, today, picked, events } = await load(searchParams);
+  const [{ now, today, picked, events }, member] = await Promise.all([load(searchParams), getMember()]);
+  if (!member) {
+    return (
+      <div className="mt-6">
+        <MembersOnly
+          next={picked ? `/communities?c=${encodeURIComponent(picked.key)}` : "/communities"}
+          heading={picked ? `Events for ${picked.label}` : "Events for your community"}
+          level={2}
+        />
+      </div>
+    );
+  }
   // Cancelled events stay listed but aren't counted, as elsewhere.
   const count = (key: string) => events.filter((e) => e.communities.includes(key) && e.scheduleStatus !== "cancelled").length;
   const shown = picked ? events.filter((e) => e.communities.includes(picked.key)) : [];

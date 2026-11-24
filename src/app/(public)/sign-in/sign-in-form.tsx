@@ -160,7 +160,7 @@ function SignInSteps({ next, google, inAppBrowser, error, onRestart }: Props & {
       )}
 
       <p className="text-xs leading-relaxed text-maroon/75">
-        Browsing stays open to everyone: an account is only for following clubs, reminders and your schedule.{" "}
+        The calendar stays open to everyone. An account adds event details, clubs, reminders and your schedule.{" "}
         <Link href="/privacy" className="font-semibold underline underline-offset-2">
           What we keep
         </Link>

@@ -208,7 +208,11 @@ hour (a cookie only the server reads).
 
 ### Member accounts
 
-Browsing never needs an account. Signing in (`/sign-in`, the same page for members and
+The calendar (home, Day and Week) is open to everyone. Event pages, club pages, the
+club list, Communities and Add to calendar are members only: signed out, they show the
+event or club name and the sign-in form in place (`src/components/members-only.tsx`), so
+shared links keep their preview and land back on the page after signing in. Club calendar
+feeds (`/clubs/<name>/calendar.ics`) stay open, since calendar apps can't sign in. Signing in (`/sign-in`, the same page for members and
 the admin) is a 6-digit emailed code, an optional password, or Google (only once
 `campus.config.json` "signIn.google" is on, which needs a Google client set up in
 Supabase's Google provider; off, the page has no Google button); the email also

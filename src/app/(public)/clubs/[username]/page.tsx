@@ -7,12 +7,14 @@ import { Suspense } from "react";
 import { clubInitials, EventCard } from "@/components/event-card";
 import { ChevronIcon, ExternalIcon, InstagramIcon } from "@/components/icons";
 import { FollowButton } from "@/components/member-actions";
+import { MembersOnly } from "@/components/members-only";
 import { SubscribeButton } from "@/components/subscribe-button";
 import { campus } from "@/lib/campus";
 import { CLUB_PAST_DAYS, getClub } from "@/lib/clubs";
 import { communityOf, type Community } from "@/lib/communities";
 import { getClubEvents, type PublicEvent } from "@/lib/events";
 import { byStart, groupByDay } from "@/lib/filters";
+import { getMember } from "@/lib/member";
 import { SITE_URL } from "@/lib/site-url";
 import { endMs } from "@/lib/status";
 import { addDays, dayStartIso, formatDay, toLocalInputs, todayInCampus } from "@/lib/time";
@@ -62,7 +64,7 @@ async function load(username: string) {
 }
 
 async function ClubDetail({ username }: { username: string }) {
-  const { now, today, club, events } = await load(username);
+  const [{ now, today, club, events }, member] = await Promise.all([load(username), getMember()]);
   if (!club) notFound();
 
   // Over: ended, or on an earlier day when it had no start time.
@@ -71,6 +73,16 @@ async function ClubDetail({ username }: { username: string }) {
   const recent = events.filter((e) => over(e) && e.scheduleStatus !== "cancelled").length;
   const communities = club.communities.map(communityOf).filter((c): c is Community => c !== null);
   const coming = upcoming.filter((e) => e.scheduleStatus !== "cancelled").length;
+
+  if (!member) {
+    return (
+      <MembersOnly
+        next={`/clubs/${club.username}`}
+        heading={club.name}
+        detail={coming ? `${coming} event${coming === 1 ? "" : "s"} coming up` : undefined}
+      />
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6">

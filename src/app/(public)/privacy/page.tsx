@@ -19,7 +19,7 @@ export default function PrivacyPage() {
       <div>
         <h1 className={TITLE}>what we keep</h1>
         <p className="mt-2 text-base leading-relaxed">
-          {campus.siteName} is a student project. Browsing needs no account, and we keep as little as we can.
+          {campus.siteName} is a student project. The calendar needs no account, and we keep as little as we can.
         </p>
       </div>
 

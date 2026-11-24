@@ -6,6 +6,8 @@ import { Suspense } from "react";
 import { BUTTON, BUTTON_LIGHT, CARD, PAGE, TITLE } from "@/components/member-styles";
 import { IN_APP_BROWSER, safeNext } from "@/lib/auth-links";
 import { campus } from "@/lib/campus";
+import { getClub } from "@/lib/clubs";
+import { getEvent } from "@/lib/events";
 import { currentUser, hasSessionCookie } from "@/lib/member";
 
 import { signOut } from "./actions";
@@ -81,12 +83,29 @@ async function SignInFromRequest({ searchParams }: { searchParams: PageProps<"/s
     );
   }
 
+  const goingTo = await pageName(next);
   return (
-    <SignInForm
-      next={next}
-      google={campus.signIn.google}
-      inAppBrowser={IN_APP_BROWSER.test(h.get("user-agent") ?? "")}
-      error={error ? ERRORS[error] : undefined}
-    />
+    <>
+      {goingTo && (
+        <p className="text-base leading-relaxed">
+          Sign in or join to see <span className="font-semibold">{goingTo}</span>. It&apos;s free.
+        </p>
+      )}
+      <SignInForm
+        next={next}
+        google={campus.signIn.google}
+        inAppBrowser={IN_APP_BROWSER.test(h.get("user-agent") ?? "")}
+        error={error ? ERRORS[error] : undefined}
+      />
+    </>
   );
+}
+
+/** The event or club a members-only link was headed to, by name, or null. */
+async function pageName(next: string): Promise<string | null> {
+  const event = next.match(/^\/events\/(\d+)(?:[/?#]|$)/);
+  if (event) return (await getEvent(Number(event[1])))?.name ?? null;
+  const club = next.match(/^\/clubs\/([^/?#]+)/);
+  if (club) return (await getClub(decodeURIComponent(club[1])))?.name ?? null;
+  return null;
 }

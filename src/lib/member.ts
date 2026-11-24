@@ -70,6 +70,11 @@ export async function getMember(): Promise<Member | null> {
   };
 }
 
+/** Whether someone is signed in, for route handlers. Signed out returns at once without asking Supabase. */
+export async function isSignedIn(): Promise<boolean> {
+  return (await hasSessionCookie()) && !!(await currentUser());
+}
+
 /** The signed-in user's id and their Supabase client, or null. For Server Actions: they check it themselves. */
 export async function currentUser() {
   const supabase = await createClient();

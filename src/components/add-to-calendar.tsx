@@ -1,8 +1,10 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 
 import { CalendarPlusIcon } from "./icons";
+import { useMember } from "./member-provider";
 
 const CHOICES = [
   // Google Calendar can show a "sync error" when it isn't open yet; the second try works.
@@ -11,8 +13,13 @@ const CHOICES = [
   { app: "ics", label: "Apple Calendar or other", hint: "Opens a calendar file" },
 ] as const;
 
-/** "Add to calendar", then a choice of calendar: Google and Outlook open with the event filled in, the rest get an .ics file. */
+/**
+ * "Add to calendar", then a choice of calendar: Google and Outlook open with the event filled in,
+ * the rest get an .ics file. Members only: signed out, the tap goes to sign-in and back to the event.
+ */
 export function AddToCalendar({ eventId, className }: { eventId: number; className: string }) {
+  const { member, ready } = useMember();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const wrapper = useRef<HTMLDivElement>(null);
   const button = useRef<HTMLButtonElement>(null);
@@ -46,7 +53,11 @@ export function AddToCalendar({ eventId, className }: { eventId: number; classNa
         aria-controls={menuId}
         data-tap="calendar_menu"
         data-tap-event={eventId}
-        onClick={() => setOpen(!open)}
+        onClick={() => {
+          // Not known yet: open the choices, and the add link itself sends a signed-out visitor to sign in.
+          if (ready && !member) router.push(`/sign-in?next=${encodeURIComponent(`/events/${eventId}`)}`);
+          else setOpen(!open);
+        }}
         className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold ${className}`}
       >
         <CalendarPlusIcon className="size-4" />

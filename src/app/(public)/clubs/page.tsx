@@ -2,9 +2,11 @@ import type { Metadata } from "next";
 import { connection } from "next/server";
 import { Suspense } from "react";
 
+import { MembersOnly } from "@/components/members-only";
 import { campus } from "@/lib/campus";
 import { getClubs } from "@/lib/clubs";
 import { getEventsBetween } from "@/lib/events";
+import { getMember } from "@/lib/member";
 import { endMs } from "@/lib/status";
 import { addDays, dayStartIso, todayInCampus } from "@/lib/time";
 
@@ -43,7 +45,14 @@ async function load() {
 }
 
 async function Directory() {
-  const { now, clubs, events } = await load();
+  const [{ now, clubs, events }, member] = await Promise.all([load(), getMember()]);
+  if (!member) {
+    return (
+      <div className="mt-6">
+        <MembersOnly next="/clubs" heading={`${clubs.filter((c) => c.active).length} clubs and offices`} level={2} />
+      </div>
+    );
+  }
   const upcoming = new Map<number, number>();
   for (const e of events) {
     if ((e.startTimeKnown && endMs(e) <= now) || e.scheduleStatus === "cancelled") continue;

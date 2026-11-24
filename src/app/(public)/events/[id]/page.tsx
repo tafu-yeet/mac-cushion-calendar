@@ -8,12 +8,14 @@ import { clubInitials, ClubLink, HighlightFrame, RecurringBadge, RegistrationBad
 import { AddToCalendar } from "@/components/add-to-calendar";
 import { ExternalIcon, PinIcon, TicketIcon, UtensilsIcon } from "@/components/icons";
 import { FollowButton, RemindButton } from "@/components/member-actions";
+import { MembersOnly } from "@/components/members-only";
 import { ShareButton } from "@/components/share-button";
 import { campus } from "@/lib/campus";
 import { categoryOf } from "@/lib/categories";
 import { freeFoodPhrase } from "@/lib/clean";
 import { eventSchemaJson, ONLINE } from "@/lib/event-schema";
 import { getEvent, type PublicEvent } from "@/lib/events";
+import { getMember } from "@/lib/member";
 import { registrationLink, signUpFirst } from "@/lib/registration";
 import { formatDay, formatDuration, formatTime, formatTimeRange, timeAgo, toLocalInputs, todayInCampus } from "@/lib/time";
 import { everyDays } from "@/lib/weekly";
@@ -64,10 +66,20 @@ export default function EventPage({ params }: PageProps<"/events/[id]">) {
 async function EventDetail({ id }: { id: number }) {
   await connection(); // reads the clock, for the year
   const today = todayInCampus();
-  const event = await getEvent(id);
+  const [event, member] = await Promise.all([getEvent(id), getMember()]);
   if (!event) notFound();
-  const category = categoryOf(event.category);
   const date = toLocalInputs(event.startsAt).date;
+  if (!member) {
+    // Members only past the calendar. The name and day are on the calendar anyway; the rest is the reason to join.
+    return (
+      <MembersOnly
+        next={`/events/${event.id}`}
+        heading={event.name}
+        detail={`${formatDay(date, "long", today)} · ${event.hostedBy ?? event.clubName}`}
+      />
+    );
+  }
+  const category = categoryOf(event.category);
   const duration = event.startTimeKnown ? formatDuration(event.startsAt, event.endsAt) : null;
   const host = event.hostedBy ?? event.clubName;
 
