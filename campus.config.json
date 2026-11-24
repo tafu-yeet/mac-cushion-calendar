@@ -27,7 +27,7 @@
   "email": {
     "from": "Mac Cushion Calendar <info@maccushion.ca>",
     "contact": "info@maccushion.ca",
-    "mailingAddress": ""
+    "mailingAddress": "1280 Main Street West, Hamilton, ON L8S 4L8, Canada"
   },
   "signIn": {
     "note": "Turn google on only after Supabase has a Google client (Authentication > Sign In / Providers > Google). While it's off the sign-in page has no Google button, and email codes and passwords work for everyone.",
