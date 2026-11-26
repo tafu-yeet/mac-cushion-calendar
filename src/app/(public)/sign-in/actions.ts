@@ -42,6 +42,12 @@ function friendly(error: AuthError, fallback: string): string {
 }
 
 /**
+ * Supabase's once-a-minute limit per address ("you can only request this after 42 seconds"), as
+ * opposed to the project's hourly email cap, which shares its error code.
+ */
+const justSent = (error: AuthError) => error.code === "over_email_send_rate_limit" && /after \d+ seconds?/i.test(error.message);
+
+/**
  * Every button on the sign-in form, told apart by the `intent` its button sends: Google, an
  * emailed code (new or returning, same thing), a password, a new account with a password, or a
  * forgotten password. Each one either moves the form on a step or leaves the site signed in and
@@ -81,6 +87,9 @@ export async function signInStep(prev: SignInState, formData: FormData): Promise
   switch (intent) {
     case "send-code": {
       const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: true } });
+      // A code went to this address under a minute ago (the page reloaded on the way back from
+      // the mail app, say): the box for it, not a dead end on "wait a minute".
+      if (error && justSent(error)) return { step: "code", email, purpose: "sign-in", notice: "We sent you a code a moment ago." };
       if (error) return start(friendly(error, "We couldn't send the code. Try again in a minute."));
       return { step: "code", email, purpose: "sign-in" };
     }

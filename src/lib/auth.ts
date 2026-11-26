@@ -1,6 +1,7 @@
 import "server-only";
 
 import { redirect } from "next/navigation";
+import { connection } from "next/server";
 
 import { getMember } from "@/lib/member";
 import type { Member } from "@/lib/member-types";
@@ -12,6 +13,9 @@ import { createClient } from "@/lib/supabase/server";
  * only a convenience, and row level security is the final backstop.
  */
 export async function requireAdmin() {
+  // Supabase reads the clock to check the session. Without this, prefetching an admin page
+  // (cookies and all) logs "used Date.now() while prerendering" on Vercel.
+  await connection();
   const supabase = await createClient();
   const { data } = await supabase.auth.getClaims();
   const userId = data?.claims?.sub;

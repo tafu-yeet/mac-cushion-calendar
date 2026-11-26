@@ -77,6 +77,8 @@ export async function isSignedIn(): Promise<boolean> {
 
 /** The signed-in user's id and their Supabase client, or null. For Server Actions: they check it themselves. */
 export async function currentUser() {
+  // Supabase reads the clock to check the session: never during a prerender (a prefetch with cookies).
+  await connection();
   const supabase = await createClient();
   const { data } = await supabase.auth.getClaims();
   const userId = data?.claims?.sub;
