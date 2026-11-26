@@ -55,7 +55,8 @@ export default function EventPage({ params }: PageProps<"/events/[id]">) {
   return (
     <div className="mx-auto max-w-2xl px-4 py-6">
       <BackLink className="mb-4 inline-flex min-h-9 items-center gap-1 rounded-full px-3 py-1 text-sm font-semibold ring-1 ring-maroon/30 hover:bg-panel/60" />
-      <Suspense fallback={<div className="h-96 skeleton rounded-[32px]" role="status" aria-label="Loading" />}>
+      {/* A screen tall while it loads, so the footer stays out of sight and has nothing to jump from. */}
+      <Suspense fallback={<div className="min-h-dvh" role="status" aria-label="Loading"><div className="h-96 skeleton rounded-[32px]" /></div>}>
         {params.then(({ id }) => (
           <EventDetail id={Number(id)} />
         ))}

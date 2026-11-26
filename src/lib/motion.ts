@@ -67,7 +67,20 @@ export function riseNewRows(rows: Iterable<HTMLElement>, seen: WeakSet<Element>)
  */
 export function captureForCrossfade(list: HTMLElement | null): (() => void) | null {
   if (!list) return null;
+  // Only the events on screen are copied in full. The rest stay as empty boxes of the same
+  // height, so the copy lines up but costs the phone next to nothing to lay out and draw.
+  const rowsOf = (el: HTMLElement) => [...el.querySelectorAll<HTMLElement>("[data-seen-event]")].map((card) => card.closest<HTMLElement>("[data-event-row]") ?? card);
+  const offscreen = rowsOf(list).map((row) => {
+    const r = row.getBoundingClientRect();
+    return r.bottom < 0 || r.top > window.innerHeight ? r.height : null;
+  });
   const ghost = list.cloneNode(true) as HTMLElement;
+  rowsOf(ghost).forEach((row, i) => {
+    const height = offscreen[i];
+    if (height == null) return;
+    row.replaceChildren();
+    row.style.height = `${height}px`;
+  });
   ghost.removeAttribute("id");
   ghost.querySelectorAll("[id]").forEach((el) => el.removeAttribute("id"));
   ghost.setAttribute("aria-hidden", "true");

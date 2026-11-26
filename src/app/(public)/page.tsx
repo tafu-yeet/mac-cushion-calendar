@@ -57,7 +57,8 @@ async function Feed({ searchParams }: { searchParams: PageProps<"/">["searchPara
 
 function FeedSkeleton() {
   return (
-    <div className="flex flex-col gap-4" role="status" aria-label="Loading">
+    // A screen tall, so the footer stays out of sight while the feed loads and has nothing to jump from.
+    <div className="flex min-h-dvh flex-col gap-4" role="status" aria-label="Loading">
       <div className="skeleton h-4 w-40 rounded" />
       <div className="skeleton h-8 w-48 rounded" />
       <div className="skeleton h-11 rounded-xl" />
