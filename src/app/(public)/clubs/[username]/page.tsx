@@ -8,6 +8,7 @@ import { clubInitials, EventCard } from "@/components/event-card";
 import { ChevronIcon, ExternalIcon, InstagramIcon } from "@/components/icons";
 import { FollowButton } from "@/components/member-actions";
 import { MembersOnly } from "@/components/members-only";
+import { CardsSkeleton } from "@/components/skeleton";
 import { SubscribeButton } from "@/components/subscribe-button";
 import { campus } from "@/lib/campus";
 import { CLUB_PAST_DAYS, getClub } from "@/lib/clubs";
@@ -39,12 +40,12 @@ export default function ClubPage({ params }: PageProps<"/clubs/[username]">) {
     <div className="mx-auto max-w-2xl px-4 py-6">
       <Link
         href="/clubs"
-        className="mb-4 inline-flex min-h-9 items-center gap-1 rounded-full px-3 py-1 text-sm font-semibold ring-1 ring-maroon/30 hover:bg-panel/60"
+        className="press mb-4 inline-flex min-h-9 items-center gap-1 rounded-full px-3 py-1 text-sm font-semibold ring-1 ring-maroon/30 hover:bg-panel/60"
       >
         <ChevronIcon direction="left" className="size-4" />
         All clubs
       </Link>
-      <Suspense fallback={<div className="h-72 animate-pulse rounded-[32px] bg-maroon/10" role="status" aria-label="Loading" />}>
+      <Suspense fallback={<CardsSkeleton />}>
         {params.then(({ username }) => (
           <ClubDetail username={username} />
         ))}
@@ -124,7 +125,7 @@ async function ClubDetail({ username }: { username: string }) {
             data-club-name={club.name}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex min-h-10 items-center gap-1.5 rounded-full px-4 text-sm font-semibold text-maroon ring-1 ring-maroon/30 hover:bg-canvas"
+            className="press inline-flex min-h-10 items-center gap-1.5 rounded-full px-4 text-sm font-semibold text-maroon ring-1 ring-maroon/30 hover:bg-canvas"
           >
             <InstagramIcon className="size-4" />
             Instagram
@@ -141,7 +142,7 @@ async function ClubDetail({ username }: { username: string }) {
                 <Link
                   key={c.key}
                   href={`/communities?c=${c.key}`}
-                  className="rounded-full bg-canvas px-3 py-1 text-sm font-medium text-maroon ring-1 ring-maroon/20 hover:bg-butter/70"
+                  className="press rounded-full bg-canvas px-3 py-1 text-sm font-medium text-maroon ring-1 ring-maroon/20 hover:bg-butter/70"
                 >
                   {c.label}
                 </Link>

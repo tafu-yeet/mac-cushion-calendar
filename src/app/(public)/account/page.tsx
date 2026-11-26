@@ -21,7 +21,7 @@ const H2 = "font-display text-xl font-semibold lowercase";
 export default function AccountPage({ searchParams }: PageProps<"/account">) {
   return (
     <div className={PAGE}>
-      <Suspense fallback={<div className="h-96 animate-pulse rounded-[28px] bg-maroon/10" />}>
+      <Suspense fallback={<div className="h-96 skeleton rounded-[28px]" />}>
         <Account searchParams={searchParams} />
       </Suspense>
     </div>
@@ -153,7 +153,7 @@ async function Account({ searchParams }: { searchParams: PageProps<"/account">["
             <input type="checkbox" name="confirm" className="mt-0.5 size-5 accent-red-700" />
             Yes, delete my account and everything in it
           </label>
-          <button type="submit" className="min-h-12 rounded-full bg-red-700 px-5 text-base font-semibold text-white hover:bg-red-800">
+          <button type="submit" className="press min-h-12 rounded-full bg-red-700 px-5 text-base font-semibold text-white hover:bg-red-800">
             Delete my account
           </button>
         </form>

@@ -6,6 +6,7 @@ import { useEffect, useId, useRef, useState } from "react";
 
 import { InstagramIcon, MenuIcon } from "@/components/icons";
 import { useMember } from "@/components/member-provider";
+import { usePresence } from "@/components/motion";
 import { TourButton } from "@/components/site-tour";
 import { campus } from "@/lib/campus";
 
@@ -31,9 +32,10 @@ export function SiteNavLinks({ active }: { active?: string }) {
         <Link
           key={href}
           href={href}
+          transitionTypes={["nav"]}
           aria-current={active && matches(active) ? "page" : undefined}
           data-tour={href === "/week" ? "calendar" : undefined}
-          className={`whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-semibold transition-colors sm:px-3.5 ${"wide" in link ? "hidden sm:inline-block" : ""} ${href === "/" ? "max-[359px]:hidden" : ""} ${
+          className={`press whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-semibold sm:px-3.5 ${"wide" in link ? "hidden sm:inline-block" : ""} ${href === "/" ? "max-[359px]:hidden" : ""} ${
             active && matches(active)
               ? "bg-maroon text-cream"
               : "text-maroon ring-1 ring-maroon/30 hover:bg-panel/60"
@@ -62,7 +64,7 @@ function AccountLink({ active }: { active?: string }) {
       <Link
         href="/sign-in"
         aria-current={active === "/sign-in" ? "page" : undefined}
-        className={`whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-semibold transition-colors sm:px-3.5 ${current ? "bg-maroon text-cream" : "bg-gold text-maroon hover:bg-butter"}`}
+        className={`press whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-semibold sm:px-3.5 ${current ? "bg-maroon text-cream" : "bg-gold text-maroon hover:bg-butter"}`}
       >
         Sign in
       </Link>
@@ -73,7 +75,8 @@ function AccountLink({ active }: { active?: string }) {
       href="/account"
       aria-current={current ? "page" : undefined}
       title="Your account"
-      className={`grid size-9 shrink-0 place-items-center rounded-full font-display text-base font-semibold ${current ? "bg-maroon text-cream" : "bg-gold text-maroon hover:bg-butter"}`}
+      transitionTypes={["nav"]}
+      className={`press grid size-9 shrink-0 place-items-center rounded-full font-display text-base font-semibold ${current ? "bg-maroon text-cream" : "bg-gold text-maroon hover:bg-butter"}`}
     >
       {initialOf(member.name, member.email)}
       <span className="sr-only">Your account</span>
@@ -81,11 +84,12 @@ function AccountLink({ active }: { active?: string }) {
   );
 }
 
-const MENU_ITEM = "flex min-h-11 w-full items-center rounded-xl px-3 text-left text-sm font-semibold hover:bg-canvas";
+const MENU_ITEM = "press flex min-h-11 w-full items-center rounded-xl px-3 text-left text-sm font-semibold hover:bg-canvas";
 
 /** Phones only: the pages with no room in the bar. Closes on a pick, a tap outside, Escape, or a new page. */
 function MoreMenu({ here, active }: { here: boolean; active?: string }) {
   const [open, setOpen] = useState(false);
+  const { shown, closing } = usePresence(open || null);
   const [openedOn, setOpenedOn] = useState(active);
   const box = useRef<HTMLDivElement>(null);
   const button = useRef<HTMLButtonElement>(null);
@@ -123,17 +127,22 @@ function MoreMenu({ here, active }: { here: boolean; active?: string }) {
         aria-expanded={open}
         aria-controls={menuId}
         onClick={() => setOpen((o) => !o)}
-        className={`relative grid size-9 shrink-0 place-items-center rounded-full transition-colors ${here ? "bg-maroon text-cream" : "text-maroon ring-1 ring-maroon/30"}`}
+        className={`press relative grid size-9 shrink-0 place-items-center rounded-full ${here ? "bg-maroon text-cream" : "text-maroon ring-1 ring-maroon/30"}`}
       >
         <MenuIcon className="size-5" />
         <span className="sr-only">More pages</span>
       </button>
-      {open && (
-        <div id={menuId} className="absolute right-0 top-full z-40 mt-2 flex w-52 flex-col rounded-2xl bg-panel p-1.5 text-maroon shadow-lg ring-1 ring-maroon/15">
-          <Link href="/communities" aria-current={active === "/communities" ? "page" : undefined} onClick={() => setOpen(false)} className={MENU_ITEM}>
+      {shown && (
+        <div
+          id={menuId}
+          data-closing={closing || undefined}
+          inert={closing}
+          className="pop origin-top-right absolute right-0 top-full z-40 mt-2 flex w-52 flex-col rounded-2xl bg-panel p-1.5 text-maroon shadow-lg ring-1 ring-maroon/15"
+        >
+          <Link href="/communities" transitionTypes={["nav"]} aria-current={active === "/communities" ? "page" : undefined} onClick={() => setOpen(false)} className={MENU_ITEM}>
             Communities
           </Link>
-          <Link href="/clubs" aria-current={active === "/clubs" ? "page" : undefined} onClick={() => setOpen(false)} className={MENU_ITEM}>
+          <Link href="/clubs" transitionTypes={["nav"]} aria-current={active === "/clubs" ? "page" : undefined} onClick={() => setOpen(false)} className={MENU_ITEM}>
             Clubs
           </Link>
           <div onClickCapture={() => setOpen(false)}>

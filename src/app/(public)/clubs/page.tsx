@@ -28,7 +28,7 @@ export default function ClubsPage() {
       <p className="mt-3 text-maroon/75">
         Every club and office we follow. Open one to see what it has coming up, or subscribe to get its events in your calendar.
       </p>
-      <Suspense fallback={<div className="mt-6 h-96 animate-pulse rounded-[32px] bg-maroon/10" role="status" aria-label="Loading" />}>
+      <Suspense fallback={<div className="mt-6 h-96 skeleton rounded-[32px]" role="status" aria-label="Loading" />}>
         <Directory />
       </Suspense>
     </div>

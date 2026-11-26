@@ -28,7 +28,7 @@ export function StatusBadge({ event, now, className }: { event: PublicEvent; now
   if (status.kind === "live") {
     return (
       <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 font-semibold ${className}`}>
-        <span className="size-1.5 rounded-full bg-current motion-safe:animate-pulse" />
+        <span className="live-dot size-1.5 rounded-full bg-current" />
         On now
       </span>
     );
@@ -88,7 +88,7 @@ export function HighlightBadge({ event, className }: { event: PublicEvent; class
 export function HighlightFrame({ event, className = "rounded-[28px]", children }: { event: PublicEvent; className?: string; children: React.ReactNode }) {
   if (!event.highlighted) return children;
   return (
-    <div className="flex flex-col">
+    <div data-event-row className="flex flex-col">
       <p className="ml-6 flex w-fit items-center gap-1.5 rounded-t-2xl bg-plum px-4 pt-1.5 pb-1 font-display text-sm font-semibold text-cream">
         <StarIcon className="size-4 shrink-0 fill-gold text-gold" />
         Highlighted
@@ -106,7 +106,7 @@ export const instagramLink = (event: PublicEvent) =>
 export function ClubLink({ event }: { event: PublicEvent }) {
   if (!event.clubUsername) return <>{event.clubName}</>;
   return (
-    <Link href={`/clubs/${event.clubUsername}`} className="underline decoration-current/35 underline-offset-2 hover:decoration-current">
+    <Link href={`/clubs/${event.clubUsername}`} transitionTypes={["nav"]} className="underline decoration-current/35 underline-offset-2 hover:decoration-current">
       {event.clubName}
     </Link>
   );
@@ -138,7 +138,11 @@ export function RegistrationBadge({ event, className, isToday = false }: { event
  * A card in the event's category colour: big title, then the start, how long
  * it runs, and the end. `now` drives the "On now" / "Starts in" badge.
  */
-export function EventCard({ event, now, showDate = false }: { event: PublicEvent; now: number; showDate?: boolean }) {
+/**
+ * One event in a list. `crossedOut`: it clashes with your classes and is on its way out of the
+ * list ("Fits my schedule" just switched on), so a line is drawn through its name and it fades.
+ */
+export function EventCard({ event, now, showDate = false, crossedOut = false }: { event: PublicEvent; now: number; showDate?: boolean; crossedOut?: boolean }) {
   const category = categoryOf(event.category);
   const duration = event.startTimeKnown ? formatDuration(event.startsAt, event.endsAt) : null;
   const date = formatDay(toLocalInputs(event.startsAt).date, "short", campusDate(now));
@@ -148,7 +152,10 @@ export function EventCard({ event, now, showDate = false }: { event: PublicEvent
   const off = event.scheduleStatus !== "scheduled";
 
   const card = (
-    <article data-seen-event={event.id} className={`rounded-[28px] p-5 ${category.tone.card}`}>
+    <article
+      data-seen-event={event.id}
+      className={`rounded-[28px] p-5 ${category.tone.card} ${crossedOut ? "animate-[motion-dim_var(--motion-base)_var(--ease-out)_150ms_forwards]" : ""}`}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-medium">
@@ -158,10 +165,15 @@ export function EventCard({ event, now, showDate = false }: { event: PublicEvent
             <RecurringBadge event={event} />
             {event.weekly && <span className="opacity-90">{everyDays(event.weekly.days)}</span>}
           </p>
-          <h3 className={`mt-1.5 font-display text-2xl font-semibold leading-[1.1] ${event.scheduleStatus === "cancelled" ? "line-through decoration-2" : ""}`}>
-            <Link href={`/events/${event.id}`} className="hover:underline">
+          <h3 className={`relative mt-1.5 font-display text-2xl font-semibold leading-[1.1] ${event.scheduleStatus === "cancelled" ? "line-through decoration-2" : ""}`}>
+            <Link href={`/events/${event.id}`} transitionTypes={["nav"]} className="hover:underline">
               {event.name}
             </Link>
+            {crossedOut && (
+              <span aria-hidden="true" className="strike-in pointer-events-none absolute inset-0 line-through decoration-[3px] [-webkit-text-fill-color:transparent]">
+                {event.name}
+              </span>
+            )}
           </h3>
         </div>
         <span
@@ -238,7 +250,7 @@ export function EventCard({ event, now, showDate = false }: { event: PublicEvent
             data-club-name={event.clubName}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold ring-1 ring-current/40 hover:bg-current/10"
+            className="press inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold ring-1 ring-current/40 hover:bg-current/10"
           >
             Instagram
             <ExternalIcon className="size-3.5" />
@@ -251,7 +263,7 @@ export function EventCard({ event, now, showDate = false }: { event: PublicEvent
             data-tap-event={event.id}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold ring-1 ring-current/40 hover:bg-current/10"
+            className="press inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold ring-1 ring-current/40 hover:bg-current/10"
           >
             {event.cost === "paid" || (event.registration === "required" && event.registrationWhere === "rubric") ? "Tickets" : "Rubric"}
             <ExternalIcon className="size-3.5" />

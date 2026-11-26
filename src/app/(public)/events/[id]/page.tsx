@@ -8,6 +8,7 @@ import { clubInitials, ClubLink, HighlightFrame, RecurringBadge, RegistrationBad
 import { AddToCalendar } from "@/components/add-to-calendar";
 import { ExternalIcon, PinIcon, TicketIcon, UtensilsIcon } from "@/components/icons";
 import { FollowButton, RemindButton } from "@/components/member-actions";
+import { Settle } from "@/components/motion";
 import { MembersOnly } from "@/components/members-only";
 import { ShareButton } from "@/components/share-button";
 import { campus } from "@/lib/campus";
@@ -54,7 +55,7 @@ export default function EventPage({ params }: PageProps<"/events/[id]">) {
   return (
     <div className="mx-auto max-w-2xl px-4 py-6">
       <BackLink className="mb-4 inline-flex min-h-9 items-center gap-1 rounded-full px-3 py-1 text-sm font-semibold ring-1 ring-maroon/30 hover:bg-panel/60" />
-      <Suspense fallback={<div className="h-96 animate-pulse rounded-[32px] bg-maroon/10" role="status" aria-label="Loading" />}>
+      <Suspense fallback={<div className="h-96 skeleton rounded-[32px]" role="status" aria-label="Loading" />}>
         {params.then(({ id }) => (
           <EventDetail id={Number(id)} />
         ))}
@@ -89,200 +90,203 @@ async function EventDetail({ id }: { id: number }) {
 
   const card = (
     <article className={`rounded-[32px] p-6 sm:p-8 ${category.tone.card}`}>
-      <div className="flex items-start justify-between gap-4">
-        <p className="flex flex-wrap items-center gap-2 text-sm font-medium">
-          <ScheduleBadge status={event.scheduleStatus} size="lg" />
-          <span className="opacity-90">{category.label}</span>
-          <RecurringBadge event={event} className="px-2.5 py-0.5" />
-        </p>
-        <span className="grid size-12 shrink-0 place-items-center rounded-full bg-current/15 font-display text-sm font-semibold" title={host} aria-hidden="true">
-          {clubInitials(host)}
-        </span>
-      </div>
-      <h1 className={`mt-2 font-display text-4xl font-semibold leading-[1.05] sm:-mt-4 sm:text-5xl ${cancelled ? "line-through decoration-[3px]" : ""}`}>
-        {event.name}
-      </h1>
-      <p className="mt-3 opacity-90">
-        {event.hostedBy ? (
-          <>
-            {event.hostedBy} · shared by <ClubLink event={event} />
-          </>
-        ) : (
-          <ClubLink event={event} />
-        )}
-      </p>
-      {event.weekly && (
-        <p className="mt-1 text-sm font-semibold">
-          {everyDays(event.weekly.days, true)}, until {formatDay(event.weekly.until, "long", today)}
-          {!event.permalink && event.weekly.sourceUrl && (
-            <>
-              {" · "}
-              <a href={event.weekly.sourceUrl} target="_blank" rel="noreferrer" className="underline underline-offset-2">
-                See the announcement
-              </a>
-            </>
-          )}
-        </p>
-      )}
-
-      {event.scheduleStatus !== "scheduled" && (
-        <p className={`mt-5 rounded-2xl px-4 py-3 font-semibold ${cancelled ? "bg-red-600 text-white" : "bg-amber-300 text-amber-950"}`}>
-          {cancelled
-            ? "The club cancelled this event."
-            : "The club postponed this event. Check their post for a new date."}
-        </p>
-      )}
-
-      {event.headsUp && (
-        <p className="mt-5 rounded-2xl bg-white/90 px-4 py-3 text-sm text-amber-950 ring-2 ring-amber-500">
-          <span className="font-bold">Check before you go:</span> {event.headsUp}
-          {profile && (
-            <>
-              {" "}
-              <a href={profile} target="_blank" rel="noreferrer" className="font-semibold underline underline-offset-2">
-                See @{event.clubUsername}
-              </a>
-            </>
-          )}
-        </p>
-      )}
-
-      <div className="mt-5 flex flex-wrap gap-2 font-medium">
-        {event.hasFreeFood && (
-          <span className={`inline-flex items-center gap-2 rounded-full px-4 py-1.5 ${category.tone.accent}`}>
-            <UtensilsIcon className="size-5 shrink-0" />
-            <span className="first-letter:uppercase">{event.foodDescription ?? "Free food"}</span>
+      {/* Opened from a list: the parts settle in one after another. */}
+      <Settle>
+        <div className="flex items-start justify-between gap-4">
+          <p className="flex flex-wrap items-center gap-2 text-sm font-medium">
+            <ScheduleBadge status={event.scheduleStatus} size="lg" />
+            <span className="opacity-90">{category.label}</span>
+            <RecurringBadge event={event} className="px-2.5 py-0.5" />
+          </p>
+          <span className="grid size-12 shrink-0 place-items-center rounded-full bg-current/15 font-display text-sm font-semibold" title={host} aria-hidden="true">
+            {clubInitials(host)}
           </span>
+        </div>
+        <h1 className={`mt-2 font-display text-4xl font-semibold leading-[1.05] sm:-mt-4 sm:text-5xl ${cancelled ? "line-through decoration-[3px]" : ""}`}>
+          {event.name}
+        </h1>
+        <p className="mt-3 opacity-90">
+          {event.hostedBy ? (
+            <>
+              {event.hostedBy} · shared by <ClubLink event={event} />
+            </>
+          ) : (
+            <ClubLink event={event} />
+          )}
+        </p>
+        {event.weekly && (
+          <p className="mt-1 text-sm font-semibold">
+            {everyDays(event.weekly.days, true)}, until {formatDay(event.weekly.until, "long", today)}
+            {!event.permalink && event.weekly.sourceUrl && (
+              <>
+                {" · "}
+                <a href={event.weekly.sourceUrl} target="_blank" rel="noreferrer" className="underline underline-offset-2">
+                  See the announcement
+                </a>
+              </>
+            )}
+          </p>
         )}
-        <span className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 ring-1 ring-current/30">
-          <TicketIcon className="size-5 shrink-0" />
-          {event.cost === "free" ? "Free" : event.cost === "paid" ? (event.price ?? "Paid entry: check the post for the price") : "Cost not listed"}
-        </span>
-        {event.registration === "drop_in" && <RegistrationBadge event={event} className="px-4 py-1.5" />}
-      </div>
 
-      <div className="mt-8">
-        <p className="text-sm font-medium opacity-90">{formatDay(date, "long", today)}</p>
-        <div className="mt-2 flex flex-wrap items-end justify-between gap-x-2 gap-y-2 min-[400px]:gap-x-3">
-          <div>
-            <p className="font-display text-[1.75rem] font-medium leading-none whitespace-nowrap min-[400px]:text-4xl sm:text-5xl">
-              {event.startTimeKnown ? formatTime(event.startsAt) : "Time TBD"}
-            </p>
-            <p className="mt-1.5 text-xs opacity-90">Start</p>
-          </div>
-          {duration && <span className={`mb-6 rounded-full px-3 py-1 text-xs font-medium ${category.tone.chip}`}>{duration}</span>}
-          {event.startTimeKnown && event.endsAt && (
-            <div className="ml-auto text-right">
-              <p className="font-display text-[1.75rem] font-medium leading-none whitespace-nowrap min-[400px]:text-4xl sm:text-5xl">{formatTime(event.endsAt)}</p>
-              <p className="mt-1.5 text-xs opacity-90">End</p>
+        {event.scheduleStatus !== "scheduled" && (
+          <p className={`mt-5 rounded-2xl px-4 py-3 font-semibold ${cancelled ? "bg-red-600 text-white" : "bg-amber-300 text-amber-950"}`}>
+            {cancelled
+              ? "The club cancelled this event."
+              : "The club postponed this event. Check their post for a new date."}
+          </p>
+        )}
+
+        {event.headsUp && (
+          <p className="mt-5 rounded-2xl bg-white/90 px-4 py-3 text-sm text-amber-950 ring-2 ring-amber-500">
+            <span className="font-bold">Check before you go:</span> {event.headsUp}
+            {profile && (
+              <>
+                {" "}
+                <a href={profile} target="_blank" rel="noreferrer" className="font-semibold underline underline-offset-2">
+                  See @{event.clubUsername}
+                </a>
+              </>
+            )}
+          </p>
+        )}
+
+        <div className="mt-5 flex flex-wrap gap-2 font-medium">
+          {event.hasFreeFood && (
+            <span className={`inline-flex items-center gap-2 rounded-full px-4 py-1.5 ${category.tone.accent}`}>
+              <UtensilsIcon className="size-5 shrink-0" />
+              <span className="first-letter:uppercase">{event.foodDescription ?? "Free food"}</span>
+            </span>
+          )}
+          <span className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 ring-1 ring-current/30">
+            <TicketIcon className="size-5 shrink-0" />
+            {event.cost === "free" ? "Free" : event.cost === "paid" ? (event.price ?? "Paid entry: check the post for the price") : "Cost not listed"}
+          </span>
+          {event.registration === "drop_in" && <RegistrationBadge event={event} className="px-4 py-1.5" />}
+        </div>
+
+        <div className="mt-8">
+          <p className="text-sm font-medium opacity-90">{formatDay(date, "long", today)}</p>
+          <div className="mt-2 flex flex-wrap items-end justify-between gap-x-2 gap-y-2 min-[400px]:gap-x-3">
+            <div>
+              <p className="font-display text-[1.75rem] font-medium leading-none whitespace-nowrap min-[400px]:text-4xl sm:text-5xl">
+                {event.startTimeKnown ? formatTime(event.startsAt) : "Time TBD"}
+              </p>
+              <p className="mt-1.5 text-xs opacity-90">Start</p>
             </div>
+            {duration && <span className={`mb-6 rounded-full px-3 py-1 text-xs font-medium ${category.tone.chip}`}>{duration}</span>}
+            {event.startTimeKnown && event.endsAt && (
+              <div className="ml-auto text-right">
+                <p className="font-display text-[1.75rem] font-medium leading-none whitespace-nowrap min-[400px]:text-4xl sm:text-5xl">{formatTime(event.endsAt)}</p>
+                <p className="mt-1.5 text-xs opacity-90">End</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className={`mt-6 flex items-start gap-2 border-t pt-5 ${category.tone.line}`}>
+          <PinIcon className="mt-0.5 size-5 shrink-0 opacity-90" />
+          <p className="min-w-0 flex-1">{event.location ?? "Location not announced. Check the club's post."}</p>
+          {event.location && !ONLINE.test(event.location) && (
+            <a
+              href={mapLink(event)}
+              target="_blank"
+              rel="noreferrer"
+              className="press -my-2 inline-flex min-h-11 shrink-0 items-center gap-1 rounded-full px-3 text-sm font-semibold underline underline-offset-2 hover:bg-current/10"
+            >
+              Map
+              <ExternalIcon className="size-3.5" />
+              <span className="sr-only">(opens Google Maps)</span>
+            </a>
           )}
         </div>
-      </div>
 
-      <div className={`mt-6 flex items-start gap-2 border-t pt-5 ${category.tone.line}`}>
-        <PinIcon className="mt-0.5 size-5 shrink-0 opacity-90" />
-        <p className="min-w-0 flex-1">{event.location ?? "Location not announced. Check the club's post."}</p>
-        {event.location && !ONLINE.test(event.location) && (
-          <a
-            href={mapLink(event)}
-            target="_blank"
-            rel="noreferrer"
-            className="-my-2 inline-flex min-h-11 shrink-0 items-center gap-1 rounded-full px-3 text-sm font-semibold underline underline-offset-2 hover:bg-current/10"
-          >
-            Map
-            <ExternalIcon className="size-3.5" />
-            <span className="sr-only">(opens Google Maps)</span>
-          </a>
+        <Registration event={event} buttonClass={category.tone.button} isToday={date === today} />
+
+        {!event.openToAll && (
+          <p className="mt-4 rounded-2xl bg-current/10 px-4 py-2.5 text-sm">
+            Members or group only: this event is for a club&apos;s members or one program. Check the post to see if you can go.
+          </p>
         )}
-      </div>
 
-      <Registration event={event} buttonClass={category.tone.button} isToday={date === today} />
-
-      {!event.openToAll && (
-        <p className="mt-4 rounded-2xl bg-current/10 px-4 py-2.5 text-sm">
-          Members or group only: this event is for a club&apos;s members or one program. Check the post to see if you can go.
+        <div className="mt-6 flex flex-wrap gap-2">
+          {!cancelled && <AddToCalendar eventId={event.id} className={category.tone.button} />}
+          {event.permalink && (
+            <a
+              href={event.permalink}
+              data-tap="instagram"
+              data-tap-event={event.id}
+              data-club-id={event.clubId}
+              data-club-name={event.clubName}
+              target="_blank"
+              rel="noreferrer"
+              className="press inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold ring-1 ring-current/30 hover:bg-current/10"
+            >
+              Instagram post
+              <ExternalIcon className="size-3.5" />
+            </a>
+          )}
+          {!event.permalink && event.addedByHand && profile && (
+            <a
+              href={profile}
+              data-tap="instagram"
+              data-tap-event={event.id}
+              data-club-id={event.clubId}
+              data-club-name={event.clubName}
+              target="_blank"
+              rel="noreferrer"
+              className="press inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold ring-1 ring-current/30 hover:bg-current/10"
+            >
+              @{event.clubUsername} on Instagram
+              <ExternalIcon className="size-3.5" />
+            </a>
+          )}
+          {event.rubricUrl && !(event.registrationWhere === "rubric" && event.registration !== "drop_in" && event.registration !== "unknown") && (
+            <a
+              href={event.rubricUrl}
+              data-tap="tickets"
+              data-tap-event={event.id}
+              target="_blank"
+              rel="noreferrer"
+              className="press inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold ring-1 ring-current/30 hover:bg-current/10"
+            >
+              {event.cost === "paid" || (event.registration === "required" && event.registrationWhere === "rubric") ? "Tickets on Rubric" : "Rubric listing"}
+              <ExternalIcon className="size-3.5" />
+            </a>
+          )}
+          <ShareButton title={event.name} text={summary(event, today)} />
+          {event.scheduleStatus === "scheduled" && (
+            <RemindButton eventId={event.id} startsAt={event.startsAt} timeKnown={event.startTimeKnown} now={checkedNow()} className="ring-1 ring-current/30 hover:bg-current/10" />
+          )}
+          <FollowButton clubId={event.clubId} clubName={event.clubName} className="ring-1 ring-current/30 hover:bg-current/10" />
+        </div>
+        <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2">
+          <FeedbackLink
+            type="wrong_info"
+            event={{ id: event.id, name: event.name }}
+            className="text-sm font-medium underline underline-offset-2 opacity-90 hover:opacity-100"
+          >
+            Something wrong with this event?
+          </FeedbackLink>
+          {!cancelled && (
+            <CancelledReport eventId={event.id} className="text-sm font-medium underline underline-offset-2 opacity-90 hover:opacity-100" />
+          )}
+        </div>
+        <p className="mt-3 text-xs leading-relaxed opacity-90">
+          {event.checkedAt && <>Last checked: {timeAgo(event.checkedAt, checkedNow())}. </>}
+          Clubs often post last-minute changes in their stories
+          {profile ? (
+            <>
+              , so check{" "}
+              <a href={profile} target="_blank" rel="noreferrer" className="font-semibold underline underline-offset-2">
+                @{event.clubUsername}
+              </a>{" "}
+              before you go.
+            </>
+          ) : (
+            ", so check the club's Instagram before you go."
+          )}
         </p>
-      )}
-
-      <div className="mt-6 flex flex-wrap gap-2">
-        {!cancelled && <AddToCalendar eventId={event.id} className={category.tone.button} />}
-        {event.permalink && (
-          <a
-            href={event.permalink}
-            data-tap="instagram"
-            data-tap-event={event.id}
-            data-club-id={event.clubId}
-            data-club-name={event.clubName}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold ring-1 ring-current/30 hover:bg-current/10"
-          >
-            Instagram post
-            <ExternalIcon className="size-3.5" />
-          </a>
-        )}
-        {!event.permalink && event.addedByHand && profile && (
-          <a
-            href={profile}
-            data-tap="instagram"
-            data-tap-event={event.id}
-            data-club-id={event.clubId}
-            data-club-name={event.clubName}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold ring-1 ring-current/30 hover:bg-current/10"
-          >
-            @{event.clubUsername} on Instagram
-            <ExternalIcon className="size-3.5" />
-          </a>
-        )}
-        {event.rubricUrl && !(event.registrationWhere === "rubric" && event.registration !== "drop_in" && event.registration !== "unknown") && (
-          <a
-            href={event.rubricUrl}
-            data-tap="tickets"
-            data-tap-event={event.id}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold ring-1 ring-current/30 hover:bg-current/10"
-          >
-            {event.cost === "paid" || (event.registration === "required" && event.registrationWhere === "rubric") ? "Tickets on Rubric" : "Rubric listing"}
-            <ExternalIcon className="size-3.5" />
-          </a>
-        )}
-        <ShareButton title={event.name} text={summary(event, today)} />
-        {event.scheduleStatus === "scheduled" && (
-          <RemindButton eventId={event.id} startsAt={event.startsAt} timeKnown={event.startTimeKnown} now={checkedNow()} className="ring-1 ring-current/30 hover:bg-current/10" />
-        )}
-        <FollowButton clubId={event.clubId} clubName={event.clubName} className="ring-1 ring-current/30 hover:bg-current/10" />
-      </div>
-      <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2">
-        <FeedbackLink
-          type="wrong_info"
-          event={{ id: event.id, name: event.name }}
-          className="text-sm font-medium underline underline-offset-2 opacity-90 hover:opacity-100"
-        >
-          Something wrong with this event?
-        </FeedbackLink>
-        {!cancelled && (
-          <CancelledReport eventId={event.id} className="text-sm font-medium underline underline-offset-2 opacity-90 hover:opacity-100" />
-        )}
-      </div>
-      <p className="mt-3 text-xs leading-relaxed opacity-90">
-        {event.checkedAt && <>Last checked: {timeAgo(event.checkedAt, checkedNow())}. </>}
-        Clubs often post last-minute changes in their stories
-        {profile ? (
-          <>
-            , so check{" "}
-            <a href={profile} target="_blank" rel="noreferrer" className="font-semibold underline underline-offset-2">
-              @{event.clubUsername}
-            </a>{" "}
-            before you go.
-          </>
-        ) : (
-          ", so check the club's Instagram before you go."
-        )}
-      </p>
+      </Settle>
     </article>
   );
   return (
@@ -346,7 +350,7 @@ function Registration({ event, buttonClass, isToday }: { event: PublicEvent; but
           data-tap-event={event.id}
           target="_blank"
           rel="noreferrer"
-          className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold ${buttonClass}`}
+          className={`press inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold ${buttonClass}`}
         >
           {where.button}
           <ExternalIcon className="size-3.5" />

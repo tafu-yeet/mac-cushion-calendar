@@ -14,7 +14,7 @@ export const metadata: Metadata = { title: "Welcome", robots: { index: false } }
 export default function WelcomePage({ searchParams }: PageProps<"/welcome">) {
   return (
     <div className={PAGE}>
-      <Suspense fallback={<div className="h-96 animate-pulse rounded-[28px] bg-maroon/10" />}>
+      <Suspense fallback={<div className="h-96 skeleton rounded-[28px]" />}>
         <Welcome searchParams={searchParams} />
       </Suspense>
     </div>

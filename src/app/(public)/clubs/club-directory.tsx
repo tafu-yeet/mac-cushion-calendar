@@ -71,7 +71,7 @@ function ClubList({ clubs, weeks }: { clubs: DirectoryClub[]; weeks: number }) {
     <ul className="flex flex-col divide-y divide-maroon/10">
       {clubs.map((c) => (
         <li key={c.username}>
-          <Link href={`/clubs/${c.username}`} className="flex min-h-14 items-center gap-3 rounded-2xl px-2 py-2 hover:bg-canvas">
+          <Link transitionTypes={["nav"]} href={`/clubs/${c.username}`} className="press flex min-h-14 items-center gap-3 rounded-2xl px-2 py-2 hover:bg-canvas">
             <span className="min-w-0 flex-1">
               <span className="block truncate font-semibold text-maroon">{c.name}</span>
               <span className="block truncate text-xs text-maroon/75">@{c.username}</span>

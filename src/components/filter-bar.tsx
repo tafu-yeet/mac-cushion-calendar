@@ -20,7 +20,8 @@ import {
 import { addDays, formatDay } from "@/lib/time";
 
 import { DayPicker, type DayCounts } from "./day-picker";
-import { CheckIcon, ChevronIcon, ClockIcon, SearchIcon, TodayIcon, UtensilsIcon } from "./icons";
+import { ChevronIcon, ClockIcon, SearchIcon, TodayIcon, UtensilsIcon } from "./icons";
+import { AppearingCheck, usePresence, WipeFill } from "./motion";
 import type { MineChips } from "./use-personal";
 
 /**
@@ -70,6 +71,8 @@ export function FilterBar({
   mine?: MineChips | null;
 }) {
   const [open, setOpen] = useState<Menu | null>(null);
+  // The menu on screen: the open one, or for a moment after closing, the one on its way out.
+  const { shown: panel, closing } = usePresence(open);
   const bar = useRef<HTMLDivElement>(null);
 
   // A tap or click anywhere outside the filters closes the open menu.
@@ -96,7 +99,7 @@ export function FilterBar({
   const moreCount = Number(filters.freeEntry) + Number(filters.limited);
 
   return (
-    <div ref={bar} className="flex flex-col gap-3" onKeyDown={(e) => {
+    <div ref={bar} className="relative flex flex-col gap-3" onKeyDown={(e) => {
         if (e.key === "Escape" && open) close();
       }}>
       <label className="relative block" data-tour="search">
@@ -147,18 +150,18 @@ export function FilterBar({
         {mine && (
           <>
             <Chip active={filters.followed} onClick={() => update({ followed: !filters.followed })}>
-              {filters.followed && <CheckIcon className="size-3.5" />}
+              {filters.followed && <AppearingCheck />}
               Followed clubs
             </Chip>
             {mine.hasSchedule && !mine.expired ? (
               <Chip active={filters.fits} onClick={() => update({ fits: !filters.fits })} describedBy="fits-hint">
-                {filters.fits && <CheckIcon className="size-3.5" />}
+                {filters.fits && <AppearingCheck />}
                 Fits my schedule
               </Chip>
             ) : (
               <Link
                 href="/account/schedule"
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium text-maroon border border-dashed border-maroon/45 hover:bg-maroon/5"
+                className="press inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium text-maroon border border-dashed border-maroon/45 hover:bg-maroon/5"
               >
                 Fits my schedule: add classes
               </Link>
@@ -169,7 +172,7 @@ export function FilterBar({
           <button
             type="button"
             onClick={() => update({ ...DEFAULT_FILTERS, day: filters.day, date: filters.date })}
-            className="ml-1 text-sm font-semibold text-maroon underline underline-offset-2 hover:text-plum"
+            className="press ml-1 text-sm font-semibold text-maroon underline underline-offset-2 hover:text-plum"
           >
             Clear filters
           </button>
@@ -191,8 +194,8 @@ export function FilterBar({
         </p>
       )}
 
-      {open === "day" && when && (
-        <Panel menu="day" title="Which day are you free?" onDone={close}>
+      {panel === "day" && when && (
+        <Panel menu="day" closing={closing} title="Which day are you free?" onDone={close}>
           <div className="mb-3 flex flex-wrap gap-1.5" role="radiogroup" aria-label="Day">
             {(Object.keys(DAYS) as Day[]).map((day) => (
               <Option
@@ -228,8 +231,8 @@ export function FilterBar({
         </Panel>
       )}
 
-      {open === "time" && (
-        <Panel menu="time" title="When are you free?" onDone={close}>
+      {panel === "time" && (
+        <Panel menu="time" closing={closing} title="When are you free?" onDone={close}>
           <div className="flex flex-wrap items-center gap-1.5" role="radiogroup" aria-label="Time">
             <Option
               checked={!filters.time}
@@ -276,8 +279,8 @@ export function FilterBar({
         </p>
       )}
 
-      {open === "type" && (
-        <Panel menu="type" title="What kind of event?" onDone={close}>
+      {panel === "type" && (
+        <Panel menu="type" closing={closing} title="What kind of event?" onDone={close}>
           <div className="flex flex-wrap gap-1.5">
             <Chip active={filters.categories.length === 0} onClick={() => update({ categories: [] })}>
               All types
@@ -292,8 +295,8 @@ export function FilterBar({
         </Panel>
       )}
 
-      {open === "more" && (
-        <Panel menu="more" title="More filters" onDone={close}>
+      {panel === "more" && (
+        <Panel menu="more" closing={closing} title="More filters" onDone={close}>
           <div className="flex flex-col gap-3">
             <Toggle
               active={filters.freeEntry}
@@ -354,25 +357,50 @@ function MenuButton({
       aria-expanded={expanded}
       aria-controls={`filter-${menu}`}
       onClick={() => onToggle(menu)}
-      className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium ring-1 transition-colors ${
+      className={`press inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium ring-1 ${
         active ? "bg-maroon text-cream ring-maroon" : expanded ? "bg-maroon/5 text-maroon ring-maroon/45" : "text-maroon ring-maroon/25 hover:bg-maroon/5"
       }`}
     >
       {icon}
       {name && <span className="sr-only">{name}: </span>}
       {children}
-      <ChevronIcon className={`size-3.5 transition-transform ${expanded ? "-rotate-90" : "rotate-90"}`} />
+      <ChevronIcon className={`size-3.5 transition-[rotate] motion-reduce:transition-none ${expanded ? "-rotate-90" : "rotate-90"}`} />
     </button>
   );
 }
 
-/** The open dropdown's options, under the row of buttons. */
-function Panel({ menu, title, onDone, children }: { menu: Menu; title: string; onDone: () => void; children: React.ReactNode }) {
+/**
+ * The open dropdown's options, under the row of buttons. It pops out of its button, and on
+ * `closing` shrinks back toward it, letting taps through.
+ */
+function Panel({ menu, title, closing, onDone, children }: { menu: Menu; title: string; closing: boolean; onDone: () => void; children: React.ReactNode }) {
+  // Grows from under the middle of the button that opened it. Closing, it's lifted out of the
+  // layout (below) but stays where it was: the last place it had in the list of filters.
+  const fromButton = (panel: HTMLDivElement | null) => {
+    if (!panel) return;
+    if (closing) {
+      panel.style.top = `${panel.dataset.top ?? panel.offsetTop}px`;
+      return;
+    }
+    panel.style.top = "";
+    panel.dataset.top = String(panel.offsetTop);
+    const button = document.getElementById(`filter-${menu}-button`);
+    if (!button) return;
+    const b = button.getBoundingClientRect();
+    panel.style.transformOrigin = `${b.left + b.width / 2 - panel.getBoundingClientRect().left}px top`;
+  };
   return (
-    <div id={`filter-${menu}`} className="rounded-[24px] bg-canvas p-3 sm:p-4">
+    <div
+      ref={fromButton}
+      id={`filter-${menu}`}
+      data-closing={closing || undefined}
+      inert={closing}
+      // On its way out it stops taking up room, so the list moves up at the tap, not a moment later.
+      className={`pop rounded-[24px] bg-canvas p-3 sm:p-4 ${closing ? "absolute inset-x-0 z-10 shadow-lg" : ""}`}
+    >
       <div className="mb-2.5 flex items-center justify-between gap-3 px-1">
         <p className="font-display text-base font-semibold">{title}</p>
-        <button type="button" onClick={onDone} className="rounded-full px-2.5 py-0.5 text-sm font-semibold text-maroon underline-offset-2 hover:underline">
+        <button type="button" onClick={onDone} className="press rounded-full px-2.5 py-0.5 text-sm font-semibold text-maroon underline-offset-2 hover:underline">
           Done
         </button>
       </div>
@@ -389,7 +417,7 @@ function Option({ checked, onClick, children }: { checked: boolean; onClick: () 
       role="radio"
       aria-checked={checked}
       onClick={onClick}
-      className={`rounded-full px-3 py-1 text-sm font-medium ring-1 transition-colors ${
+      className={`press rounded-full px-3 py-1 text-sm font-medium ring-1 ${
         checked ? "bg-maroon text-cream ring-maroon" : "bg-panel text-maroon ring-maroon/25 hover:bg-butter/70"
       }`}
     >
@@ -427,8 +455,11 @@ function Chip({
   tourId?: string; // what the site tour points at
   children: React.ReactNode;
 }) {
-  const on = food ? "bg-gold text-maroon ring-gold" : "bg-maroon text-cream ring-maroon";
-  const off = food ? "bg-gold/25 text-maroon ring-gold hover:bg-gold/40" : "bg-panel text-maroon ring-maroon/25 hover:bg-maroon/5";
+  const layout = "inline-flex items-center gap-1.5 rounded-full px-3 py-1";
+  // Switched on, the "on" colours wipe in from the left over the "off" ones (and back out).
+  const on = food ? "bg-gold text-maroon" : "bg-maroon text-cream";
+  const off = food ? "bg-gold/25 text-maroon hover:bg-gold/40" : "bg-panel text-maroon hover:bg-maroon/5";
+  const ring = food ? "ring-gold" : active ? "ring-maroon" : "ring-maroon/25";
   return (
     <button
       type="button"
@@ -436,9 +467,12 @@ function Chip({
       aria-describedby={describedBy}
       data-tour={tourId}
       onClick={onClick}
-      className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium ring-1 transition-colors ${active ? on : off}`}
+      className={`press relative shrink-0 ${layout} text-sm font-medium ring-1 ${off} ${ring}`}
     >
       {children}
+      <WipeFill on={active} className={`${layout} ${on}`}>
+        {children}
+      </WipeFill>
     </button>
   );
 }

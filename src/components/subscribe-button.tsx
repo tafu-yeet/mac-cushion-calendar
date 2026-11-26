@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 
 import { RepeatIcon } from "./icons";
+import { usePresence } from "./motion";
 
 /**
  * "Subscribe", then a choice of calendar app. Unlike "Add to calendar" (one event), this adds
@@ -10,6 +11,7 @@ import { RepeatIcon } from "./icons";
  */
 export function SubscribeButton({ feedUrl, name, className }: { feedUrl: string; name: string; className: string }) {
   const [open, setOpen] = useState(false);
+  const { shown, closing } = usePresence(open || null);
   const [copied, setCopied] = useState(false);
   const wrapper = useRef<HTMLDivElement>(null);
   const button = useRef<HTMLButtonElement>(null);
@@ -70,13 +72,18 @@ export function SubscribeButton({ feedUrl, name, className }: { feedUrl: string;
         aria-expanded={open}
         aria-controls={menuId}
         onClick={() => setOpen(!open)}
-        className={`inline-flex min-h-10 items-center gap-1.5 rounded-full px-4 text-sm font-semibold ${className}`}
+        className={`press inline-flex min-h-10 items-center gap-1.5 rounded-full px-4 text-sm font-semibold ${className}`}
       >
         <RepeatIcon className="size-4" />
         Subscribe
       </button>
-      {open && (
-        <div id={menuId} className="absolute top-full left-0 z-20 mt-2 w-72 max-w-[calc(100vw-2rem)] rounded-2xl bg-cream p-1.5 text-maroon shadow-lg ring-1 ring-maroon/15">
+      {shown && (
+        <div
+          id={menuId}
+          data-closing={closing || undefined}
+          inert={closing}
+          className="pop origin-top-left absolute top-full left-0 z-20 mt-2 w-72 max-w-[calc(100vw-2rem)] rounded-2xl bg-cream p-1.5 text-maroon shadow-lg ring-1 ring-maroon/15"
+        >
           <p className="px-3 pt-2 pb-1.5 text-xs text-maroon/80">Adds this club&apos;s calendar to yours: its new events show up on their own.</p>
           <ul>
             {choices.map((choice) => (
@@ -85,7 +92,7 @@ export function SubscribeButton({ feedUrl, name, className }: { feedUrl: string;
                   href={choice.href}
                   onClick={() => setOpen(false)}
                   {...(choice.newTab ? { target: "_blank", rel: "noreferrer" } : {})}
-                  className="flex min-h-11 flex-col justify-center rounded-xl px-3 py-1.5 hover:bg-butter/60"
+                  className="press flex min-h-11 flex-col justify-center rounded-xl px-3 py-1.5 hover:bg-butter/60"
                 >
                   <span className="text-sm font-semibold">{choice.label}</span>
                   <span className="text-xs text-maroon/80">{choice.hint}</span>
@@ -93,7 +100,7 @@ export function SubscribeButton({ feedUrl, name, className }: { feedUrl: string;
               </li>
             ))}
             <li>
-              <button type="button" onClick={copy} className="flex min-h-11 w-full flex-col justify-center rounded-xl px-3 py-1.5 text-left hover:bg-butter/60">
+              <button type="button" onClick={copy} className="press flex min-h-11 w-full flex-col justify-center rounded-xl px-3 py-1.5 text-left hover:bg-butter/60">
                 <span className="text-sm font-semibold" aria-live="polite">
                   {copied ? "Link copied" : "Copy the calendar link"}
                 </span>

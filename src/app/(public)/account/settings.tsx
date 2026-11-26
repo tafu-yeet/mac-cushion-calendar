@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 
 import { BUTTON_LIGHT, INPUT, LABEL } from "@/components/member-styles";
 import { updateMember } from "@/components/member-provider";
+import { WipeFill } from "@/components/motion";
 import { CLUB_POSTS_CONSENT_WORDING, DIGEST_CONSENT_WORDING, REMINDERS_CONSENT_WORDING } from "@/lib/auth-links";
 import type { EmailChoice } from "@/lib/email/unsubscribe";
 import { INTERESTS, type EmailChoices, type Interest } from "@/lib/member-types";
@@ -55,9 +56,9 @@ export function EmailSettings({ emails }: { emails: EmailChoices }) {
           />
           <span
             aria-hidden="true"
-            className={`relative mt-1 h-7 w-12 shrink-0 rounded-full transition-colors peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-maroon ${on[key] ? "bg-maroon" : "bg-maroon/25"}`}
+            className={`relative mt-1 h-7 w-12 shrink-0 rounded-full transition-colors duration-(--motion-base) peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-maroon ${on[key] ? "bg-maroon" : "bg-maroon/25"}`}
           >
-            <span className={`absolute top-1 size-5 rounded-full bg-cream shadow transition-[left] ${on[key] ? "left-6" : "left-1"}`} />
+            <Knob on={on[key]} />
           </span>
         </label>
       ))}
@@ -70,7 +71,27 @@ export function EmailSettings({ emails }: { emails: EmailChoices }) {
   );
 }
 
-/** Interest chips; each tap saves the whole set. */
+/**
+ * A switch's knob: slides across (ease-in-out, as it's going somewhere) and stretches a little
+ * along the way. With "Reduce motion" on, it just jumps.
+ */
+function Knob({ on }: { on: boolean }) {
+  const [last, setLast] = useState(on);
+  const [flips, setFlips] = useState(0);
+  if (on !== last) {
+    setLast(on);
+    setFlips((n) => n + 1);
+  }
+  // A different name each flip restarts the stretch; none before the first.
+  const stretch = flips === 0 ? "" : flips % 2 ? "animate-[motion-stretch-a_var(--motion-base)_var(--ease-in-out)]" : "animate-[motion-stretch-b_var(--motion-base)_var(--ease-in-out)]";
+  return (
+    <span
+      className={`absolute top-1 left-1 size-5 rounded-full bg-cream shadow transition-[translate] duration-(--motion-base) ease-in-out motion-reduce:transition-none ${on ? "translate-x-5" : ""} ${stretch}`}
+    />
+  );
+}
+
+/** Interest chips; each tap saves the whole set. Switched on, the colour wipes in from the left. */
 export function InterestSettings({ interests }: { interests: Interest[] }) {
   const [picked, setPicked] = useState(new Set(interests));
   const [error, setError] = useState<string | null>(null);
@@ -98,11 +119,12 @@ export function InterestSettings({ interests }: { interests: Interest[] }) {
             type="button"
             aria-pressed={picked.has(i.key)}
             onClick={() => toggle(i.key)}
-            className={`min-h-10 rounded-full px-4 text-sm font-semibold ring-1 transition-colors ${
-              picked.has(i.key) ? "bg-maroon text-cream ring-maroon" : "bg-white/70 ring-maroon/25"
-            }`}
+            className={`press relative min-h-10 rounded-full bg-white/70 px-4 text-sm font-semibold ring-1 ${picked.has(i.key) ? "ring-maroon" : "ring-maroon/25"}`}
           >
             {i.label}
+            <WipeFill on={picked.has(i.key)} className="flex items-center justify-center rounded-full bg-maroon px-4 text-cream">
+              {i.label}
+            </WipeFill>
           </button>
         ))}
       </div>

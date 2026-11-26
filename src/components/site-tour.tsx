@@ -2,9 +2,10 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { campus } from "@/lib/campus";
+import { motionMs, motionValue, reducedMotion } from "@/lib/motion";
 
 // Remembered in this browser only, like the filters in the URL: nothing is sent anywhere.
 const SEEN_KEY = "cushion-tour-seen";
@@ -89,11 +90,35 @@ export function TourButton({ className }: { className?: string }) {
  * hasn't seen it), and for anyone who asks for it again from the footer. Each
  * step highlights one control with a short card beside it.
  */
+type Box = { x: number; y: number; w: number; h: number };
+
+/**
+ * Keyframes taking the highlight from where it was (`from`) to where it is (`to`) along a gentle
+ * curve, as an offset and scale on top of its real position, ending at none.
+ */
+function arcFrames(from: Box, to: Box): Keyframe[] {
+  const [dx, dy] = [from.x - to.x, from.y - to.y];
+  // The curve bows out sideways by an eighth of the distance.
+  const [cx, cy] = [dx / 2 - dy / 8, dy / 2 + dx / 8];
+  const [sx, sy] = [from.w / to.w, from.h / to.h];
+  return Array.from({ length: 9 }, (_, i) => {
+    const t = i / 8;
+    const u = 1 - t;
+    const x = u * u * dx + 2 * u * t * cx;
+    const y = u * u * dy + 2 * u * t * cy;
+    return { transform: `translate(${x}px, ${y}px) scale(${sx + (1 - sx) * t}, ${sy + (1 - sy) * t})` };
+  });
+}
+
 export function SiteTour() {
   const [steps, setSteps] = useState<Step[]>([]);
   const [index, setIndex] = useState<number | null>(null);
   const [rect, setRect] = useState<DOMRect | null>(null);
   const card = useRef<HTMLDivElement>(null);
+  const spot = useRef<HTMLDivElement>(null);
+  // Which step `rect` was measured for (it lags a frame behind a step change), and the highlight's last place.
+  const rectFor = useRef<Step | null>(null);
+  const lastBox = useRef<(Box & { step: Step | null }) | null>(null);
 
   // First visit, ?tour from another page, or the footer link on this one.
   useEffect(() => {
@@ -133,7 +158,10 @@ export function SiteTour() {
     let frame = 0;
     const measure = () => {
       cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => setRect(el.getBoundingClientRect()));
+      frame = requestAnimationFrame(() => {
+        rectFor.current = step;
+        setRect(el.getBoundingClientRect());
+      });
     };
     measure();
     window.addEventListener("scroll", measure, true);
@@ -148,6 +176,18 @@ export function SiteTour() {
   useEffect(() => {
     if (step) card.current?.focus();
   }, [step]);
+
+  // On to the next step: the highlight glides there from the last one on a slight arc, growing
+  // or shrinking to fit. It's an offset that fades to nothing, so the page can scroll meanwhile.
+  useLayoutEffect(() => {
+    const el = spot.current;
+    const box = rect && { x: rect.left, y: rect.top, w: rect.width + 2 * PAD, h: rect.height + 2 * PAD };
+    const from = lastBox.current;
+    const forStep = rectFor.current;
+    lastBox.current = box ? { ...box, step: forStep } : null;
+    if (!el || !box || !from || from.step === forStep || reducedMotion()) return;
+    el.animate(arcFrames(from, box), { duration: motionMs("--motion-slow"), easing: motionValue("--ease-in-out") });
+  }, [rect]);
 
   if (index === null || !step) return null;
 
@@ -194,11 +234,12 @@ export function SiteTour() {
       <div className={`fixed inset-0 z-[60] ${highlight ? "" : "bg-plum/60"}`} aria-hidden="true" />
       {highlight && (
         <div
+          ref={spot}
           aria-hidden="true"
-          className="pointer-events-none fixed z-[61] transition-all duration-300 motion-reduce:transition-none"
+          className="pointer-events-none fixed top-0 left-0 z-[61] origin-top-left"
           style={{
-            top: highlight.top - PAD,
-            left: highlight.left - PAD,
+            // Follows its element exactly as the page scrolls; moving to the next step is animated (below).
+            translate: `${highlight.left - PAD}px ${highlight.top - PAD}px`,
             width: highlight.width + 2 * PAD,
             height: highlight.height + 2 * PAD,
             borderRadius: Math.min(34, highlight.height / 2 + PAD),
@@ -239,12 +280,12 @@ export function SiteTour() {
               <button
                 type="button"
                 onClick={back}
-                className="rounded-full px-4 py-1.5 text-sm font-semibold text-maroon ring-1 ring-maroon/30 hover:bg-maroon/5"
+                className="press rounded-full px-4 py-1.5 text-sm font-semibold text-maroon ring-1 ring-maroon/30 hover:bg-maroon/5"
               >
                 Back
               </button>
             )}
-            <button type="button" onClick={next} className="rounded-full bg-maroon px-4 py-1.5 text-sm font-semibold text-cream hover:bg-plum">
+            <button type="button" onClick={next} className="press rounded-full bg-maroon px-4 py-1.5 text-sm font-semibold text-cream hover:bg-plum">
               {index === 0 ? "Show me around" : last ? "Done" : "Next"}
             </button>
           </div>

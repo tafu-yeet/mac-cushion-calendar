@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { BigDate, DateStats } from "@/components/big-date";
 import type { DayCounts } from "@/components/day-picker";
@@ -15,10 +15,15 @@ import { campus } from "@/lib/campus";
 import type { PublicEvent } from "@/lib/events";
 import { DEFAULT_FILTERS, byStart, clubsMatching, inWindow, isNarrowed, matchesFilters, timeWindow, type Filters, type TrackedClub } from "@/lib/filters";
 import { rankForMember } from "@/lib/member-types";
+import { captureForCrossfade, markClientChange, motionMs, motionValue, reducedMotion, riseNewRows } from "@/lib/motion";
 import { endMs } from "@/lib/status";
 import { addDays, formatDay, toLocalInputs } from "@/lib/time";
 
 import { MissingEventLink } from "./feedback";
+
+// "Fits my schedule" switched on: the clashing events are crossed out, fade, then fold away.
+const FITS_FOLD_AT_MS = 270; // just after the line is drawn
+const FITS_DONE_AT_MS = 490; // all within half a second of the tap, so it never counts as the page jumping
 
 const COMING_UP_COUNT = 6;
 const HIGHLIGHTS_AHEAD = 2; // later days' highlighted events on top of the list, so they're promoted before their day
@@ -28,7 +33,20 @@ type DayGroup = { date: string; fits: PublicEvent[]; timeUnknown: PublicEvent[];
 
 /** Everything on today, tomorrow, this week, or a picked day that matches the filters. */
 export function WhatsOn({ events, today, now: serverNow, fromUrl }: { events: PublicEvent[]; today: string; now: number; fromUrl: Filters }) {
-  const [filters, update] = useFilters(fromUrl);
+  const [filters, setFilters] = useFilters(fromUrl);
+  const results = useRef<HTMLDivElement>(null);
+  const [seenRows] = useState(() => new WeakSet<Element>());
+  const crossfade = useRef<(() => void) | null>(null);
+  // While "Fits my schedule" is switching on: the events being crossed out, and the timers and folds to stop if interrupted.
+  const [leaving, setLeaving] = useState<ReadonlySet<number> | null>(null);
+  const fitsPhase = useRef<{ timers: number[]; folds: Animation[] } | null>(null);
+
+  // After each change: the old list fades out over the new one, and new events rise into place.
+  useLayoutEffect(() => {
+    crossfade.current?.();
+    crossfade.current = null;
+    if (results.current) riseNewRows(rowsIn(results.current), seenRows);
+  });
   const now = useNow(serverNow);
   // Signed in: their follows and classes for the members' filters, and their interests first.
   const { personal, mine, interests } = usePersonal(today);
@@ -118,6 +136,48 @@ export function WhatsOn({ events, today, now: serverNow, fromUrl }: { events: Pu
       : null;
   const clubs = useClubsMatching(total === 0 && !found ? searched : "");
 
+  /**
+   * Every filter change goes through here. Typing a search just updates the list; anything else
+   * crossfades it. Switching on "Fits my schedule" crosses out what clashes before it goes.
+   */
+  const update = (change: Partial<Filters>) => {
+    markClientChange();
+    const phase = fitsPhase.current;
+    if (phase) {
+      // Tapped something mid-way: finish (or, for "Fits my schedule" off again, undo) at once.
+      phase.timers.forEach(clearTimeout);
+      fitsPhase.current = null;
+      setLeaving(null);
+      if (change.fits === false) phase.folds.forEach((fold) => fold.cancel());
+      setFilters(change.fits === false ? change : { ...change, fits: true });
+      return;
+    }
+    if (change.fits === true && !filters.fits) return switchOnFits();
+    if (!("q" in change)) crossfade.current = captureForCrossfade(results.current);
+    setFilters(change);
+  };
+
+  const switchOnFits = () => {
+    const list = results.current;
+    const listed = [...highlightsAhead, ...groups.flatMap((g) => [...g.fits, ...g.timeUnknown, ...g.offCampus]), ...(total === 0 ? comingUp : [])];
+    const clashing = listed.filter((e) => !matchesFilters(e, { ...filters, fits: true }, personal)).map((e) => e.id);
+    if (!list || clashing.length === 0 || reducedMotion()) return setFilters({ fits: true });
+    setLeaving(new Set(clashing));
+    const phase: { timers: number[]; folds: Animation[] } = { timers: [], folds: [] };
+    phase.timers.push(
+      window.setTimeout(() => phase.folds.push(...foldAway(list, clashing)), FITS_FOLD_AT_MS),
+      window.setTimeout(() => {
+        fitsPhase.current = null;
+        setLeaving(null);
+        setFilters({ fits: true });
+      }, FITS_DONE_AT_MS),
+    );
+    fitsPhase.current = phase;
+  };
+
+  // While crossing out, the chip already shows on.
+  const shownFilters = leaving ? { ...filters, fits: true } : filters;
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-end justify-between gap-4">
@@ -131,7 +191,7 @@ export function WhatsOn({ events, today, now: serverNow, fromUrl }: { events: Pu
       </div>
       <p className="-mt-2 text-maroon/75">
         Every public {campus.schoolShortName} event in one place, from club posts.{" "}
-        <Link href="/communities" className="font-semibold whitespace-nowrap text-maroon underline underline-offset-2 hover:text-plum">
+        <Link href="/communities" transitionTypes={["nav"]} className="press font-semibold whitespace-nowrap text-maroon underline underline-offset-2 hover:text-plum">
           Find events for your community
         </Link>
       </p>
@@ -141,200 +201,229 @@ export function WhatsOn({ events, today, now: serverNow, fromUrl }: { events: Pu
           <h1 className="font-display text-xl font-semibold lowercase">
             What&apos;s on {week ? "this week" : dayName}
           </h1>
-          <Link href="/week" className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-sm font-medium ring-1 ring-maroon/25 hover:bg-maroon/5">
+          <Link href="/week" transitionTypes={["nav"]} className="press inline-flex items-center gap-1 rounded-full px-3 py-1 text-sm font-medium ring-1 ring-maroon/25 hover:bg-maroon/5">
             Calendar
             <ChevronIcon className="size-4" />
           </Link>
         </div>
 
-        <FilterBar filters={filters} update={update} when={{ today, counts }} mine={mine} />
+        <FilterBar filters={shownFilters} update={update} when={{ today, counts }} mine={mine} />
 
         <p className="sr-only" aria-live="polite">
           {total} event{total === 1 ? "" : "s"} {when}
         </p>
 
-        {highlightsAhead.length > 0 && (
-          <Section title="Coming up">
-            {highlightsAhead.map((e) => (
-              <EventCard key={e.id} event={e} now={now} showDate />
-            ))}
-          </Section>
-        )}
+        {/* The results: what crossfades when the filters change. */}
+        <div ref={results} className="relative flex flex-col gap-5">
+          {highlightsAhead.length > 0 && (
+            <Section title="Coming up">
+              {highlightsAhead.map((e) => (
+                <EventCard key={e.id} event={e} now={now} showDate crossedOut={leaving?.has(e.id)} />
+              ))}
+            </Section>
+          )}
 
-        {groups.map((g) => (
-          // With "Coming up" above, the day's own list needs saying whose it is.
-          <DaySection key={g.date} group={g} today={today} now={now} showHeading={week || highlightsAhead.length > 0} />
-        ))}
-
-        {total === 0 && (
-          <EmptyState
-            filters={filters}
-            showingToday={!week && shown === today}
-            onClear={() => update({ ...DEFAULT_FILTERS, day: filters.day, date: filters.date })}
-            onTomorrow={() => update({ day: "tomorrow", date: "" })}
-            hasComingUp={comingUp.length > 0}
-            found={found}
-            clubs={clubs}
-          />
-        )}
-
-        {total === 0 && comingUp.length > 0 && (
-          <Section title={highlightsAhead.length > 0 ? "Also coming up" : "Coming up"}>
-            {comingUp.map((e) => (
-              <EventCard key={e.id} event={e} now={now} showDate />
-            ))}
-          </Section>
-        )}
-
-        {hiddenForGroups > 0 && <GroupEventsHidden count={hiddenForGroups} alone={total === 0} onShow={() => update({ limited: true })} />}
-
-        <MissingEventLink />
-      </section>
-
-      <SiteTour />
-    </div>
-  );
-}
-
-function DaySection({ group, today, now, showHeading }: { group: DayGroup; today: string; now: number; showHeading: boolean }) {
-  if (!group.fits.length && !group.timeUnknown.length && !group.offCampus.length) return null;
-  return (
-    <section className="flex flex-col gap-3">
-      {showHeading && (
-        <h2 className="mt-2 px-1 font-display text-base font-semibold">
-          {formatDay(group.date, "long", today)}
-          {group.date === today && <span className="ml-2 text-maroon/75">Today</span>}
-        </h2>
-      )}
-      {group.fits.map((e) => (
-        <EventCard key={e.id} event={e} now={now} />
-      ))}
-      {group.timeUnknown.length > 0 && (
-        <details className="rounded-[28px] bg-canvas px-5">
-          <summary className="cursor-pointer py-3 text-sm font-medium text-maroon/85">
-            {group.timeUnknown.length} more with no time announced yet
-          </summary>
-          <div className="mt-1 flex flex-col gap-3 pb-5">
-            {group.timeUnknown.map((e) => (
-              <EventCard key={e.id} event={e} now={now} />
-            ))}
-          </div>
-        </details>
-      )}
-      {group.offCampus.length > 0 && (
-        <>
-          <h3 className="mt-2 flex items-center gap-1.5 px-1 text-sm font-bold uppercase tracking-wider text-maroon/85">
-            <PinIcon className="size-4" />
-            Off campus
-          </h3>
-          {group.offCampus.map((e) => (
-            <EventCard key={e.id} event={e} now={now} />
+          {groups.map((g) => (
+            // With "Coming up" above, the day's own list needs saying whose it is.
+            <DaySection key={g.date} group={g} today={today} now={now} showHeading={week || highlightsAhead.length > 0} leaving={leaving} />
           ))}
-        </>
-      )}
-    </section>
-  );
-}
 
-/** Tracked clubs matching a search that found no events. The list loads once, the first time a search needs it. */
-function useClubsMatching(q: string): TrackedClub[] {
-  const [clubs, setClubs] = useState<TrackedClub[]>([]);
-  const asked = useRef(false);
-  const searching = q.length > 0;
-  useEffect(() => {
-    if (!searching || asked.current) return;
-    asked.current = true;
-    fetch("/tracked-clubs")
-      .then((res) => (res.ok ? res.json() : []))
-      .then(setClubs)
-      .catch(() => {}); // a nicety: the empty message stands without it
-  }, [searching]);
-  return clubsMatching(clubs, q);
-}
+          {total === 0 && (
+            <EmptyState
+              filters={filters}
+              showingToday={!week && shown === today}
+              onClear={() => update({ ...DEFAULT_FILTERS, day: filters.day, date: filters.date })}
+              onTomorrow={() => update({ day: "tomorrow", date: "" })}
+              hasComingUp={comingUp.length > 0}
+              found={found}
+              clubs={clubs}
+            />
+          )}
 
-function EmptyState({
-  filters,
-  showingToday,
-  onClear,
-  onTomorrow,
-  hasComingUp,
-  found,
-  clubs,
-}: {
-  filters: Filters;
-  showingToday: boolean;
-  onClear: () => void;
-  onTomorrow: () => void;
-  hasComingUp: boolean;
-  found: { headline: string; hint: string } | null;
-  clubs: TrackedClub[];
-}) {
-  const narrowed = isNarrowed(filters);
-  const button = "mt-4 rounded-full bg-maroon px-4 py-1.5 text-sm font-medium text-cream hover:bg-plum";
-  const hint = narrowed
-    ? found
-      ? found.hint
-      : "Try another time or category."
-    : hasComingUp
-      ? "Here's what's coming up next."
-      : "Clubs usually post a few days ahead. Check back soon.";
-  return (
-    <div className="rounded-[28px] bg-canvas px-5 py-10 text-center">
-      <p className="text-lg font-semibold text-maroon">
-        {narrowed ? (found?.headline ?? "Nothing matches") : showingToday ? "Nothing else on today" : "Nothing announced yet"}
-      </p>
-      {hint && <p className="mt-1 text-sm text-maroon/75">{hint}</p>}
-      {narrowed ? (
-        <button type="button" onClick={onClear} className={button}>
-          Clear filters
-        </button>
-      ) : (
-        showingToday && (
-          <button type="button" onClick={onTomorrow} className={button}>
-            See tomorrow
-          </button>
-        )
-      )}
-      {clubs.length > 0 && (
-        <div className="mt-5 text-sm text-maroon/85">
-          <p>Looking for a club? See its page:</p>
-          <ul className="mt-1.5 flex flex-col items-center gap-1">
-            {clubs.map((c) => (
-              <li key={c.username}>
-                <Link
-                  href={`/clubs/${c.username}`}
-                  className="inline-flex min-h-6 items-center gap-1 font-semibold text-maroon underline underline-offset-2 hover:text-plum"
-                >
-                  {c.name}
-                </Link>
-              </li>
+          {total === 0 && comingUp.length > 0 && (
+            <Section title={highlightsAhead.length > 0 ? "Also coming up" : "Coming up"}>
+              {comingUp.map((e) => (
+                <EventCard key={e.id} event={e} now={now} showDate crossedOut={leaving?.has(e.id)} />
+              ))}
+            </Section>
+          )}
+
+          {hiddenForGroups > 0 && <GroupEventsHidden count={hiddenForGroups} alone={total === 0} onShow={() => update({ limited: true })} />}
+          </div>
+
+          <MissingEventLink />
+        </section>
+
+        <SiteTour />
+      </div>
+    );
+  }
+
+  /** The event cards (or their highlight frames) in the results, in order. */
+  function rowsIn(list: HTMLElement): HTMLElement[] {
+    return [...list.querySelectorAll<HTMLElement>("[data-seen-event]")].map((card) => card.closest<HTMLElement>("[data-event-row]") ?? card);
+  }
+
+  /** Folds the crossed-out events' rows away to nothing, taking the gap above (or below) them along. */
+  function foldAway(list: HTMLElement, ids: number[]): Animation[] {
+    const duration = motionMs("--motion-base");
+    const easing = motionValue("--ease-in-out");
+    return rowsIn(list)
+      .filter((row) => ids.includes(Number((row.matches("[data-seen-event]") ? row : row.querySelector("[data-seen-event]"))?.getAttribute("data-seen-event"))))
+      .map((row) => {
+        const { height, paddingTop, paddingBottom } = getComputedStyle(row);
+        const gap = `-${parseFloat(getComputedStyle(row.parentElement ?? row).rowGap) || 0}px`;
+        const side = row.previousElementSibling ? "marginTop" : "marginBottom";
+        row.style.overflow = "hidden";
+        return row.animate(
+          [
+            { height, paddingTop, paddingBottom, [side]: "0px", opacity: 0.45 },
+            { height: "0px", paddingTop: "0px", paddingBottom: "0px", [side]: gap, opacity: 0 },
+          ],
+          { duration, easing, fill: "forwards" },
+        );
+      });
+  }
+
+  function DaySection({ group, today, now, showHeading, leaving }: { group: DayGroup; today: string; now: number; showHeading: boolean; leaving: ReadonlySet<number> | null }) {
+    if (!group.fits.length && !group.timeUnknown.length && !group.offCampus.length) return null;
+    return (
+      <section className="flex flex-col gap-3">
+        {showHeading && (
+          <h2 className="mt-2 px-1 font-display text-base font-semibold">
+            {formatDay(group.date, "long", today)}
+            {group.date === today && <span className="ml-2 text-maroon/75">Today</span>}
+          </h2>
+        )}
+        {group.fits.map((e) => (
+          <EventCard key={e.id} event={e} now={now} crossedOut={leaving?.has(e.id)} />
+        ))}
+        {group.timeUnknown.length > 0 && (
+          <details className="rounded-[28px] bg-canvas px-5">
+            <summary className="cursor-pointer py-3 text-sm font-medium text-maroon/85">
+              {group.timeUnknown.length} more with no time announced yet
+            </summary>
+            <div className="mt-1 flex flex-col gap-3 pb-5">
+              {group.timeUnknown.map((e) => (
+                <EventCard key={e.id} event={e} now={now} crossedOut={leaving?.has(e.id)} />
+              ))}
+            </div>
+          </details>
+        )}
+        {group.offCampus.length > 0 && (
+          <>
+            <h3 className="mt-2 flex items-center gap-1.5 px-1 text-sm font-bold uppercase tracking-wider text-maroon/85">
+              <PinIcon className="size-4" />
+              Off campus
+            </h3>
+            {group.offCampus.map((e) => (
+              <EventCard key={e.id} event={e} now={now} crossedOut={leaving?.has(e.id)} />
             ))}
-          </ul>
-        </div>
-      )}
-    </div>
-  );
-}
+          </>
+        )}
+      </section>
+    );
+  }
 
-/** "2 more for specific groups (members, women, a faith or program) are hidden. Show them" */
-export function GroupEventsHidden({ count, onShow, alone = false }: { count: number; onShow: () => void; alone?: boolean }) {
-  return (
-    <p className="rounded-[28px] bg-canvas px-5 py-3 text-sm text-maroon/85">
-      {count} {alone ? "" : "more "}
-      {count === 1 ? "event is" : "events are"} only for specific groups (members, women, a faith or a
-      program), so {count === 1 ? "it's" : "they're"} hidden.{" "}
-      <button type="button" onClick={onShow} className="font-semibold text-maroon underline underline-offset-2">
-        Show {count === 1 ? "it" : "them"}
-      </button>
-    </p>
-  );
-}
+  /** Tracked clubs matching a search that found no events. The list loads once, the first time a search needs it. */
+  function useClubsMatching(q: string): TrackedClub[] {
+    const [clubs, setClubs] = useState<TrackedClub[]>([]);
+    const asked = useRef(false);
+    const searching = q.length > 0;
+    useEffect(() => {
+      if (!searching || asked.current) return;
+      asked.current = true;
+      fetch("/tracked-clubs")
+        .then((res) => (res.ok ? res.json() : []))
+        .then(setClubs)
+        .catch(() => {}); // a nicety: the empty message stands without it
+    }, [searching]);
+    return clubsMatching(clubs, q);
+  }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className="flex flex-col gap-3">
-      <h2 className="mt-2 px-1 font-display text-base font-semibold">{title}</h2>
-      {children}
-    </section>
-  );
-}
+  function EmptyState({
+    filters,
+    showingToday,
+    onClear,
+    onTomorrow,
+    hasComingUp,
+    found,
+    clubs,
+  }: {
+    filters: Filters;
+    showingToday: boolean;
+    onClear: () => void;
+    onTomorrow: () => void;
+    hasComingUp: boolean;
+    found: { headline: string; hint: string } | null;
+    clubs: TrackedClub[];
+  }) {
+    const narrowed = isNarrowed(filters);
+    const button = "press mt-4 rounded-full bg-maroon px-4 py-1.5 text-sm font-medium text-cream hover:bg-plum";
+    const hint = narrowed
+      ? found
+        ? found.hint
+        : "Try another time or category."
+      : hasComingUp
+        ? "Here's what's coming up next."
+        : "Clubs usually post a few days ahead. Check back soon.";
+    return (
+      <div className="rounded-[28px] bg-canvas px-5 py-10 text-center">
+        <p className="text-lg font-semibold text-maroon">
+          {narrowed ? (found?.headline ?? "Nothing matches") : showingToday ? "Nothing else on today" : "Nothing announced yet"}
+        </p>
+        {hint && <p className="mt-1 text-sm text-maroon/75">{hint}</p>}
+        {narrowed ? (
+          <button type="button" onClick={onClear} className={button}>
+            Clear filters
+          </button>
+        ) : (
+          showingToday && (
+            <button type="button" onClick={onTomorrow} className={button}>
+              See tomorrow
+            </button>
+          )
+        )}
+        {clubs.length > 0 && (
+          <div className="mt-5 text-sm text-maroon/85">
+            <p>Looking for a club? See its page:</p>
+            <ul className="mt-1.5 flex flex-col items-center gap-1">
+              {clubs.map((c) => (
+                <li key={c.username}>
+                  <Link
+                    href={`/clubs/${c.username}`}
+                    className="inline-flex min-h-6 items-center gap-1 font-semibold text-maroon underline underline-offset-2 hover:text-plum"
+                  >
+                    {c.name}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  /** "2 more for specific groups (members, women, a faith or program) are hidden. Show them" */
+  export function GroupEventsHidden({ count, onShow, alone = false }: { count: number; onShow: () => void; alone?: boolean }) {
+    return (
+      <p className="rounded-[28px] bg-canvas px-5 py-3 text-sm text-maroon/85">
+        {count} {alone ? "" : "more "}
+        {count === 1 ? "event is" : "events are"} only for specific groups (members, women, a faith or a
+        program), so {count === 1 ? "it's" : "they're"} hidden.{" "}
+        <button type="button" onClick={onShow} className="font-semibold text-maroon underline underline-offset-2">
+          Show {count === 1 ? "it" : "them"}
+        </button>
+      </p>
+    );
+  }
+
+  function Section({ title, children }: { title: string; children: React.ReactNode }) {
+    return (
+      <section className="flex flex-col gap-3">
+        <h2 className="mt-2 px-1 font-display text-base font-semibold">{title}</h2>
+        {children}
+      </section>
+    );
+  }

@@ -116,7 +116,7 @@ function PhoneDay({ day, dayHref, today, tone, onCampus, offCampus }: DayProps &
 
   return (
     <div className="sm:hidden">
-      <Link href={dayHref} className="group flex items-end justify-between gap-3" aria-label={`${day.label}: open the day`}>
+      <Link transitionTypes={["nav"]} href={dayHref} className="group flex items-end justify-between gap-3" aria-label={`${day.label}: open the day`}>
         <span>
           <span className="block text-sm font-medium">
             {weekday}
@@ -146,7 +146,7 @@ function PhoneDay({ day, dayHref, today, tone, onCampus, offCampus }: DayProps &
         </>
       )}
       {hidden > 0 && (
-        <Link href={dayHref} className="mt-1 inline-flex min-h-11 items-center gap-0.5 text-sm font-semibold underline-offset-2 hover:underline">
+        <Link transitionTypes={["nav"]} href={dayHref} className="mt-1 inline-flex min-h-11 items-center gap-0.5 text-sm font-semibold underline-offset-2 hover:underline">
           +{hidden} more on {weekday}
           <ChevronIcon className="size-4" />
         </Link>
@@ -160,10 +160,10 @@ function EventList({ events, tone }: { events: PublicEvent[]; tone: Tone }) {
     <ul className="mt-2 flex flex-col gap-1.5">
       {events.map((e) => (
         <li key={e.id}>
-          <Link
+          <Link transitionTypes={["nav"]}
             href={`/events/${e.id}`}
             data-seen-event={e.id}
-            className={`flex gap-3 rounded-2xl px-3 py-2 hover:opacity-90 ${tone.chip} ${e.highlighted ? "ring-[3px] ring-plum" : ""}`}
+            className={`press flex gap-3 rounded-2xl px-3 py-2 hover:opacity-90 ${tone.chip} ${e.highlighted ? "ring-[3px] ring-plum" : ""}`}
           >
             <span className="w-16 shrink-0 pt-px text-xs font-bold tabular-nums">
               {e.startTimeKnown ? formatTime(e.startsAt) : "Time TBD"}
@@ -188,7 +188,7 @@ function WideDay({ day, dayHref, today, tone, columns }: DayProps & { columns: C
   const count = liveCount(day.events);
   return (
     <div className="hidden gap-6 sm:flex">
-      <Link href={dayHref} className="group w-28 shrink-0" aria-label={`${day.label}: open the day`}>
+      <Link transitionTypes={["nav"]} href={dayHref} className="group w-28 shrink-0" aria-label={`${day.label}: open the day`}>
         <p className="text-sm font-medium">
           {weekday}
           {otherYear(day.date, today) && ` ${day.date.slice(0, 4)}`}
@@ -217,11 +217,11 @@ function WideDay({ day, dayHref, today, tone, columns }: DayProps & { columns: C
                   {column.label}
                 </p>
                 {column.events.map((e) => (
-                  <Link
+                  <Link transitionTypes={["nav"]}
                     key={e.id}
                     href={`/events/${e.id}`}
                     data-seen-event={e.id}
-                    className={`flex flex-col gap-1 rounded-xl px-2 py-1.5 text-[11px] font-semibold leading-tight hover:opacity-90 ${tone.chip} ${e.highlighted ? "ring-[3px] ring-plum" : ""}`}
+                    className={`press flex flex-col gap-1 rounded-xl px-2 py-1.5 text-[11px] font-semibold leading-tight hover:opacity-90 ${tone.chip} ${e.highlighted ? "ring-[3px] ring-plum" : ""}`}
                   >
                     <span className="flex items-start gap-1.5">
                       <span className={`mt-[3px] size-1.5 shrink-0 rounded-full ${categoryOf(e.category).tone.swatch}`} />

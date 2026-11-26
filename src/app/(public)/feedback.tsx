@@ -4,6 +4,7 @@ import { createContext, useActionState, useCallback, useContext, useEffect, useI
 
 import { CloseIcon } from "@/components/icons";
 import { CANCELLED_MESSAGE, FEEDBACK_TYPES, MAX_CONTACT, MAX_MESSAGE, type FeedbackType } from "@/lib/feedback";
+import { motionMs, motionValue, reducedMotion } from "@/lib/motion";
 
 import { sendFeedback } from "./feedback-actions";
 
@@ -67,6 +68,7 @@ function FeedbackSheet({
 }: Opening & { draft?: Draft; onDraftChange: (key: number | string, draft: Draft | null) => void; onClosed: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const pressedBackdrop = useRef(false);
+  const leaving = useRef(false);
   const titleId = useId();
   const [state, action, pending] = useActionState(sendFeedback, null);
   const [chosen, setChosen] = useState<FeedbackType>(draft?.chosen ?? type);
@@ -100,7 +102,26 @@ function FeedbackSheet({
     onDraftChange(eventKey, !sent && (message.trim() || contact.trim()) ? { chosen, message, contact } : null);
   }, [onDraftChange, eventKey, sent, chosen, message, contact]);
 
-  const close = () => dialog.current?.close();
+  /** Closes it the way it came: down off the bottom on a phone, shrinking away on a bigger screen. */
+  const close = () => {
+    const el = dialog.current;
+    if (!el?.open || leaving.current) return;
+    if (reducedMotion()) return el.close();
+    leaving.current = true;
+    const timing = { duration: motionMs("--motion-base") * 0.8, easing: motionValue("--ease-in"), fill: "forwards" as const };
+    const phone = window.matchMedia("(max-width: 639px)").matches;
+    const out = el.animate(phone ? [{ translate: "0 0" }, { translate: "0 100%" }] : [{ opacity: 1, scale: 1 }, { opacity: 0, scale: 0.95 }], timing);
+    try {
+      el.animate([{ opacity: 1 }, { opacity: 0 }], { ...timing, pseudoElement: "::backdrop" });
+    } catch {
+      // Older browsers can't animate the dimmed page behind; it just goes with the sheet.
+    }
+    const done = () => {
+      leaving.current = false;
+      el.close();
+    };
+    out.finished.then(done, done);
+  };
   const placeholder = FEEDBACK_TYPES.find((t) => t.key === chosen)?.placeholder;
 
   return (
@@ -108,19 +129,24 @@ function FeedbackSheet({
       ref={dialog}
       aria-labelledby={titleId}
       onClose={onClosed}
+      // Escape closes it the same animated way.
+      onCancel={(e) => {
+        e.preventDefault();
+        close();
+      }}
       // A tap on the dimmed page around the sheet closes it (only when it started there too, not a drag out of the text box).
       onPointerDown={(e) => (pressedBackdrop.current = e.target === dialog.current)}
       onClick={(e) => {
         if (pressedBackdrop.current && e.target === dialog.current) close();
       }}
-      className="m-0 mt-auto max-h-[90dvh] w-full max-w-none overflow-y-auto rounded-t-[32px] bg-panel p-0 font-body text-maroon shadow-xl transition-transform duration-200 backdrop:bg-plum/45 max-sm:starting:translate-y-full sm:m-auto sm:max-w-md sm:rounded-[32px]"
+      className="m-0 mt-auto max-h-[90dvh] w-full max-w-none overflow-y-auto rounded-t-[32px] bg-panel p-0 font-body text-maroon shadow-xl transition-[translate,scale,opacity] duration-(--motion-base) ease-out backdrop:bg-plum/45 motion-reduce:transition-none max-sm:starting:translate-y-full sm:starting:scale-95 sm:starting:opacity-0 sm:m-auto sm:max-w-md sm:rounded-[32px]"
     >
       <div className="flex flex-col gap-4 px-5 pt-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:p-6">
         <div className="flex items-center justify-between gap-3">
           <h2 id={titleId} className="font-display text-2xl font-semibold lowercase">
             {state?.status === "sent" ? "sent!" : "send feedback"}
           </h2>
-          <button type="button" onClick={close} aria-label="Close" className="grid size-9 place-items-center rounded-full hover:bg-maroon/10">
+          <button type="button" onClick={close} aria-label="Close" className="press grid size-9 place-items-center rounded-full hover:bg-maroon/10">
             <CloseIcon className="size-5" />
           </button>
         </div>
@@ -128,7 +154,7 @@ function FeedbackSheet({
         {state?.status === "sent" ? (
           <div className="flex flex-col items-start gap-4 pb-2">
             <p className="font-display text-3xl font-semibold leading-tight lowercase">thanks, we read every one 🛋️</p>
-            <button type="button" onClick={close} className="rounded-full bg-maroon px-5 py-2 text-sm font-semibold text-cream hover:bg-plum">
+            <button type="button" onClick={close} className="press rounded-full bg-maroon px-5 py-2 text-sm font-semibold text-cream hover:bg-plum">
               Close
             </button>
           </div>
@@ -154,7 +180,7 @@ function FeedbackSheet({
                 {FEEDBACK_TYPES.map((t) => (
                   <label
                     key={t.key}
-                    className="cursor-pointer rounded-full px-3 py-2 text-center text-sm font-semibold ring-1 ring-maroon/25 transition-colors hover:bg-butter/60 has-checked:bg-maroon has-checked:text-cream has-checked:ring-maroon has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-maroon"
+                    className="press cursor-pointer rounded-full px-3 py-2 text-center text-sm font-semibold ring-1 ring-maroon/25 hover:bg-butter/60 has-checked:bg-maroon has-checked:text-cream has-checked:ring-maroon has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-maroon"
                   >
                     <input
                       type="radio"
@@ -240,7 +266,7 @@ function FeedbackSheet({
             <button
               type="submit"
               disabled={pending}
-              className="rounded-full bg-maroon px-5 py-3 font-display text-lg font-semibold text-cream lowercase transition-colors hover:bg-plum disabled:opacity-70"
+              className="press rounded-full bg-maroon px-5 py-3 font-display text-lg font-semibold text-cream lowercase hover:bg-plum disabled:opacity-70"
             >
               {pending ? "sending…" : "send"}
             </button>
@@ -294,11 +320,11 @@ export function CancelledReport({ eventId, className }: { eventId: number; class
       <button
         type="submit"
         disabled={pending}
-        className="rounded-full bg-red-600 px-3 py-1 font-semibold text-white ring-1 ring-white/50 hover:bg-red-700 disabled:opacity-70"
+        className="press rounded-full bg-red-600 px-3 py-1 font-semibold text-white ring-1 ring-white/50 hover:bg-red-700 disabled:opacity-70"
       >
         {pending ? "Sending…" : "Yes, it's cancelled"}
       </button>
-      <button type="button" onClick={() => setAsking(false)} className="rounded-full px-3 py-1 font-semibold ring-1 ring-current/40 hover:bg-current/10">
+      <button type="button" onClick={() => setAsking(false)} className="press rounded-full px-3 py-1 font-semibold ring-1 ring-current/40 hover:bg-current/10">
         No
       </button>
       {state?.status === "error" && (

@@ -75,8 +75,9 @@ export function DayBrowser({
             <Link
               key={d.date}
               href={day(d.date)}
+              transitionTypes={["nav"]}
               aria-current={active ? "date" : undefined}
-              className={`flex flex-col items-center rounded-2xl py-2 text-xs transition-colors ${
+              className={`press flex flex-col items-center rounded-2xl py-2 text-xs ${
                 active
                   ? "bg-maroon text-cream"
                   : d.isToday

@@ -19,7 +19,7 @@ export default function SchedulePage() {
           Then &ldquo;Fits my schedule&rdquo; hides events that clash with your classes, with 15 minutes to get there.
         </p>
       </div>
-      <Suspense fallback={<div className="h-96 animate-pulse rounded-[28px] bg-maroon/10" />}>
+      <Suspense fallback={<div className="h-96 skeleton rounded-[28px]" />}>
         <Editor />
       </Suspense>
     </div>

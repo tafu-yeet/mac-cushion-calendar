@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useFormStatus } from "react-dom";
 
 import { BUTTON, CARD, CHECK_ROW, CHECKBOX, LINK_BUTTON, TITLE } from "@/components/member-styles";
+import { WipeFill } from "@/components/motion";
 import { CLUB_POSTS_CONSENT_WORDING, DIGEST_CONSENT_WORDING, REMINDERS_CONSENT_WORDING } from "@/lib/auth-links";
 import { INTERESTS, type EmailChoices, type Interest } from "@/lib/member-types";
 
@@ -44,6 +45,12 @@ export function WelcomeSurvey({ next, name, memberNumber, founding, interests, e
 
       <div>
         <p className="text-sm font-semibold text-maroon/80">Step {step} of 2</p>
+        {/* A thin bar that fills from half to whole on the way to step 2. */}
+        <div aria-hidden="true" className="mt-2 h-1 overflow-hidden rounded-full bg-maroon/15">
+          <div
+            className={`h-full origin-left rounded-full bg-maroon transition-[scale] duration-(--motion-slow) ease-in-out motion-reduce:transition-none ${step === 1 ? "scale-x-50" : "scale-x-100"}`}
+          />
+        </div>
         <h1 className={TITLE}>{step === 1 ? `welcome${name ? `, ${name.split(" ")[0].toLowerCase()}` : ""}!` : "want emails?"}</h1>
         {step === 1 && memberNumber !== null && (
           <p className="mt-2 inline-flex rounded-full bg-gold px-3 py-1 text-sm font-semibold">
@@ -64,11 +71,15 @@ export function WelcomeSurvey({ next, name, memberNumber, founding, interests, e
                   type="button"
                   aria-pressed={on}
                   onClick={() => toggle(i.key)}
-                  className={`min-h-11 rounded-full px-4 text-base font-semibold ring-1 transition-colors ${
-                    on ? "bg-maroon text-cream ring-maroon" : i.key === "free_food" ? "bg-gold/30 ring-gold" : "bg-white/70 ring-maroon/25"
-                  }`}
+                  className={`press relative min-h-11 rounded-full px-4 text-base font-semibold ring-1 ${
+                    i.key === "free_food" ? "bg-gold/30" : "bg-white/70"
+                  } ${on ? "ring-maroon" : i.key === "free_food" ? "ring-gold" : "ring-maroon/25"}`}
                 >
                   {i.label}
+                  {/* Picked, the colour wipes in from the left. */}
+                  <WipeFill on={on} className="flex items-center justify-center rounded-full bg-maroon px-4 text-cream">
+                    {i.label}
+                  </WipeFill>
                 </button>
               );
             })}

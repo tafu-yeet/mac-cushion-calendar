@@ -3,10 +3,12 @@
 import { useState } from "react";
 
 import { ShareIcon } from "./icons";
+import { DrawnCheck, Swap } from "./motion";
 
 /** Opens the phone's share sheet, or copies the link where that isn't available. */
 export function ShareButton({ title, text }: { title: string; text: string }) {
   const [copied, setCopied] = useState(false);
+  const [copies, setCopies] = useState(0); // the check draws itself on each copy
 
   async function share() {
     const url = window.location.href;
@@ -20,6 +22,7 @@ export function ShareButton({ title, text }: { title: string; text: string }) {
     }
     await navigator.clipboard.writeText(url);
     setCopied(true);
+    setCopies((n) => n + 1);
     setTimeout(() => setCopied(false), 2000);
   }
 
@@ -27,10 +30,20 @@ export function ShareButton({ title, text }: { title: string; text: string }) {
     <button
       type="button"
       onClick={share}
-      className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold ring-1 ring-current/30 hover:bg-current/10"
+      className="press inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold ring-1 ring-current/30 hover:bg-current/10"
     >
-      <ShareIcon className="size-4" />
-      {copied ? "Link copied" : "Share"}
+      <Swap
+        on={copied}
+        off={
+          <>
+            <ShareIcon className="size-4" />
+            Share
+          </>
+        }
+      >
+        <DrawnCheck drawn={copies} />
+        Link copied
+      </Swap>
     </button>
   );
 }

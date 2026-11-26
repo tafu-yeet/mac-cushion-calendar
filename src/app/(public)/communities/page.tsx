@@ -5,6 +5,7 @@ import { Suspense } from "react";
 
 import { EventCard } from "@/components/event-card";
 import { MembersOnly } from "@/components/members-only";
+import { CardsSkeleton } from "@/components/skeleton";
 import { campus } from "@/lib/campus";
 import { COMMUNITY_GROUPS, communityOf } from "@/lib/communities";
 import { getEventsBetween } from "@/lib/events";
@@ -30,7 +31,7 @@ export default function CommunitiesPage({ searchParams }: PageProps<"/communitie
       <p className="mt-3 text-maroon/75">
         Events for your community or program. Events only for a group&apos;s members show here too.
       </p>
-      <Suspense fallback={<div className="mt-6 h-64 animate-pulse rounded-[32px] bg-maroon/10" role="status" aria-label="Loading" />}>
+      <Suspense fallback={<CardsSkeleton className="mt-6" />}>
         <Browser searchParams={searchParams} />
       </Suspense>
     </div>
@@ -84,8 +85,9 @@ async function Browser({ searchParams }: { searchParams: PageProps<"/communities
                     key={c.key}
                     href={active ? "/communities" : `/communities?c=${c.key}`}
                     scroll={false}
+                    transitionTypes={["nav"]}
                     aria-current={active ? "page" : undefined}
-                    className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium ring-1 transition-colors ${
+                    className={`press inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium ring-1 ${
                       active
                         ? "bg-maroon text-cream ring-maroon"
                         : n

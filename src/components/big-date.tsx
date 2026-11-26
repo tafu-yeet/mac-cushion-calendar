@@ -1,3 +1,4 @@
+import { RollingNumber } from "@/components/motion";
 import { dateParts, otherYear } from "@/lib/time";
 
 /** The oversized "09 / OCT" date at the top of a page, with a small label above it. */
@@ -19,13 +20,15 @@ export function BigDate({ date, today, label }: { date: string; today: string; l
   );
 }
 
-/** Figures beside the big date, split from it by a thin rule, like a clock's second time zone. */
+/** Figures beside the big date, split from it by a thin rule, like a clock's second time zone. They roll when they change. */
 export function DateStats({ stats }: { stats: { value: string | number; label: string }[] }) {
   return (
     <div className="flex flex-col gap-3 border-l border-maroon/30 pb-1 pl-4">
-      {stats.map((s) => (
-        <div key={s.label}>
-          <p className="font-display text-2xl font-semibold leading-none">{s.value}</p>
+      {stats.map((s, i) => (
+        <div key={i}>
+          <p className="font-display text-2xl font-semibold leading-none">
+            <RollingNumber value={s.value} />
+          </p>
           <p className="mt-1 text-xs text-maroon/75">{s.label}</p>
         </div>
       ))}

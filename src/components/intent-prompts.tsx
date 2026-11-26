@@ -66,7 +66,7 @@ export function IntentPrompts() {
   return (
     <div
       role="status"
-      className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 mx-auto flex max-w-md items-start gap-3 rounded-[24px] bg-plum p-4 text-cream shadow-xl motion-safe:animate-[rise_200ms_ease-out]"
+      className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 mx-auto flex max-w-md items-start gap-3 rounded-[24px] bg-plum p-4 text-cream shadow-xl animate-[motion-rise-in_var(--motion-base)_var(--ease-out)]"
     >
       <div className="flex min-w-0 flex-1 flex-col gap-3">
         <p className="text-sm leading-snug font-semibold">
@@ -80,7 +80,7 @@ export function IntentPrompts() {
               type="button"
               disabled={pending}
               onClick={() => start(() => followAfterSignIn(prompt.clubId, window.location.pathname + window.location.search))}
-              className="rounded-full bg-gold px-4 py-2 text-sm font-semibold text-maroon hover:bg-butter disabled:opacity-60"
+              className="press rounded-full bg-gold px-4 py-2 text-sm font-semibold text-maroon hover:bg-butter disabled:opacity-60"
             >
               Follow
             </button>
@@ -88,17 +88,17 @@ export function IntentPrompts() {
             <Link
               href={`/sign-in?next=${encodeURIComponent(`/events/${prompt.eventId}`)}`}
               onClick={() => setPrompt(null)}
-              className="rounded-full bg-gold px-4 py-2 text-sm font-semibold text-maroon hover:bg-butter"
+              className="press rounded-full bg-gold px-4 py-2 text-sm font-semibold text-maroon hover:bg-butter"
             >
               Make an account
             </Link>
           )}
-          <button type="button" onClick={() => setPrompt(null)} className="rounded-full px-4 py-2 text-sm font-semibold ring-1 ring-cream/40">
+          <button type="button" onClick={() => setPrompt(null)} className="press rounded-full px-4 py-2 text-sm font-semibold ring-1 ring-cream/40">
             Not now
           </button>
         </div>
       </div>
-      <button type="button" onClick={() => setPrompt(null)} aria-label="Dismiss" className="grid size-8 shrink-0 place-items-center rounded-full hover:bg-cream/15">
+      <button type="button" onClick={() => setPrompt(null)} aria-label="Dismiss" className="press grid size-8 shrink-0 place-items-center rounded-full hover:bg-cream/15">
         <CloseIcon className="size-4" />
       </button>
     </div>

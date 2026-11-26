@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useActionState, useState } from "react";
 
 import { ALERT, BUTTON, BUTTON_LIGHT, CHECK_ROW, CHECKBOX, INPUT, LABEL, LINK_BUTTON, NOTE } from "@/components/member-styles";
+import { DrawnCheck, PulseRing } from "@/components/motion";
 import { DIGEST_CONSENT_WORDING } from "@/lib/auth-links";
 
 import { signInStep } from "./actions";
@@ -26,6 +27,16 @@ function SignInSteps({ next, google, inAppBrowser, error, onRestart }: Props & {
       <form action={action} className="flex flex-col gap-4">
         <input type="hidden" name="email" value={state.email} />
         <input type="hidden" name="next" value={next} />
+        {/* Where "Email me a code" was: it's now "Code sent ✓", the check drawing itself (again for each new code). */}
+        <p
+          key={state.notice ?? "sent"}
+          aria-hidden="true"
+          className="relative inline-flex w-fit items-center gap-1.5 rounded-full bg-maroon px-4 py-2 text-sm font-semibold text-cream animate-[motion-blur-in_var(--motion-base)_var(--ease-out)_both]"
+        >
+          <DrawnCheck drawn={1} />
+          Code sent
+          <PulseRing beat={1} />
+        </p>
         <p className="text-base leading-relaxed">
           {state.notice ?? "We emailed you a 6-digit code."} It went to <span className="font-semibold">{state.email}</span>.
         </p>

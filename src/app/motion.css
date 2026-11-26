@@ -1,0 +1,333 @@
+/*
+ * Motion: every speed and easing curve on the site, in one place.
+ *
+ * The rules this follows: things come in on ease-out and leave about 20% faster; things moving
+ * from one place to another use ease-in-out; nothing bounces except the logo; only transform,
+ * opacity, clip-path and filter are animated (plus the height of a row being removed); content
+ * from the server is never hidden waiting for JavaScript; and with "Reduce motion" on, nothing
+ * moves, scales, wobbles or shimmers (see the end of this file).
+ *
+ * JavaScript reads the same values with motionMs() and motionValue() in src/lib/motion.ts.
+ */
+
+@theme {
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1); /* entrances: quick start, soft landing */
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1); /* moving from one place to another */
+  --ease-in: cubic-bezier(0.4, 0, 1, 1); /* exits: speed up on the way out */
+
+  /* Every `transition-colors` and friends on the site uses these too. */
+  --default-transition-duration: var(--motion-fast);
+  --default-transition-timing-function: var(--ease-out);
+}
+
+:root {
+  --motion-fast: 150ms;
+  --motion-base: 200ms;
+  --motion-slow: 300ms;
+  --motion-menu-in: 180ms; /* menus and popovers opening */
+  --motion-menu-out: 145ms; /* closing: about 20% shorter */
+  --motion-page: 150ms; /* the crossfade between pages */
+  --motion-stagger: 30ms; /* between list rows, first 10 rows only */
+  --motion-draw: 250ms; /* a checkmark drawing itself */
+  --motion-live: 2s; /* one beat of the "On now" dot */
+  --motion-skeleton-wait: 300ms; /* loading placeholders only show if loading takes longer than this */
+
+  --motion-press: 0.97; /* scale while pressed */
+  --motion-pop: 0.95; /* menus start at this scale */
+  --motion-rise: 8px; /* how far a new list row rises */
+  --motion-roll: 0.6em; /* how far a changing number rolls */
+  --motion-pulse: 1.15; /* how far the success ring grows */
+  --motion-stretch: 1.12; /* a switch knob, mid-move */
+  --motion-blur: 2px; /* icon and label swaps */
+}
+
+/* ---------- Keyframes ---------- */
+
+@keyframes motion-pop-in {
+  from {
+    opacity: 0;
+    scale: var(--motion-pop);
+  }
+}
+@keyframes motion-pop-out {
+  to {
+    opacity: 0;
+    scale: var(--motion-pop);
+  }
+}
+@keyframes motion-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes motion-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+/* A clashing event, on its way out of the list. */
+@keyframes motion-dim {
+  to {
+    opacity: 0.45;
+  }
+}
+@keyframes motion-rise-in {
+  from {
+    opacity: 0;
+    translate: 0 var(--motion-rise);
+  }
+}
+/* Left to right, like a pen: checkmarks and the line through a clashing event. */
+@keyframes motion-wipe-in {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+@keyframes motion-pulse-ring {
+  from {
+    opacity: 0.4;
+    scale: 1;
+  }
+  to {
+    opacity: 0;
+    scale: var(--motion-pulse);
+  }
+}
+@keyframes motion-live {
+  0% {
+    opacity: 0.45;
+    scale: 1;
+  }
+  70%,
+  100% {
+    opacity: 0;
+    scale: 2.6;
+  }
+}
+@keyframes motion-shimmer {
+  from {
+    translate: -100% 0;
+  }
+  to {
+    translate: 100% 0;
+  }
+}
+/* A number changing: the new one rolls in from below when it goes up, from above when it goes
+   down (--roll-dir is 1 or -1), and the old one rolls away the other way. */
+@keyframes motion-roll-in {
+  from {
+    opacity: 0;
+    translate: 0 calc(var(--motion-roll) * var(--roll-dir, 1));
+  }
+}
+@keyframes motion-roll-out {
+  to {
+    opacity: 0;
+    translate: 0 calc(var(--motion-roll) * var(--roll-dir, 1) * -1);
+  }
+}
+@keyframes motion-blur-in {
+  from {
+    opacity: 0;
+    filter: blur(var(--motion-blur));
+  }
+}
+/* A switch's knob stretching a little mid-slide. Two copies, so each flip restarts it. */
+@keyframes motion-stretch-a {
+  50% {
+    scale: var(--motion-stretch) 1;
+  }
+}
+@keyframes motion-stretch-b {
+  50% {
+    scale: var(--motion-stretch) 1;
+  }
+}
+/* The one playful moment: the logo's wobble. A little overshoot is allowed here, nowhere else. */
+@keyframes motion-wobble {
+  0% {
+    rotate: 0deg;
+    scale: 1;
+  }
+  20% {
+    rotate: -12deg;
+    scale: 0.94;
+  }
+  45% {
+    rotate: 9deg;
+    scale: 1.04;
+  }
+  68% {
+    rotate: -4deg;
+    scale: 1;
+  }
+  85% {
+    rotate: 2deg;
+  }
+  100% {
+    rotate: 0deg;
+    scale: 1;
+  }
+}
+
+/* ---------- Utilities ---------- */
+
+/* Buttons, chips and links shrink a touch while pressed. Includes the colour transitions, so an
+   element with `press` doesn't also need `transition-colors`. */
+@utility press {
+  transition-property: color, background-color, border-color, text-decoration-color, box-shadow, opacity, scale;
+  transition-duration: var(--motion-fast);
+  transition-timing-function: var(--ease-out);
+  -webkit-tap-highlight-color: transparent;
+  &:active:not(:disabled, [aria-disabled="true"]) {
+    scale: var(--motion-press);
+  }
+}
+
+/* A menu or popover popping out of the button that opened it. Set where the button is with
+   `origin-*` (or `transform-origin`). `data-closing` plays it back in, faster, and lets taps
+   through to whatever is underneath. */
+@utility pop {
+  animation: motion-pop-in var(--motion-menu-in) var(--ease-out);
+  &[data-closing] {
+    animation: motion-pop-out var(--motion-menu-out) var(--ease-in) forwards;
+    pointer-events: none;
+  }
+}
+
+/* The "on" colour of a chip, wiped in from the left over the "off" colour (src/components/motion.tsx). */
+@utility fill-wipe {
+  clip-path: inset(0 100% 0 0 round 9999px);
+  transition: clip-path calc(var(--motion-base) * 0.8) var(--ease-in);
+  &[data-on="true"] {
+    clip-path: inset(0 0 0 0 round 9999px);
+    transition-duration: var(--motion-base);
+    transition-timing-function: var(--ease-out);
+  }
+}
+
+/* Two labels in one spot (Follow / Following), crossfading with a slight blur. */
+@utility swap-layer {
+  grid-area: 1 / 1;
+  transition:
+    opacity var(--motion-base) var(--ease-out),
+    filter var(--motion-base) var(--ease-out);
+  &[data-shown="false"] {
+    opacity: 0;
+    filter: blur(var(--motion-blur));
+    transition-duration: calc(var(--motion-base) * 0.8);
+    pointer-events: none;
+  }
+}
+
+/* A checkmark drawing itself, left to right. */
+@utility draw-in {
+  animation: motion-wipe-in var(--motion-draw) var(--ease-out) both;
+}
+
+/* One soft ring out from a button that just worked. */
+@utility pulse-ring {
+  animation: motion-pulse-ring 450ms var(--ease-out) forwards;
+}
+
+/* The "On now" dot: a faint ring breathing out of it, every two seconds. */
+@utility live-dot {
+  position: relative;
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: currentColor;
+    opacity: 0;
+    animation: motion-live var(--motion-live) var(--ease-out) infinite;
+  }
+}
+
+/* A loading placeholder: waits a moment (fast loads never flash one), then a soft shimmer. */
+@utility skeleton {
+  position: relative;
+  overflow: hidden;
+  background-color: color-mix(in oklab, var(--color-maroon) 10%, transparent);
+  animation: motion-fade-in var(--motion-base) var(--ease-out) var(--motion-skeleton-wait) backwards;
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.4), transparent);
+    translate: -100% 0;
+    animation: motion-shimmer 1.4s var(--ease-in-out) var(--motion-skeleton-wait) infinite;
+  }
+}
+
+/* The logo, when tapped. */
+@utility wobble {
+  animation: motion-wobble 520ms var(--ease-out);
+}
+
+/* A clashing event's title: the line through it, drawn like a pen (src/components/event-card.tsx). */
+@utility strike-in {
+  animation: motion-wipe-in var(--motion-draw) var(--ease-out) both;
+}
+
+/* ---------- Page switches ---------- */
+
+/* React's <ViewTransition> crossfades the page (src/app/(public)/layout.tsx). Only the page
+   itself takes part: the header stays put and stays tappable, and taps go straight through
+   the fading layer to the new page. */
+:root {
+  view-transition-name: none;
+}
+::view-transition {
+  pointer-events: none;
+}
+::view-transition-group(.page-fade) {
+  animation: none;
+}
+::view-transition-old(.page-fade) {
+  animation: motion-fade-out calc(var(--motion-page) * 0.8) var(--ease-in) both;
+}
+::view-transition-new(.page-fade) {
+  animation: motion-fade-in var(--motion-page) var(--ease-out) both;
+}
+
+/* ---------- Reduce motion ---------- */
+
+/* Nothing moves, scales, wobbles or shimmers. Fades stay, short. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-press: 1;
+    --motion-pop: 1;
+    --motion-rise: 0px;
+    --motion-roll: 0px;
+    --motion-pulse: 1;
+    --motion-stretch: 1;
+    --motion-blur: 0px;
+  }
+  .fill-wipe {
+    clip-path: none;
+    opacity: 0;
+    transition: opacity var(--motion-fast) linear;
+  }
+  .fill-wipe[data-on="true"] {
+    clip-path: none;
+    opacity: 1;
+  }
+  .draw-in,
+  .strike-in,
+  .wobble,
+  .pulse-ring {
+    animation: none;
+  }
+  .pulse-ring {
+    opacity: 0;
+  }
+  .live-dot::after,
+  .skeleton::after {
+    animation: none;
+    display: none;
+  }
+}

@@ -6,10 +6,11 @@ import { followAfterSignIn, setFollow, setReminder } from "@/app/(public)/accoun
 import { REMINDER_LEAD_MINUTES } from "@/lib/email/select";
 import { REMINDERS_CONSENT_WORDING } from "@/lib/auth-links";
 
-import { BellIcon, CheckIcon, PlusIcon } from "./icons";
+import { BellIcon, PlusIcon } from "./icons";
 import { updateMember, useMember } from "./member-provider";
+import { DrawnCheck, PulseRing, Swap, usePresence } from "./motion";
 
-const PILL = "inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold disabled:opacity-60";
+const PILL = "press relative inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold disabled:opacity-60";
 
 /**
  * "Follow" a club, or "Following" once you do. Signed out, it goes to sign-in and follows the
@@ -19,6 +20,8 @@ export function FollowButton({ clubId, clubName, className }: { clubId: number; 
   const { member } = useMember();
   const [pending, start] = useTransition();
   const [error, setError] = useState(false);
+  // Goes up each time they follow: the check draws itself and the button gives one pulse.
+  const [followed, setFollowed] = useState(0);
   const following = !!member?.follows.includes(clubId);
 
   const toggle = () => {
@@ -28,6 +31,7 @@ export function FollowButton({ clubId, clubName, className }: { clubId: number; 
       return;
     }
     const want = !following;
+    if (want) setFollowed((n) => n + 1);
     updateMember((m) => ({ ...m, follows: want ? [...m.follows, clubId] : m.follows.filter((id) => id !== clubId) }));
     setError(false);
     start(async () => {
@@ -47,9 +51,20 @@ export function FollowButton({ clubId, clubName, className }: { clubId: number; 
       title={error ? "That didn't save. Try again." : following ? `Stop following ${clubName}` : `Follow ${clubName}: their events in your feed and emails`}
       className={`${PILL} ${following ? "bg-current/15" : className}`}
     >
-      {following ? <CheckIcon className="size-4" /> : <PlusIcon className="size-4" />}
-      {following ? "Following" : "Follow"}
+      <Swap
+        on={following}
+        off={
+          <>
+            <PlusIcon className="size-4" />
+            Follow
+          </>
+        }
+      >
+        <DrawnCheck drawn={followed} />
+        Following
+      </Swap>
       <span className="sr-only"> {clubName}</span>
+      <PulseRing beat={following ? followed : 0} />
     </button>
   );
 }
@@ -62,7 +77,9 @@ export function RemindButton({ eventId, startsAt, timeKnown, now, className }: {
   const { member } = useMember();
   const [pending, start] = useTransition();
   const [asking, setAsking] = useState(false);
+  const { shown: askShown, closing } = usePresence(asking || null);
   const [error, setError] = useState(false);
+  const [reminded, setReminded] = useState(0); // goes up each time a reminder is set: the check draws itself
   const box = useRef<HTMLDivElement>(null);
   const askId = useId();
 
@@ -81,6 +98,7 @@ export function RemindButton({ eventId, startsAt, timeKnown, now, className }: {
   const save = (want: boolean) => {
     setAsking(false);
     setError(false);
+    if (want) setReminded((n) => n + 1);
     updateMember((m) => ({
       ...m,
       reminders: want ? [...m.reminders, eventId] : m.reminders.filter((id) => id !== eventId),
@@ -106,17 +124,33 @@ export function RemindButton({ eventId, startsAt, timeKnown, now, className }: {
         title={error ? "That didn't save. Try again." : on ? "We'll email you an hour before. Tap to cancel." : "Get an email an hour before"}
         className={`${PILL} ${on ? "bg-current/15" : className}`}
       >
-        {on ? <CheckIcon className="size-4" /> : <BellIcon className="size-4" />}
-        {on ? "Reminder set" : "Remind me"}
+        <Swap
+          on={on}
+          off={
+            <>
+              <BellIcon className="size-4" />
+              Remind me
+            </>
+          }
+        >
+          <DrawnCheck drawn={reminded} />
+          Reminder set
+        </Swap>
+        <PulseRing beat={on ? reminded : 0} />
       </button>
-      {asking && (
-        <div id={askId} className="absolute bottom-full left-0 z-20 mb-2 flex w-72 flex-col gap-3 rounded-2xl bg-cream p-4 text-maroon shadow-lg ring-1 ring-maroon/15">
+      {askShown && (
+        <div
+          id={askId}
+          data-closing={closing || undefined}
+          inert={closing}
+          className="pop origin-bottom-left absolute bottom-full left-0 z-20 mb-2 flex w-72 flex-col gap-3 rounded-2xl bg-cream p-4 text-maroon shadow-lg ring-1 ring-maroon/15"
+        >
           <p className="text-sm leading-snug">{REMINDERS_CONSENT_WORDING}</p>
           <div className="flex gap-2">
-            <button type="button" onClick={() => save(true)} className="rounded-full bg-maroon px-4 py-2 text-sm font-semibold text-cream hover:bg-plum">
+            <button type="button" onClick={() => save(true)} className="press rounded-full bg-maroon px-4 py-2 text-sm font-semibold text-cream hover:bg-plum">
               Email me
             </button>
-            <button type="button" onClick={() => setAsking(false)} className="rounded-full px-4 py-2 text-sm font-semibold ring-1 ring-maroon/25">
+            <button type="button" onClick={() => setAsking(false)} className="press rounded-full px-4 py-2 text-sm font-semibold ring-1 ring-maroon/25">
               Not now
             </button>
           </div>

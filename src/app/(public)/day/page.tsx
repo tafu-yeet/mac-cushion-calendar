@@ -3,6 +3,7 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 
 import { AutoRefresh } from "@/components/auto-refresh";
+import { CardsSkeleton } from "@/components/skeleton";
 import { getEventsBetween } from "@/lib/events";
 import { parseFilters } from "@/lib/filters";
 import { addDays, dayStartIso, mondayOf, todayInCampus } from "@/lib/time";
@@ -15,7 +16,7 @@ export const metadata: Metadata = { title: "Day", alternates: { canonical: "/day
 export default function DayPage({ searchParams }: PageProps<"/day">) {
   return (
     <div className="mx-auto max-w-3xl px-4 py-6">
-      <Suspense fallback={<div className="h-96 animate-pulse rounded-[28px] bg-maroon/10" role="status" aria-label="Loading" />}>
+      <Suspense fallback={<CardsSkeleton />}>
         <Day searchParams={searchParams} />
       </Suspense>
     </div>

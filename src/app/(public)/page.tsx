@@ -57,12 +57,12 @@ async function Feed({ searchParams }: { searchParams: PageProps<"/">["searchPara
 
 function FeedSkeleton() {
   return (
-    <div className="flex animate-pulse flex-col gap-4" role="status" aria-label="Loading">
-      <div className="h-4 w-40 rounded bg-maroon/10" />
-      <div className="h-8 w-48 rounded bg-maroon/10" />
-      <div className="h-11 rounded-xl bg-maroon/10" />
+    <div className="flex flex-col gap-4" role="status" aria-label="Loading">
+      <div className="skeleton h-4 w-40 rounded" />
+      <div className="skeleton h-8 w-48 rounded" />
+      <div className="skeleton h-11 rounded-xl" />
       {[0, 1, 2].map((i) => (
-        <div key={i} className="h-40 rounded-2xl bg-maroon/10" />
+        <div key={i} className="skeleton h-40 rounded-[28px]" />
       ))}
     </div>
   );

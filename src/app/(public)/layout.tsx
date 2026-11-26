@@ -3,13 +3,14 @@
 import { Analytics } from "@vercel/analytics/react";
 import Image from "next/image";
 import Link from "next/link";
-import { Suspense } from "react";
+import { Suspense, ViewTransition } from "react";
 
 import { ListMemory } from "@/components/back-link";
 import { EngagementTracker } from "@/components/engagement-tracker";
 import { InstagramIcon } from "@/components/icons";
 import { IntentPrompts } from "@/components/intent-prompts";
 import { MemberSync } from "@/components/member-provider";
+import { ClientChangeWatcher, Wobble } from "@/components/motion";
 import { SiteNav, SiteNavLinks } from "@/components/site-nav";
 import { TourButton } from "@/components/site-tour";
 import { VisitTracker } from "@/components/visit-tracker";
@@ -24,7 +25,7 @@ const [firstLine, secondLine] = (() => {
 })();
 
 // Text links, with a 44px-tall tap area on phones.
-const FOOTER_LINK = "inline-flex min-h-11 items-center text-sm font-semibold text-maroon underline underline-offset-2 hover:text-plum";
+const FOOTER_LINK = "press inline-flex min-h-11 items-center text-sm font-semibold text-maroon underline underline-offset-2 hover:text-plum";
 
 export default function PublicLayout({ children }: LayoutProps<"/">) {
   return (
@@ -32,8 +33,11 @@ export default function PublicLayout({ children }: LayoutProps<"/">) {
       <div className="flex flex-1 flex-col bg-canvas font-body text-maroon">
         <header className="sticky top-0 z-30 bg-canvas/85 backdrop-blur">
           <div className="mx-auto flex max-w-5xl items-center justify-between gap-2 px-4 py-3 sm:gap-3">
-            <Link href="/" className="flex shrink-0 items-center gap-2.5" aria-label={`${campus.siteName}: what's on`}>
-              <Image src="/logo-mark.png" alt="" width={36} height={36} className="size-9 rounded-full" priority />
+            <Link href="/" transitionTypes={["nav"]} className="flex shrink-0 items-center gap-2.5" aria-label={`${campus.siteName}: what's on`}>
+              {/* The cushion wobbles when tapped: the site's one bit of bounce. */}
+              <Wobble>
+                <Image src="/logo-mark.png" alt="" width={36} height={36} className="size-9 rounded-full" priority />
+              </Wobble>
               {/* Phones keep the logo alone, so the nav and its Sign in button fit. */}
               <span className="font-display text-[15px] font-semibold leading-[0.95] whitespace-nowrap max-[419px]:hidden sm:text-lg sm:leading-none">
                 {firstLine}
@@ -46,7 +50,14 @@ export default function PublicLayout({ children }: LayoutProps<"/">) {
           </div>
         </header>
 
-        <main className="flex-1">{children}</main>
+        <main className="flex-1">
+          {/* The nav's links crossfade the page (motion.css); other page changes, like the back button, just swap. */}
+          <ViewTransition default="none" update={{ nav: "page-fade", default: "none" }}>
+            <div>{children}</div>
+          </ViewTransition>
+        </main>
+        {/* Lets entrances play once someone moves around the site, never on the page as it first loads. */}
+        <ClientChangeWatcher />
         {/* Which list an event was opened from, for its page's back link. */}
         <ListMemory />
         {/* How often each event is seen and opened, for the admin's Stats page. */}
@@ -63,10 +74,10 @@ export default function PublicLayout({ children }: LayoutProps<"/">) {
         <footer className="mx-auto w-full max-w-5xl px-4 py-8">
           <div className="flex flex-wrap gap-x-5">
             <TourButton className={FOOTER_LINK} />
-            <Link href="/communities" className={FOOTER_LINK}>
+            <Link href="/communities" transitionTypes={["nav"]} className={FOOTER_LINK}>
               Communities
             </Link>
-            <Link href="/clubs" className={FOOTER_LINK}>
+            <Link href="/clubs" transitionTypes={["nav"]} className={FOOTER_LINK}>
               Clubs
             </Link>
             <FeedbackLink type="idea" className={FOOTER_LINK}>

@@ -53,7 +53,7 @@ function label(href: string): string {
 export function BackLink({ className }: { className?: string }) {
   const href = useSyncExternalStore(noChanges, savedList, () => "/");
   return (
-    <Link href={href} className={className}>
+    <Link href={href} transitionTypes={["nav"]} className={`press ${className ?? ""}`}>
       <ChevronIcon direction="left" className="size-4" />
       {label(href)}
     </Link>
